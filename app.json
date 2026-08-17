@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "DarClean",
+    "slug": "darclean-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "darclean",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#FBFAF7"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "android": {
+      "package": "com.darclean.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#006D77"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.darclean.mobile",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "DarClean uses your location to check in at properties and match you with nearby jobs.",
+        "NSCameraUsageDescription": "DarClean uses your camera to document before/after cleaning photos and ID verification.",
+        "NSPhotoLibraryUsageDescription": "DarClean needs access to your photo library to upload job photos."
+      }
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "DarClean uses your location to check in at properties and find nearby jobs."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "DarClean needs access to your photos to upload job documentation.",
+          "cameraPermission": "DarClean needs your camera to take before/after photos."
+        }
+      ]
+    ],
+    "extra": {
+      "apiUrl": "http://localhost:4000/api/v1",
+      "webUrl": "http://localhost:3000"
+    }
+  }
+}
