@@ -3,11 +3,9 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api } from '@/lib/api';
-import { Screen, TextField, SegmentedControl, ErrorBanner } from '@/components/ui';
+import { Screen, TextField, ErrorBanner } from '@/components/ui';
 import { Button } from '@/components/Button';
 import { spacing, typography } from '@/theme';
-
-type ContactType = 'EXTERNAL' | 'COMPANY_ACCOUNT';
 
 export default function NewCleaningContactScreen() {
   const { session } = useAuth();
@@ -15,8 +13,6 @@ export default function NewCleaningContactScreen() {
 
   const [name, setName] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
-  const [type, setType] = useState<ContactType>('EXTERNAL');
-  const [cleanerAccountEmail, setCleanerAccountEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -26,18 +22,13 @@ export default function NewCleaningContactScreen() {
 
     if (!name.trim()) return setError('Enter a name.');
     if (!whatsappNumber.trim()) return setError('Enter a WhatsApp number, with country code (e.g. +212600000000).');
-    if (type === 'COMPANY_ACCOUNT' && !cleanerAccountEmail.trim()) {
-      return setError('Enter the email of the enrolled DarClean cleaner company account.');
-    }
-
     setIsSubmitting(true);
     try {
       await api.cleaningContacts.create(
         {
           name: name.trim(),
           whatsappNumber: whatsappNumber.trim(),
-          type,
-          cleanerAccountEmail: type === 'COMPANY_ACCOUNT' ? cleanerAccountEmail.trim() : undefined,
+          type: 'EXTERNAL',
         },
         session.accessToken,
       );
@@ -59,18 +50,6 @@ export default function NewCleaningContactScreen() {
         </Text>
 
         <View style={{ marginTop: spacing.lg }}>
-          <Text style={styles.fieldLabel}>Contact type</Text>
-          <SegmentedControl
-            value={type}
-            onChange={setType}
-            options={[
-              { value: 'EXTERNAL', label: 'External / own staff' },
-              { value: 'COMPANY_ACCOUNT', label: 'DarClean company' },
-            ]}
-          />
-        </View>
-
-        <View style={{ marginTop: spacing.md }}>
           <TextField label="Name" value={name} onChangeText={setName} placeholder="e.g. Fatima's Cleaning" />
           <TextField
             label="WhatsApp number"
@@ -79,15 +58,6 @@ export default function NewCleaningContactScreen() {
             keyboardType="phone-pad"
             placeholder="+212 6XX XXX XXX"
           />
-          {type === 'COMPANY_ACCOUNT' && (
-            <TextField
-              label="Their DarClean account email"
-              value={cleanerAccountEmail}
-              onChangeText={setCleanerAccountEmail}
-              keyboardType="email-address"
-              placeholder="company@example.com"
-            />
-          )}
         </View>
 
         {error && <ErrorBanner message={error} />}
@@ -100,5 +70,4 @@ export default function NewCleaningContactScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
-  fieldLabel: { ...typography.bodyMuted, fontWeight: '600', marginBottom: spacing.xs },
 });

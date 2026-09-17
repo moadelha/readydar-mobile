@@ -26,6 +26,7 @@ export default function PropertySettingsScreen() {
   const [contacts, setContacts] = useState<CleaningContact[]>([]);
   const [services, setServices] = useState<Service[]>([]);
 
+  const [nightlyRate, setNightlyRate] = useState('');
   const [guestWelcomeMode, setGuestWelcomeMode] = useState<AutomationMode>('OFF');
   const [guestWelcomeTemplate, setGuestWelcomeTemplate] = useState('');
   const [automationMode, setAutomationMode] = useState<AutomationMode>('OFF');
@@ -48,6 +49,7 @@ export default function PropertySettingsScreen() {
       setProperty(propertyData);
       setContacts(contactList);
       setServices(serviceList);
+      setNightlyRate(propertyData.nightlyRate != null ? String(propertyData.nightlyRate) : '');
       setGuestWelcomeMode(propertyData.guestWelcomeMode ?? 'OFF');
       setGuestWelcomeTemplate(propertyData.guestWelcomeTemplate ?? '');
       setAutomationMode(propertyData.automationMode ?? 'OFF');
@@ -68,8 +70,19 @@ export default function PropertySettingsScreen() {
     if (!session || !id) return;
     setError(null);
     setSaved(false);
+
+    const trimmedRate = nightlyRate.trim();
+    const parsedRate = trimmedRate === '' ? null : Number(trimmedRate);
+    if (parsedRate !== null && (Number.isNaN(parsedRate) || parsedRate < 0)) {
+      setError('Enter a valid nightly rate.');
+      return;
+    }
+
     setIsSaving(true);
     try {
+      if (parsedRate !== null) {
+        await api.reports.setPropertyRate(id, parsedRate, session.accessToken);
+      }
       await api.automation.setGuestWelcome(
         id,
         { guestWelcomeMode, guestWelcomeTemplate: guestWelcomeTemplate.trim() || undefined },
@@ -111,6 +124,20 @@ export default function PropertySettingsScreen() {
             <Text style={styles.successText}>Saved.</Text>
           </View>
         )}
+
+        <Text style={styles.sectionTitle}>Pricing</Text>
+        <Text style={typography.bodyMuted}>
+          The default nightly rate for this property — used for future reservations and check-in links.
+        </Text>
+        <View style={{ marginTop: spacing.md }}>
+          <TextField
+            label="Nightly rate (MAD)"
+            value={nightlyRate}
+            onChangeText={setNightlyRate}
+            keyboardType="numeric"
+            placeholder="e.g. 450"
+          />
+        </View>
 
         <Text style={styles.sectionTitle}>Guest welcome message</Text>
         <Text style={typography.bodyMuted}>

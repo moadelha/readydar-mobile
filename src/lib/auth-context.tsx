@@ -22,6 +22,7 @@ interface AuthContextValue {
     lastName: string;
     role: 'HOST' | 'CLEANER';
     phone?: string;
+    acceptedTerms: boolean;
   }) => Promise<void>;
   logout: () => Promise<void>;
   updateSessionUser: (patch: Partial<AuthUser>) => void;
@@ -34,6 +35,19 @@ function dashboardPathForRole(role: AuthUser['role']) {
   if (role === 'HOST') return '/(host-tabs)/dashboard';
   if (role === 'CLEANER') return '/(tabs)/feed';
   return null;
+}
+
+/**
+ * router.replace() only swaps the CURRENT screen — it leaves everything
+ * already pushed underneath it (e.g. host/profile sitting on top of
+ * (host-tabs)) still in the stack's back-history. Every place we change who's
+ * logged in (login, logout, register, a forced session-expiry logout) needs
+ * to clear that history first, or pressing back after switching accounts/
+ * roles pops back into the PREVIOUS session's still-mounted screens — stale
+ * data, and no re-check that the new session is even allowed to see them.
+ */
+function resetNavigationStack(router: ReturnType<typeof useRouter>) {
+  if (router.canDismiss()) router.dismissAll();
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -51,6 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     registerForceLogoutHandler(() => {
       setSession(null);
+      resetNavigationStack(router);
       router.replace('/login');
     });
   }, [router]);
@@ -68,10 +83,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await api.auth.logout(res.refreshToken).catch(() => {});
         throw new ApiError(
           403,
-          'This app is for hosts and cleaners. Use the DarClean website for admin/support accounts.',
+          'This app is for hosts and cleaners. Use the ReadyDar website for admin/support accounts.',
         );
       }
       await persist(res);
+      resetNavigationStack(router);
       router.replace(dashboard as any);
     },
     [persist, router],
@@ -85,9 +101,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       lastName: string;
       role: 'HOST' | 'CLEANER';
       phone?: string;
+      acceptedTerms: boolean;
     }) => {
       const res = await api.auth.register(payload);
       await persist(res);
+      resetNavigationStack(router);
       if (payload.role === 'HOST') {
         router.replace('/host/property/new');
       } else {
@@ -107,6 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     await clearStoredSession();
     setSession(null);
+    resetNavigationStack(router);
     router.replace('/login');
   }, [session, router]);
 

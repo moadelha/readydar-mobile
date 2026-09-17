@@ -6,11 +6,33 @@ const API_URL =
   (Constants.expoConfig?.extra?.apiUrl as string) ??
   'http://localhost:4000/api/v1';
 
-/** Base URL of the web app — used to build the guest-facing online check-in link. */
-const WEB_URL =
+/** Base URL of the web app — used to build the guest-facing online check-in link and the Terms & Conditions link. */
+export const WEB_URL =
   process.env.EXPO_PUBLIC_WEB_URL ??
   (Constants.expoConfig?.extra?.webUrl as string) ??
   'http://localhost:3000';
+
+/**
+ * The host-only PDF export for one guest check-in — full details plus
+ * every guest's uploaded ID photo, laid out for printing/filing. Requires
+ * a bearer token (see `downloadAndShare` in `src/lib/files.ts`), so this
+ * just builds the URL rather than fetching it directly.
+ */
+export function checkInPdfUrl(checkInId: string) {
+  return `${API_URL}/checkins/${checkInId}/pdf`;
+}
+
+/**
+ * The host-only PDF export of a guest's *signed rental contract* — the
+ * contract text as it read at signing time, plus the drawn signature.
+ * Only ever resolves to something real once the guest has actually signed
+ * one during online check-in (see GuestCheckIn.contract on the backend) —
+ * callers should only surface a download action when `GuestCheckIn.contract`
+ * is present. Same auth-header pattern as `checkInPdfUrl` above.
+ */
+export function contractPdfUrl(checkInId: string) {
+  return `${API_URL}/checkins/${checkInId}/contract-pdf`;
+}
 
 const SESSION_KEY = 'darclean_session';
 
@@ -198,8 +220,57 @@ async function requestForm<T>(
 }
 
 export function resolveUploadUrl(path: string) {
+  // Uploaded photos (door photos, job before/after photos, guest ID
+  // photos) are stored on Cloudinary now and already come back as full
+  // `https://res.cloudinary.com/...` URLs — pass those through untouched.
+  // Only a bare relative path (a leftover from the old local-disk storage,
+  // if any such record still exists) gets resolved against the API's
+  // origin. Concatenating the two for an already-absolute URL would
+  // produce a broken, unreachable image link.
+  if (/^https?:\/\//i.test(path)) return path;
   const apiOrigin = API_URL.replace(/\/api\/v1\/?$/, '');
   return `${apiOrigin}${path}`;
+}
+
+/**
+ * A resized/optimized version of a Cloudinary photo URL, for use as a small
+ * thumbnail. Photo grids (property door photos, job before/after photos,
+ * guest ID photos) were rendering `resolveUploadUrl()`'s full original —
+ * often several MB straight from a phone camera — at ~64-84 logical px,
+ * which is a real, avoidable source of slowness on any screen with more
+ * than a couple of photos. Falls back to the untouched URL for anything
+ * that isn't a Cloudinary delivery URL (e.g. a leftover local-disk path).
+ * Use `resolveUploadUrl` (full resolution) for the full-screen photo viewer.
+ */
+export function resolveThumbnailUrl(path: string, width = 200) {
+  const url = resolveUploadUrl(path);
+  const marker = '/image/upload/';
+  const idx = url.indexOf(marker);
+  if (idx === -1) return url;
+  const insertAt = idx + marker.length;
+  return `${url.slice(0, insertAt)}w_${width},c_limit,q_auto,f_auto/${url.slice(insertAt)}`;
+}
+
+/**
+ * A property's cover photo at thumbnail size, or `null` when it has none.
+ *
+ * Every host-facing property endpoint now returns the most recent
+ * `PROPERTY_PHOTO` — `GET /properties/mine`, `/properties/status-overview`
+ * and `/properties/:id` alike (the last of which returns *all* photo types,
+ * hence the explicit filter rather than just taking `photos[0]`). Most of
+ * these photos are Hospitable's own hosted Airbnb image URLs, which pass
+ * through `resolveThumbnailUrl` untouched; a photo the host uploaded by hand
+ * goes through Cloudinary and does get resized.
+ *
+ * Kept here next to the other URL resolvers so no screen re-derives "which
+ * photo is the cover" for itself.
+ */
+export function propertyCoverUrl(
+  property: { photos?: PropertyPhoto[] | null } | null | undefined,
+  width = 130,
+): string | null {
+  const cover = property?.photos?.find((p) => p.type === 'PROPERTY_PHOTO');
+  return cover ? resolveThumbnailUrl(cover.url, width) : null;
 }
 
 /** The guest-facing online check-in form for a given check-in link's token. */
@@ -226,6 +297,23 @@ export interface PropertyPhoto {
 /** PropertyType — matches the backend's Prisma enum. */
 export type PropertyType = 'APARTMENT' | 'VILLA' | 'RIAD' | 'STUDIO' | 'HOUSE' | 'OTHER';
 
+/** OFF: manual, host does everything by hand. MANUAL_CONFIRM: system prepares, host reviews/sends. AUTO: sent immediately. */
+export type AutomationMode = 'OFF' | 'MANUAL_CONFIRM' | 'AUTO';
+
+export type CleaningContactType = 'EXTERNAL' | 'COMPANY_ACCOUNT';
+
+/** A host's cleaning crew contact — their own staff (EXTERNAL) or an enrolled ReadyDar cleaner company account. */
+export interface CleaningContact {
+  id: string;
+  name: string;
+  whatsappNumber: string;
+  type: CleaningContactType;
+  messageTemplate?: string | null;
+  cleanerProfileId?: string | null;
+  cleanerProfile?: { user?: { firstName: string; lastName: string } | null } | null;
+  createdAt?: string;
+}
+
 export interface Property {
   id: string;
   name: string;
@@ -251,8 +339,28 @@ export interface Property {
   checkOutTime?: string | null;
   houseRules?: string | null;
   photos?: PropertyPhoto[];
-  guestWelcomeMode?: 'OFF' | 'MANUAL_CONFIRM' | 'AUTO';
+  guestWelcomeMode?: AutomationMode;
   guestWelcomeTemplate?: string | null;
+  automationMode?: AutomationMode;
+  defaultCleaningContactId?: string | null;
+  defaultCleaningContact?: CleaningContact | null;
+  defaultServiceType?: string | null;
+  /** Set only when this property was imported from an Airbnb listing via Hospitable Connect — see HospitablePropertySyncService on the backend. Name/address/room counts on a synced property are overwritten on every re-sync, so they should be edited on Airbnb, not here. */
+  hospitableListingId?: string | null;
+}
+
+/**
+ * One Airbnb listing as Hospitable Connect reports it — the raw shape
+ * returned by GET /integrations/hospitable/listings, used purely for the
+ * "here's what we found on Airbnb" preview panel. The actual Property
+ * records come from POST /integrations/hospitable/sync, not from this.
+ */
+export interface HospitableListing {
+  id: string;
+  public_name?: string;
+  private_name?: string;
+  picture?: string;
+  address?: { city?: string; street?: string };
 }
 
 export type CheckInLanguage = 'EN' | 'FR' | 'AR';
@@ -288,14 +396,24 @@ export interface GuestCheckIn {
   idNumber?: string | null;
   idPhotoUrl?: string | null;
   guests?: CheckInGuestEntry[];
+  /** The guest asked to arrive before the property's standard check-in time (or the host flagged it for them). */
+  earlyCheckInRequested?: boolean;
+  /** The guest asked to leave after the standard checkout time. */
+  lateCheckOutRequested?: boolean;
+  /** Free text attached to either timing request — "flight lands 11am", etc. */
+  timingRequestNote?: string | null;
   submittedAt?: string | null;
   expiresAt?: string | null;
   nightlyRate?: string | null;
   createdAt: string;
+  /** Set when this check-in link was auto-created from a synced Airbnb/Booking.com reservation (Hospitable Connect or iCal) rather than by the host — see HospitableReservationSyncService#createCheckInLink on the backend. */
+  externalReservationId?: string | null;
   welcomeNotifiedAt?: string | null;
   welcomeWaLink?: string | null;
   welcomeWhatsappSent?: boolean;
   welcomeMessageText?: string | null;
+  /** Present only when the guest signed the rental contract as part of this check-in (host turned contract signing on — see api.properties.getContract). Use contractPdfUrl(id) to download it once this is set. */
+  contract?: { signedAt: string } | null;
 }
 
 export interface CreateCheckInLinkPayload {
@@ -326,10 +444,75 @@ export interface PendingWelcomeMessages {
   readyToSend: PendingWelcomeItem[];
 }
 
+/**
+ * A single check-in, as returned by `checkins.listAll` — every guest
+ * check-in across all of the host's properties (60 days back to any time
+ * ahead), with just enough of the parent property attached to group and
+ * show a cover photo without a second round-trip. Mirrors the web app's
+ * `AllCheckIn` type (`apps/web/src/lib/api.ts`) that powers the Check-ins
+ * page this screen is modeled on.
+ */
+export type AllCheckIn = GuestCheckIn & {
+  property: { id: string; name: string; photoUrl: string | null };
+};
+
+/**
+ * A still-actionable check-in link, as returned by `checkins.listPendingForHost`
+ * (`GET /checkins/pending`). Deliberately narrower than `AllCheckIn`: the
+ * backend only returns rows that are still `PENDING` **and** not past their
+ * `expiresAt`, soonest expected check-in first, capped at 100.
+ *
+ * That server-side expiry filter is the whole point of using this endpoint
+ * over `listAll` for the Home screen. Nothing ever flips a row's status from
+ * PENDING to EXPIRED (expiry is only enforced at submission time), so every
+ * link ever auto-created for a synced reservation — including the years of
+ * past stays a pre-fix Hospitable backfill imported — sits at PENDING
+ * forever. `listAll` would hand all of that to the Home screen to filter
+ * client-side; this endpoint never sends it in the first place.
+ */
+export interface PendingCheckIn {
+  id: string;
+  propertyId: string;
+  token: string;
+  status: CheckInStatus;
+  expectedCheckIn: string;
+  expectedCheckOut: string;
+  guestNameHint?: string | null;
+  guestCount: number;
+  expiresAt?: string | null;
+  externalReservationId?: string | null;
+  earlyCheckInRequested?: boolean;
+  lateCheckOutRequested?: boolean;
+  timingRequestNote?: string | null;
+  property: { id: string; name: string };
+}
+
 export interface WhatsappSendResult {
   /** True only if actually delivered via the WhatsApp Cloud API — otherwise the client must open `waLink`. */
   sent: boolean;
   waLink: string;
+}
+
+/**
+ * A pending cleaning-crew turnover alert — either a guest check-in (has
+ * `expectedCheckOut`/`guestFirstName`) or an iCal-synced Airbnb/Booking.com
+ * reservation (has `checkOut`/`source` instead). Both shapes are flattened
+ * into this one type since the UI treats them the same way.
+ */
+export interface PendingTurnoverItem {
+  id: string;
+  guestFirstName?: string | null;
+  guestLastName?: string | null;
+  expectedCheckOut?: string | null;
+  checkOut?: string | null;
+  source?: 'AIRBNB' | 'BOOKING_COM' | null;
+  turnoverWaLink?: string | null;
+  property: Property;
+}
+
+export interface PendingTurnovers {
+  needsConfirmation: { guestCheckIns: PendingTurnoverItem[]; externalReservations: PendingTurnoverItem[] };
+  readyToSend: { guestCheckIns: PendingTurnoverItem[]; externalReservations: PendingTurnoverItem[] };
 }
 
 export type ExpenseCategory =
@@ -366,6 +549,51 @@ export interface PropertyStatusItem {
   status: 'OCCUPIED' | 'READY' | 'NEEDS_CLEANING' | 'IN_PROGRESS';
   activeBooking: Booking | null;
   notifiedForCleaning: boolean;
+}
+
+/**
+ * One entry in the combined calendar feed — GET /properties/calendar.
+ * `kind: 'CLEANING'` entries are single-day (date === endDate) and come from
+ * `Booking`; `kind: 'GUEST_STAY'` entries span `date` (check-in) to
+ * `endDate` (check-out) and come from either a `GuestCheckIn` (source
+ * DIRECT — online check-in flow) or a synced `ExternalReservation`
+ * (source AIRBNB / BOOKING_COM, via iCal).
+ */
+export interface CalendarEvent {
+  id: string;
+  kind: 'CLEANING' | 'GUEST_STAY';
+  propertyId: string;
+  propertyName: string;
+  /** Guest name / "Guest stay" for stays, the service name for cleanings. */
+  title: string;
+  date: string;
+  endDate: string;
+  /** BookingStatus for CLEANING, CheckInStatus ('PENDING'|'SUBMITTED'|'EXPIRED') for a DIRECT stay, else 'CONFIRMED'. */
+  status: string;
+  bookingId?: string;
+  /**
+   * Where a guest stay came from. `MANUAL` covers both a host's own
+   * "offline booking" (a guest taken outside Airbnb/Booking.com) and a
+   * manually blocked date range — `isBlocked` is what separates those two,
+   * not the source. Absent entirely on CLEANING events.
+   */
+  source?: 'DIRECT' | 'AIRBNB' | 'BOOKING_COM' | 'MANUAL';
+  checkInId?: string;
+  guestCount?: number;
+  reservationId?: string;
+  /** CLEANING only — the job's real scheduled start ("14:00"), when one was set. */
+  scheduledTime?: string | null;
+  /** CLEANING only — the service's estimated duration, for showing an honest end time rather than inventing one. */
+  estMinutes?: number | null;
+  /** GUEST_STAY only — per-night rate (real payout figure for a Hospitable-synced stay, otherwise the property's default). */
+  nightlyRate?: string | number | null;
+  /** GUEST_STAY only — free-text note the host attached to a manual reservation/block. */
+  note?: string | null;
+  /** True for a night the host blocked on Airbnb/Booking.com themselves — not a real guest stay. Render distinctly from an actual reservation. */
+  isBlocked?: boolean;
+  /** The check-in link auto-created for a synced reservation, if any — lets the calendar offer "share check-in link" without a second lookup. */
+  checkInToken?: string | null;
+  checkInStatus?: string | null;
 }
 
 export interface CreatePropertyPayload {
@@ -439,6 +667,10 @@ export interface Booking {
   specialRequests?: string | null;
   budget?: string | null;
   agreedPrice?: string | null;
+  shareAccessDetails?: boolean;
+  /** Only present for the assigned cleaner, and only once the host opted in
+   * via shareAccessDetails at booking creation — see BookingsService#findOne. */
+  hostContact?: { name: string; phone: string | null } | null;
   property: Property;
   service: Service;
   cleaner?: { id: string; averageRating: number; user: { firstName: string; lastName: string } } | null;
@@ -456,6 +688,9 @@ export interface CreateBookingPayload {
   urgency?: 'STANDARD' | 'URGENT';
   specialRequests?: string;
   budget?: number;
+  /** If true, the property's access details and the host's phone number are
+   * shared with the cleaner once matched. Off by default on the backend. */
+  shareAccessDetails?: boolean;
 }
 
 export interface JobFeedItem extends Booking {
@@ -486,6 +721,28 @@ export interface EarningsSummary {
   totalThisMonth: number;
 }
 
+/** A single cash-on-delivery job's 10% platform commission charge. */
+export interface CommissionCharge {
+  id: string;
+  amount: string;
+  isPaid: boolean;
+  paidAt: string | null;
+  createdAt: string;
+  booking: { property: Property; service: Service };
+}
+
+/**
+ * The cleaner's commission balance — see CommissionCharge on the backend.
+ * `isBlocked` mirrors the same check the accept endpoint enforces, so the
+ * app can show a clear message instead of letting Accept just fail.
+ */
+export interface CommissionStatus {
+  totalOwed: number;
+  overdueAmount: number;
+  isBlocked: boolean;
+  charges: CommissionCharge[];
+}
+
 // --- API surface -----------------------------------------------------------------
 
 export const api = {
@@ -502,6 +759,7 @@ export const api = {
       lastName: string;
       role: 'HOST' | 'CLEANER';
       phone?: string;
+      acceptedTerms: boolean;
     }) =>
       request<{ accessToken: string; refreshToken: string; user: AuthUser }>('/auth/register', {
         method: 'POST',
@@ -542,10 +800,15 @@ export const api = {
     getJobFeed: (token: string) => request<JobFeedItem[]>('/cleaners/me/job-feed', { token }),
     getMyJobs: (token: string) => request<Booking[]>('/cleaners/me/jobs', { token }),
     getEarnings: (token: string) => request<EarningsSummary>('/cleaners/me/earnings', { token }),
+    getCommission: (token: string) => request<CommissionStatus>('/cleaners/me/commission', { token }),
   },
   jobActions: {
-    accept: (bookingId: string, token: string) =>
-      request<Booking>(`/bookings/${bookingId}/accept`, { method: 'PATCH', token }),
+    accept: (bookingId: string, token: string, proposedPrice?: number) =>
+      request<Booking>(`/bookings/${bookingId}/accept`, {
+        method: 'PATCH',
+        body: proposedPrice != null ? { proposedPrice } : undefined,
+        token,
+      }),
     checkIn: (bookingId: string, latitude: number, longitude: number, token: string) =>
       request<Booking>(`/bookings/${bookingId}/check-in`, {
         method: 'PATCH',
@@ -588,18 +851,213 @@ export const api = {
     getOne: (id: string, token: string) => request<Property>(`/properties/${id}`, { token }),
     getStatusOverview: (token: string) => request<PropertyStatusItem[]>('/properties/status-overview', { token }),
     getUpcomingBookings: (token: string) => request<Booking[]>('/properties/upcoming-bookings', { token }),
+    getCalendar: (from: string, to: string, token: string) =>
+      request<CalendarEvent[]>(`/properties/calendar?from=${from}&to=${to}`, { token }),
     create: (payload: CreatePropertyPayload, token: string) =>
       request<Property>('/properties', { method: 'POST', body: payload, token }),
     markReady: (propertyId: string, token: string) =>
       request<Property>(`/properties/${propertyId}/mark-ready`, { method: 'POST', token }),
     setStatus: (propertyId: string, status: string | null, token: string) =>
       request<Property>(`/properties/${propertyId}/status`, { method: 'PATCH', body: { status }, token }),
+    /**
+     * Permanently removes a guest check-in — the link itself plus anything
+     * hanging off it (submitted guest records, ID photos, a signed
+     * contract). There is no undo and no soft-delete on the backend.
+     *
+     * Lives under `properties` rather than `checkins` because that's where
+     * the route actually is (`POST /properties/checkins/:id/cancel`,
+     * PropertiesController#deleteGuestCheckIn) — the same call the web app
+     * makes from its check-ins page, property page, dashboard and calendar.
+     * It's a POST, not a DELETE, despite the name.
+     *
+     * Mobile deliberately only offers this on **PENDING** links (see the
+     * Guests and property screens): a SUBMITTED check-in is the host's only
+     * copy of that guest's identity documents and signed contract, which
+     * they may be legally required to retain. The endpoint itself will
+     * happily delete those too — the restraint is ours, not the server's.
+     */
+    deleteGuestCheckIn: (checkInId: string, token: string) =>
+      request<{ success: boolean }>(`/properties/checkins/${checkInId}/cancel`, { method: 'POST', token }),
+    /**
+     * Creates a check-in link for a synced reservation that doesn't have one.
+     *
+     * Two cases this exists for, both of which leave a host stuck otherwise:
+     *   1. A reservation Airbnb sent through with no guest name — the
+     *      auto-create in HospitableReservationSyncService only fires for
+     *      reservations imported *after* that feature shipped, so anything
+     *      older (or synced during a backfill) has no link at all.
+     *   2. A range that came through as **blocked**. Airbnb reports a
+     *      Booking.com stay as merely "not available", which syncs as a
+     *      block rather than a booking. The server **auto-clears
+     *      `isBlocked`** here, so generating a link is also how a host says
+     *      "this block is actually a real guest".
+     *
+     * Throws if the reservation already has a link. Returns the new
+     * `GuestCheckIn`, token included, so the caller can offer it straight
+     * away without a refetch.
+     */
+    /**
+     * Flags that a guest asked to arrive early or leave late, with an
+     * optional note. Partial by design — the server keeps whatever it
+     * already had for any field left undefined, so a caller can toggle one
+     * without knowing the other's current value.
+     *
+     * There's a sibling route for a synced reservation that has no check-in
+     * record of its own (`/properties/reservations/:id/timing-request`);
+     * only the check-in one is wired up here, since that's where mobile
+     * surfaces the control.
+     */
+    setCheckInTiming: (
+      checkInId: string,
+      payload: { earlyCheckInRequested?: boolean; lateCheckOutRequested?: boolean; timingRequestNote?: string | null },
+      token: string,
+    ) =>
+      request<GuestCheckIn>(`/properties/checkins/${checkInId}/timing-request`, {
+        method: 'PATCH',
+        body: payload,
+        token,
+      }),
+    generateReservationCheckInLink: (reservationId: string, token: string, guestCount?: number) =>
+      request<GuestCheckIn>(`/properties/reservations/${reservationId}/checkin-link`, {
+        method: 'POST',
+        // ExternalReservation stores no party size, so the host is the only
+        // source here — omitted, the server falls back to 1.
+        body: guestCount ? { guestCount } : {},
+        token,
+      }),
+    /**
+     * Corrects a pending check-in link's guest count (or guest name).
+     *
+     * `guestCount` is not cosmetic: the public submit endpoint rejects more
+     * guest records than this number, so a link stuck at 1 makes it
+     * impossible for a family to complete check-in and renders the contract
+     * for one person.
+     *
+     * For a **Hospitable-synced** check-in this isn't the last word — the
+     * reservation sync refreshes the count from the platform on every
+     * resync, so a hand edit to a synced link is corrected the next time
+     * that reservation syncs. It sticks for manually-created links.
+     */
+    updateCheckIn: (
+      checkInId: string,
+      payload: { guestCount?: number; guestNameHint?: string },
+      token: string,
+    ) => request<GuestCheckIn>(`/properties/checkins/${checkInId}`, { method: 'PATCH', body: payload, token }),
+    /**
+     * Edits a synced or manually-created reservation: reclassify a block as
+     * a real booking (`isBlocked: false`) or back again, and set the
+     * nightly rate the Reports revenue figures are built from.
+     */
+    updateReservation: (
+      reservationId: string,
+      payload: { isBlocked?: boolean; nightlyRate?: number; note?: string },
+      token: string,
+    ) => request<any>(`/properties/reservations/${reservationId}`, { method: 'PATCH', body: payload, token }),
+    /** One shared rental-contract setting for the whole host account (not per property) — see PropertiesController#getContract/setContract on the backend. */
+    getContract: (token: string) =>
+      request<{ contractSigningRequired: boolean; contractTemplate: string | null }>('/properties/contract', { token }),
+    setContract: (
+      payload: { contractSigningRequired: boolean; contractTemplate?: string },
+      token: string,
+    ) =>
+      request<{ contractSigningRequired: boolean; contractTemplate: string | null }>('/properties/contract', {
+        method: 'PATCH',
+        body: payload,
+        token,
+      }),
+  },
+  /**
+   * Hospitable Connect — lets a host link their Airbnb account so their
+   * listings and reservations import into ReadyDar automatically instead of
+   * being entered by hand. See HospitableConnectController on the backend
+   * for the full flow; `connect()` returns a one-time browser link (opens in
+   * the system browser, not in-app — Hospitable's hosted connect page isn't
+   * embeddable), and `sync()` is safe to call repeatedly.
+   */
+  hospitable: {
+    connect: (token: string) => request<{ return_url: string; expires_at: string }>('/integrations/hospitable/connect', { method: 'POST', token }),
+    listListings: (token: string) => request<HospitableListing[]>('/integrations/hospitable/listings', { token }),
+    /** `datesBlocked` counts nights the host manually blocked on Airbnb (not a real stay) — see ExternalReservation.isBlocked. */
+    sync: (token: string) =>
+      request<{ properties: number; propertiesCreated: number; reservationsCreated: number; datesBlocked: number }>(
+        '/integrations/hospitable/sync',
+        { method: 'POST', token },
+      ),
+  },
+  automation: {
+    /** Cleaning-crew turnover automation: mode + default cleaning contact/service for a property. */
+    setForProperty: (
+      propertyId: string,
+      payload: { automationMode: AutomationMode; defaultCleaningContactId?: string | null; defaultServiceType?: string },
+      token: string,
+    ) => request<Property>(`/properties/${propertyId}/automation`, { method: 'PATCH', body: payload, token }),
+    /** Guest welcome/access-info automation + the property's access details (gate code, WiFi, etc). */
+    setGuestWelcome: (
+      propertyId: string,
+      payload: {
+        guestWelcomeMode: AutomationMode;
+        guestWelcomeTemplate?: string;
+        googleMapsUrl?: string;
+        gateCode?: string;
+        apartmentNumber?: string;
+        floor?: string;
+        doorAccessCode?: string;
+        checkInTime?: string;
+        checkOutTime?: string;
+        houseRules?: string;
+      },
+      token: string,
+    ) => request<Property>(`/properties/${propertyId}/guest-welcome`, { method: 'PATCH', body: payload, token }),
+  },
+  cleaningContacts: {
+    list: (token: string) => request<CleaningContact[]>('/cleaning-contacts', { token }),
+    create: (
+      payload: { name: string; whatsappNumber: string; type: CleaningContactType; cleanerAccountEmail?: string },
+      token: string,
+    ) => request<CleaningContact>('/cleaning-contacts', { method: 'POST', body: payload, token }),
+    update: (
+      id: string,
+      payload: { name?: string; whatsappNumber?: string; messageTemplate?: string },
+      token: string,
+    ) => request<CleaningContact>(`/cleaning-contacts/${id}`, { method: 'PATCH', body: payload, token }),
+    remove: (id: string, token: string) =>
+      request<{ success: boolean }>(`/cleaning-contacts/${id}`, { method: 'DELETE', token }),
+  },
+  reports: {
+    /** Set a property's default nightly rate (applied to future reservations). */
+    setPropertyRate: (propertyId: string, nightlyRate: number, token: string) =>
+      request<Property>(`/reports/properties/${propertyId}/rate`, { method: 'PATCH', body: { nightlyRate }, token }),
   },
   checkins: {
     createLink: (propertyId: string, payload: CreateCheckInLinkPayload, token: string) =>
       request<GuestCheckIn>(`/properties/${propertyId}/checkins`, { method: 'POST', body: payload, token }),
     listForProperty: (propertyId: string, token: string) =>
       request<GuestCheckIn[]>(`/properties/${propertyId}/checkins`, { token }),
+    /** Every check-in across all of the host's properties, grouped client-side by property. */
+    listAll: (token: string) => request<AllCheckIn[]>('/checkins/all', { token }),
+    /**
+     * Only the check-in links still worth acting on — PENDING and not yet
+     * past expiry — soonest first. Server-filtered; see `PendingCheckIn`.
+     * Named `listPendingForHost` rather than `listPending` to stay clearly
+     * distinct from `guestWelcome.listPending`, which is a different queue
+     * (already-submitted check-ins awaiting their welcome message).
+     */
+    listPendingForHost: (token: string) => request<PendingCheckIn[]>('/checkins/pending', { token }),
+    /**
+     * A short-lived signed URL for one guest's ID photo.
+     *
+     * Guest ID/passport photos are uploaded to Cloudinary's *authenticated*
+     * delivery type, so what's stored on the guest record is an opaque
+     * `public_id`, not a fetchable link — building a URL from it directly
+     * (the pre-Part-32 behavior) renders a broken image. This endpoint is
+     * the only way to view one, and the URL it returns expires, so fetch it
+     * at view time rather than caching it.
+     *
+     * `guestId` is the literal string `'legacy'` for pre-per-guest-record
+     * submissions, whose single photo lives on the check-in itself.
+     */
+    guestPhotoUrl: (checkInId: string, guestId: string, token: string) =>
+      request<{ url: string }>(`/checkins/${checkInId}/guests/${guestId}/photo-url`, { token }),
   },
   guestWelcome: {
     listPending: (token: string) => request<PendingWelcomeMessages>('/guest-welcome/pending', { token }),
@@ -613,6 +1071,20 @@ export const api = {
       }),
     acknowledge: (checkInId: string, token: string) =>
       request<any>(`/guest-welcome/checkin/${checkInId}/acknowledge`, { method: 'POST', token }),
+  },
+  turnovers: {
+    listPending: (token: string) => request<PendingTurnovers>('/turnovers/pending', { token }),
+    confirmCheckIn: (checkInId: string, token: string) =>
+      request<{ whatsapp: WhatsappSendResult }>(`/turnovers/checkin/${checkInId}/confirm`, { method: 'POST', token }),
+    confirmReservation: (reservationId: string, token: string) =>
+      request<{ whatsapp: WhatsappSendResult }>(`/turnovers/reservation/${reservationId}/confirm`, {
+        method: 'POST',
+        token,
+      }),
+    acknowledgeCheckIn: (checkInId: string, token: string) =>
+      request<any>(`/turnovers/checkin/${checkInId}/acknowledge`, { method: 'POST', token }),
+    acknowledgeReservation: (reservationId: string, token: string) =>
+      request<any>(`/turnovers/reservation/${reservationId}/acknowledge`, { method: 'POST', token }),
   },
   expenses: {
     list: (filters: { propertyId?: string; from?: string; to?: string; category?: string }, token: string) => {

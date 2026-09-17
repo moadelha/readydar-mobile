@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme';
 import { useLanguage } from '@/lib/i18n/language-context';
+import { TabIcon } from '@/components/ui';
 
 export default function TabsLayout() {
   const { t } = useLanguage();
@@ -19,28 +19,28 @@ export default function TabsLayout() {
         name="feed"
         options={{
           title: t.tabsCleaner.jobFeed,
-          tabBarIcon: ({ color, size }) => <Ionicons name="list-outline" size={size} color={color} />,
+          tabBarIcon: ({ focused, size }) => <TabIcon name="list-outline" focused={focused} size={size} />,
         }}
       />
       <Tabs.Screen
         name="jobs"
         options={{
           title: t.tabsCleaner.myJobs,
-          tabBarIcon: ({ color, size }) => <Ionicons name="briefcase-outline" size={size} color={color} />,
+          tabBarIcon: ({ focused, size }) => <TabIcon name="briefcase-outline" focused={focused} size={size} />,
         }}
       />
       <Tabs.Screen
         name="earnings"
         options={{
           title: t.tabsCleaner.earnings,
-          tabBarIcon: ({ color, size }) => <Ionicons name="wallet-outline" size={size} color={color} />,
+          tabBarIcon: ({ focused, size }) => <TabIcon name="wallet-outline" focused={focused} size={size} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: t.tabsCleaner.profile,
-          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
+          tabBarIcon: ({ focused, size }) => <TabIcon name="person-outline" focused={focused} size={size} />,
         }}
       />
     </Tabs>

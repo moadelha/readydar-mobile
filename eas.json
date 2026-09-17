@@ -7,25 +7,29 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "channel": "development",
       "android": {
         "buildType": "apk"
       }
     },
     "preview": {
       "distribution": "internal",
+      "channel": "preview",
+      "autoIncrement": true,
       "android": {
         "buildType": "apk"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://darclean-api.onrender.com/api/v1",
-        "EXPO_PUBLIC_WEB_URL": "https://darclean-web.onrender.com"
+        "EXPO_PUBLIC_WEB_URL": "https://readydar.com"
       }
     },
     "production": {
+      "channel": "production",
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://darclean-api.onrender.com/api/v1",
-        "EXPO_PUBLIC_WEB_URL": "https://darclean-web.onrender.com"
+        "EXPO_PUBLIC_WEB_URL": "https://readydar.com"
       }
     }
   },

@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/theme';
 import { useLanguage } from '@/lib/i18n/language-context';
+import { TabIcon } from '@/components/ui';
 
 export default function HostTabsLayout() {
   const { t } = useLanguage();
@@ -18,36 +18,36 @@ export default function HostTabsLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: t.tabsHost.dashboard,
-          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
+          title: t.tabsHost.home,
+          tabBarIcon: ({ focused, size }) => <TabIcon name="home-outline" focused={focused} size={size} />,
         }}
       />
       <Tabs.Screen
         name="calendar"
         options={{
           title: t.tabsHost.calendar,
-          tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
+          tabBarIcon: ({ focused, size }) => <TabIcon name="calendar-outline" focused={focused} size={size} />,
         }}
       />
       <Tabs.Screen
         name="properties"
         options={{
           title: t.tabsHost.properties,
-          tabBarIcon: ({ color, size }) => <Ionicons name="business-outline" size={size} color={color} />,
+          tabBarIcon: ({ focused, size }) => <TabIcon name="business-outline" focused={focused} size={size} />,
         }}
       />
       <Tabs.Screen
-        name="bookings"
+        name="expenses"
         options={{
-          title: t.tabsHost.bookings,
-          tabBarIcon: ({ color, size }) => <Ionicons name="clipboard-outline" size={size} color={color} />,
+          title: t.tabsHost.expenses,
+          tabBarIcon: ({ focused, size }) => <TabIcon name="receipt-outline" focused={focused} size={size} />,
         }}
       />
       <Tabs.Screen
         name="more"
         options={{
           title: t.tabsHost.more,
-          tabBarIcon: ({ color, size }) => <Ionicons name="menu-outline" size={size} color={color} />,
+          tabBarIcon: ({ focused, size }) => <TabIcon name="menu-outline" focused={focused} size={size} />,
         }}
       />
     </Tabs>

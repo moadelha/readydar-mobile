@@ -3,9 +3,9 @@ import { View, Text, StyleSheet, ScrollView, Linking, Share } from 'react-native
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, Property, GuestCheckIn, CheckInLanguage, resolveCheckInUrl } from '@/lib/api';
-import { Screen, Card, TextField, SegmentedControl } from '@/components/ui';
-import { PropertySelect } from '@/components/PropertySelect';
+import { Screen, Card, TextField, Chip, SegmentedControl } from '@/components/ui';
 import { Button } from '@/components/Button';
+import { useLanguage } from '@/lib/i18n/language-context';
 import { colors, spacing, typography } from '@/theme';
 
 function addDaysIso(days: number) {
@@ -18,6 +18,7 @@ export default function NewCheckInScreen() {
   const { propertyId: preselectedPropertyId } = useLocalSearchParams<{ propertyId?: string }>();
   const { session } = useAuth();
   const router = useRouter();
+  const { t } = useLanguage();
 
   const [properties, setProperties] = useState<Property[]>([]);
   const [propertyId, setPropertyId] = useState<string | null>(preselectedPropertyId ?? null);
@@ -26,6 +27,7 @@ export default function NewCheckInScreen() {
   const [expectedCheckOut, setExpectedCheckOut] = useState(addDaysIso(1));
   const [guestNameHint, setGuestNameHint] = useState('');
   const [guestCount, setGuestCount] = useState('1');
+  const [nightlyRate, setNightlyRate] = useState('');
   const [language, setLanguage] = useState<CheckInLanguage>('EN');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,16 +46,25 @@ export default function NewCheckInScreen() {
 
   useEffect(() => {
     if (!session || !propertyId) return;
-    api.properties.getOne(propertyId, session.accessToken).then(setProperty).catch(() => {});
+    api.properties.getOne(propertyId, session.accessToken).then((p) => {
+      setProperty(p);
+      setNightlyRate(p.nightlyRate != null ? String(p.nightlyRate) : '');
+    }).catch(() => {});
   }, [session, propertyId]);
 
   async function handleSubmit() {
     if (!session) return;
     setError(null);
 
-    if (!propertyId) return setError('Choose a property.');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(expectedCheckIn)) return setError('Check-in date must be in YYYY-MM-DD format.');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(expectedCheckOut)) return setError('Check-out date must be in YYYY-MM-DD format.');
+    if (!propertyId) return setError(t.checkinNew.errorChooseProperty);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(expectedCheckIn)) return setError(t.checkinNew.errorCheckInFormat);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(expectedCheckOut)) return setError(t.checkinNew.errorCheckOutFormat);
+
+    const trimmedRate = nightlyRate.trim();
+    const parsedRate = trimmedRate === '' ? undefined : Number(trimmedRate);
+    if (parsedRate !== undefined && (Number.isNaN(parsedRate) || parsedRate < 0)) {
+      return setError(t.checkinNew.errorInvalidRate);
+    }
 
     setIsSubmitting(true);
     try {
@@ -65,12 +76,13 @@ export default function NewCheckInScreen() {
           guestNameHint: guestNameHint || undefined,
           guestCount: Number(guestCount) || 1,
           language,
+          nightlyRate: parsedRate,
         },
         session.accessToken,
       );
       setCreated(checkIn);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create the check-in link.');
+      setError(err instanceof ApiError ? err.message : t.checkinNew.errorCreate);
     } finally {
       setIsSubmitting(false);
     }
@@ -79,14 +91,14 @@ export default function NewCheckInScreen() {
   async function handleShareWhatsApp() {
     if (!created) return;
     const url = resolveCheckInUrl(created.token);
-    const text = `Hi! Please complete your online check-in${property ? ` for ${property.name}` : ''} here: ${url}`;
+    const text = t.checkinNew.shareMessage(property?.name ?? null, url);
     await Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
   }
 
   async function handleShareOther() {
     if (!created) return;
     const url = resolveCheckInUrl(created.token);
-    const message = `Hi! Please complete your online check-in${property ? ` for ${property.name}` : ''} here: ${url}`;
+    const message = t.checkinNew.shareMessage(property?.name ?? null, url);
     try {
       await Share.share({ message });
     } catch {
@@ -96,26 +108,24 @@ export default function NewCheckInScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'Guest online check-in', headerBackTitle: 'Back' }} />
-      <ScrollView contentContainerStyle={styles.container}>
+      <Stack.Screen options={{ headerShown: true, title: t.checkinNew.headerTitle, headerBackTitle: t.common.back }} />
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         {created ? (
           <>
-            <Text style={typography.h1}>Check-in link ready</Text>
-            <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>
-              Send this to your guest — they'll fill in their details and ID before arrival.
-            </Text>
+            <Text style={typography.h1}>{t.checkinNew.readyTitle}</Text>
+            <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>{t.checkinNew.readySubtitle}</Text>
 
             <Card style={{ marginTop: spacing.lg }}>
-              <Text style={typography.caption}>Guest link</Text>
+              <Text style={typography.caption}>{t.checkinNew.guestLink}</Text>
               <Text style={[typography.body, { marginTop: spacing.xs }]} selectable>
                 {resolveCheckInUrl(created.token)}
               </Text>
             </Card>
 
-            <Button label="Share via WhatsApp" onPress={handleShareWhatsApp} style={{ marginTop: spacing.lg }} />
-            <Button label="Share another way" onPress={handleShareOther} variant="outline" style={{ marginTop: spacing.sm }} />
+            <Button label={t.checkinNew.shareWhatsApp} onPress={handleShareWhatsApp} style={{ marginTop: spacing.lg }} />
+            <Button label={t.checkinNew.shareOther} onPress={handleShareOther} variant="outline" style={{ marginTop: spacing.sm }} />
             <Button
-              label="Done"
+              label={t.checkinNew.done}
               onPress={() => router.replace(propertyId ? `/host/property/${propertyId}` : '/(host-tabs)/properties')}
               variant="outline"
               style={{ marginTop: spacing.sm }}
@@ -123,37 +133,45 @@ export default function NewCheckInScreen() {
           </>
         ) : (
           <>
-            <Text style={typography.h1}>Guest online check-in</Text>
-            <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>
-              Generate a link so your guest can submit their arrival details and ID before you meet them — and get
-              access-info sent to them automatically once they do.
-            </Text>
+            <Text style={typography.h1}>{t.checkinNew.headerTitle}</Text>
+            <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>{t.checkinNew.subtitle}</Text>
 
             {!preselectedPropertyId && (
               <>
-                <Text style={styles.sectionLabel}>Property</Text>
-                <PropertySelect properties={properties} value={propertyId} onChange={setPropertyId} />
+                <Text style={styles.sectionLabel}>{t.checkinNew.property}</Text>
+                <View style={styles.chipRow}>
+                  {properties.map((p) => (
+                    <Chip key={p.id} label={p.name} active={propertyId === p.id} onPress={() => setPropertyId(p.id)} />
+                  ))}
+                </View>
               </>
             )}
 
             <View style={{ marginTop: spacing.lg }}>
               <View style={styles.row}>
                 <View style={{ flex: 1 }}>
-                  <TextField label="Check-in (YYYY-MM-DD)" value={expectedCheckIn} onChangeText={setExpectedCheckIn} />
+                  <TextField label={t.checkinNew.checkInDate} value={expectedCheckIn} onChangeText={setExpectedCheckIn} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <TextField label="Check-out (YYYY-MM-DD)" value={expectedCheckOut} onChangeText={setExpectedCheckOut} />
+                  <TextField label={t.checkinNew.checkOutDate} value={expectedCheckOut} onChangeText={setExpectedCheckOut} />
                 </View>
               </View>
               <TextField
-                label="Guest name (optional)"
+                label={t.checkinNew.guestName}
                 value={guestNameHint}
                 onChangeText={setGuestNameHint}
-                placeholder="e.g. Ahmed B."
+                placeholder={t.checkinNew.guestNamePlaceholder}
               />
-              <TextField label="Number of guests" value={guestCount} onChangeText={setGuestCount} keyboardType="number-pad" />
+              <TextField label={t.checkinNew.guestCount} value={guestCount} onChangeText={setGuestCount} keyboardType="number-pad" />
+              <TextField
+                label={t.checkinNew.nightlyRate}
+                value={nightlyRate}
+                onChangeText={setNightlyRate}
+                keyboardType="numeric"
+                placeholder={t.checkinNew.nightlyRatePlaceholder}
+              />
 
-              <Text style={styles.fieldLabel}>Check-in form language</Text>
+              <Text style={styles.fieldLabel}>{t.checkinNew.formLanguage}</Text>
               <SegmentedControl
                 value={language}
                 onChange={setLanguage}
@@ -171,7 +189,12 @@ export default function NewCheckInScreen() {
               </View>
             )}
 
-            <Button label={isSubmitting ? 'Creating…' : 'Create check-in link'} onPress={handleSubmit} loading={isSubmitting} style={{ marginTop: spacing.lg }} />
+            <Button
+              label={isSubmitting ? t.checkinNew.creating : t.checkinNew.createLink}
+              onPress={handleSubmit}
+              loading={isSubmitting}
+              style={{ marginTop: spacing.lg }}
+            />
           </>
         )}
       </ScrollView>
@@ -183,6 +206,7 @@ const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
   sectionLabel: { ...typography.h3, marginTop: spacing.lg, marginBottom: spacing.sm },
   fieldLabel: { ...typography.bodyMuted, fontWeight: '600', marginBottom: spacing.xs, marginTop: spacing.sm },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   row: { flexDirection: 'row', gap: spacing.sm },
   errorBox: { backgroundColor: colors.dangerBg, borderRadius: 10, padding: spacing.sm, marginTop: spacing.md },
   errorText: { color: colors.danger, fontSize: 13 },

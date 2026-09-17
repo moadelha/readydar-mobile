@@ -2,8 +2,8 @@ import { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, Pressable } from 'react-native';
 import { useLocalSearchParams, useFocusEffect, useRouter, Stack } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
-import { api, Booking, resolveUploadUrl } from '@/lib/api';
-import { Screen, Card, LoadingScreen, StatusBadge, TextField } from '@/components/ui';
+import { api, Booking, resolveUploadUrl, resolveThumbnailUrl } from '@/lib/api';
+import { Screen, Card, LoadingScreen, StatusBadge, TextField, PhotoViewerModal } from '@/components/ui';
 import { Button } from '@/components/Button';
 import { STATUS_LABELS, STATUS_TONE } from '@/lib/status';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -23,6 +23,7 @@ export default function HostBookingDetailScreen() {
   const [disputeReason, setDisputeReason] = useState('');
   const [rating, setRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!session || !id) return;
@@ -128,10 +129,22 @@ export default function HostBookingDetailScreen() {
           </Card>
         )}
 
-        {(booking.budget || booking.agreedPrice) && (
-          <Text style={styles.budget}>
-            {booking.agreedPrice ? `${Number(booking.agreedPrice).toFixed(0)} MAD agreed` : `${Number(booking.budget).toFixed(0)} MAD budget`}
-          </Text>
+        {booking.status === 'MATCHED' && booking.agreedPrice ? (
+          <Card style={{ marginTop: spacing.md, backgroundColor: colors.accentBg, borderColor: 'transparent' }}>
+            <Text style={styles.proposedTitle}>Cleaner proposed {Number(booking.agreedPrice).toFixed(0)} MAD</Text>
+            {booking.budget && Number(booking.agreedPrice) !== Number(booking.budget) && (
+              <Text style={typography.bodyMuted}>Your budget was {Number(booking.budget).toFixed(0)} MAD</Text>
+            )}
+            <Text style={[typography.caption, { marginTop: spacing.xs }]}>
+              Confirming below accepts this price. Prefer to negotiate first? Contact the cleaner, or cancel and request again.
+            </Text>
+          </Card>
+        ) : (
+          (booking.budget || booking.agreedPrice) && (
+            <Text style={styles.budget}>
+              {booking.agreedPrice ? `${Number(booking.agreedPrice).toFixed(0)} MAD agreed` : `${Number(booking.budget).toFixed(0)} MAD budget`}
+            </Text>
+          )
         )}
 
         {booking.cleaner && (
@@ -192,7 +205,9 @@ export default function HostBookingDetailScreen() {
                 <Text style={typography.h3}>Before photos</Text>
                 <View style={styles.photoGrid}>
                   {beforePhotos.map((p) => (
-                    <Image key={p.id} source={{ uri: resolveUploadUrl(p.url) }} style={styles.photo} />
+                    <Pressable key={p.id} onPress={() => setViewerUrl(resolveUploadUrl(p.url))}>
+                      <Image source={{ uri: resolveThumbnailUrl(p.url, 150) }} style={styles.photo} />
+                    </Pressable>
                   ))}
                 </View>
               </View>
@@ -202,13 +217,17 @@ export default function HostBookingDetailScreen() {
                 <Text style={typography.h3}>After photos</Text>
                 <View style={styles.photoGrid}>
                   {afterPhotos.map((p) => (
-                    <Image key={p.id} source={{ uri: resolveUploadUrl(p.url) }} style={styles.photo} />
+                    <Pressable key={p.id} onPress={() => setViewerUrl(resolveUploadUrl(p.url))}>
+                      <Image source={{ uri: resolveThumbnailUrl(p.url, 150) }} style={styles.photo} />
+                    </Pressable>
                   ))}
                 </View>
               </View>
             )}
           </View>
         )}
+
+        <PhotoViewerModal uri={viewerUrl} onClose={() => setViewerUrl(null)} />
 
         {booking.status === 'COMPLETED' && (
           <>
@@ -309,6 +328,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.sm },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   budget: { marginTop: spacing.sm, color: colors.primary, fontWeight: '600', fontSize: 13 },
+  proposedTitle: { ...typography.h3, marginBottom: 2 },
   sectionTitle: { ...typography.h3, marginTop: spacing.lg, marginBottom: spacing.sm },
   checklistRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.sm },
   checklistRowBorder: { borderTopWidth: 1, borderTopColor: colors.border },

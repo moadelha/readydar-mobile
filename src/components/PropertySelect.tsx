@@ -3,7 +3,8 @@ import { View, Text, StyleSheet, Pressable, Modal, TextInput, FlatList, SafeArea
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography } from '@/theme';
 import { Chip } from './ui';
-import type { Property } from '@/lib/api';
+import { propertyCoverUrl, type Property } from '@/lib/api';
+import { PropertyThumb } from './host-ui';
 
 /** A pinned option shown above the property list (e.g. "All properties", "General"). */
 export interface PropertySelectExtraOption {
@@ -73,7 +74,13 @@ export function PropertySelect({
           <Chip key={opt.value} label={opt.label} active={value === opt.value} onPress={() => onChange(opt.value === '__NONE__' ? null : opt.value)} />
         ))}
         {properties.map((p) => (
-          <Chip key={p.id} label={p.name} active={value === p.id} onPress={() => onChange(p.id)} />
+          <Chip
+            key={p.id}
+            label={p.name}
+            imageUrl={propertyCoverUrl(p, 64)}
+            active={value === p.id}
+            onPress={() => onChange(p.id)}
+          />
         ))}
       </View>
     );
@@ -124,7 +131,13 @@ export function PropertySelect({
           <FlatList
             data={[
               ...filteredExtras.map((o) => ({ kind: 'extra' as const, id: o.value, label: o.label })),
-              ...filteredProperties.map((p) => ({ kind: 'property' as const, id: p.id, label: p.name, city: p.city?.name })),
+              ...filteredProperties.map((p) => ({
+                kind: 'property' as const,
+                id: p.id,
+                label: p.name,
+                city: p.city?.name,
+                photoUrl: propertyCoverUrl(p, 110),
+              })),
             ]}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
@@ -137,6 +150,7 @@ export function PropertySelect({
               const selected = value === resolvedValue;
               return (
                 <Pressable style={styles.row} onPress={() => handleSelect(resolvedValue)}>
+                  {item.kind === 'property' && <PropertyThumb photoUrl={item.photoUrl} size={40} />}
                   <View style={{ flex: 1 }}>
                     <Text style={typography.body}>{item.label}</Text>
                     {item.kind === 'property' && item.city && <Text style={typography.caption}>{item.city}</Text>}
@@ -193,8 +207,8 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
+    gap: spacing.md,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },

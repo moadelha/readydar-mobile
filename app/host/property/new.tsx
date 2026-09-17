@@ -77,11 +77,10 @@ export default function AddPropertyScreen() {
   return (
     <Screen>
       <Stack.Screen options={{ headerShown: true, title: 'Add property', headerBackTitle: 'Back' }} />
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={typography.h1}>Add a property</Text>
         <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>
-          You can turn on automation and customize the guest welcome message afterwards, from the property's
-          settings screen.
+          You can fine-tune automation, guest welcome messages, and iCal sync later from the web dashboard.
         </Text>
 
         <Text style={styles.sectionLabel}>Property type</Text>

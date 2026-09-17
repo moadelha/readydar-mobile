@@ -1,35 +1,48 @@
 {
   "expo": {
-    "name": "DarClean",
+    "name": "ReadyDar",
     "slug": "darclean-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "scheme": "darclean",
     "userInterfaceStyle": "light",
-    "splash": {
-      "backgroundColor": "#FBFAF7"
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "runtimeVersion": {
+      "policy": "appVersion"
     },
-    "assetBundlePatterns": ["**/*"],
     "android": {
       "package": "com.darclean.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#006D77"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/adaptive-icon.png"
       },
       "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
-      ]
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "versionCode": 22
     },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.darclean.mobile",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "DarClean uses your location to check in at properties and match you with nearby jobs.",
-        "NSCameraUsageDescription": "DarClean uses your camera to document before/after cleaning photos and ID verification.",
-        "NSPhotoLibraryUsageDescription": "DarClean needs access to your photo library to upload job photos."
+        "NSLocationWhenInUseUsageDescription": "ReadyDar uses your location to check in at properties and match you with nearby jobs.",
+        "NSCameraUsageDescription": "ReadyDar uses your camera to document before/after cleaning photos and ID verification.",
+        "NSPhotoLibraryUsageDescription": "ReadyDar needs access to your photo library to upload job photos.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "plugins": [
@@ -37,20 +50,36 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "DarClean uses your location to check in at properties and find nearby jobs."
+          "locationAlwaysAndWhenInUsePermission": "ReadyDar uses your location to check in at properties and find nearby jobs."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "DarClean needs access to your photos to upload job documentation.",
-          "cameraPermission": "DarClean needs your camera to take before/after photos."
+          "photosPermission": "ReadyDar needs access to your photos to upload job documentation.",
+          "cameraPermission": "ReadyDar needs your camera to take before/after photos."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#FBFAF7"
         }
       ]
     ],
     "extra": {
       "apiUrl": "http://localhost:4000/api/v1",
-      "webUrl": "http://localhost:3000"
+      "webUrl": "http://localhost:3000",
+      "router": {},
+      "eas": {
+        "projectId": "7b35d5dd-3653-440d-9c82-af6494e839cf"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/7b35d5dd-3653-440d-9c82-af6494e839cf"
     }
   }
 }

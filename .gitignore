@@ -1,14 +1,59 @@
+# ---------------------------------------------------------------
+# Dependencies and build output — never committed, always rebuilt
+# ---------------------------------------------------------------
 node_modules/
-.expo/
 dist/
 web-build/
+.expo/
+.expo-shared/
+*.tsbuildinfo
+
+# Native folders, if `npx expo prebuild` is ever run. This is a managed
+# (CNG) project: android/ and ios/ are generated from app.json, so
+# committing them means two sources of truth for the same config.
+/android/
+/ios/
+
+# Built apps. An .apk is ~60MB and git keeps every version forever —
+# download builds from the EAS dashboard instead.
+*.apk
+*.aab
+*.ipa
+
+# ---------------------------------------------------------------
+# Secrets and signing material — the important part
+# ---------------------------------------------------------------
+# .env holds EXPO_PUBLIC_* values baked into builds. Tracked as
+# .env.example (placeholder values) so a fresh clone knows what to set.
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Android/iOS signing keys. An .jks in a public repo lets anyone ship
+# an update signed as this app.
 *.jks
+*.keystore
 *.p8
 *.p12
 *.key
 *.mobileprovision
+credentials.json
+
+# ---------------------------------------------------------------
+# Scratch and editor noise
+# ---------------------------------------------------------------
+# Old tab files moved aside rather than deleted during the nav
+# restructures (Parts 5, 12, 31) — expo-router auto-registers anything
+# under app/, so they were moved here instead of left in place. Safe to
+# delete the folder outright once the app is confirmed working.
+_to_delete/
+
 *.orig.*
-.env
-npm-debug.*
 *.log
+npm-debug.*
+yarn-error.log*
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/

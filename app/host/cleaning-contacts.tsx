@@ -87,7 +87,7 @@ export default function CleaningContactsScreen() {
               <View style={{ flex: 1 }}>
                 <View style={styles.titleRow}>
                   <Text style={typography.h3}>{item.name}</Text>
-                  {item.type === 'COMPANY_ACCOUNT' && <StatusBadge label="DarClean company" tone="primary" />}
+                  {item.type === 'COMPANY_ACCOUNT' && <StatusBadge label="ReadyDar company" tone="primary" />}
                 </View>
                 <Pressable onPress={() => Linking.openURL(`https://wa.me/${item.whatsappNumber.replace(/[^\d]/g, '')}`)}>
                   <View style={styles.metaRow}>

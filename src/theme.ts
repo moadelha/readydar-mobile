@@ -1,4 +1,4 @@
-// Matches the DarClean web app's brand tokens (see apps/web/tailwind.config.ts)
+// Matches the ReadyDar web app's brand tokens (see apps/web/tailwind.config.ts)
 // so the mobile app feels like the same product, not a separate one.
 export const colors = {
   primary: '#006D77',
@@ -28,7 +28,52 @@ export const radius = {
   sm: 10,
   md: 16,
   lg: 20,
+  xl: 28,
   full: 999,
+};
+
+/**
+ * Shadow/elevation presets, used to give cards real visual hierarchy
+ * instead of every surface sitting at the same flat "bordered box" level.
+ * `low` is the new default resting state for a plain Card (previously
+ * cards had no shadow at all, just a border); `medium`/`high` are for
+ * content that should read as literally on top of everything else —
+ * a hero/summary card, a floating action button, a modal sheet, a toast.
+ */
+export const elevation = {
+  low: {
+    shadowColor: '#0B1220',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  medium: {
+    shadowColor: '#0B1220',
+    shadowOpacity: 0.09,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  high: {
+    shadowColor: '#0B1220',
+    shadowOpacity: 0.18,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 12,
+  },
+} as const;
+
+/** Shared timing budget for every micro-interaction in the app — keeps every
+ * transition feeling like it belongs to the same system rather than each
+ * screen inventing its own speed. See `src/lib/motion.ts` for the easing
+ * curves and reusable animation hooks built on top of these numbers. */
+export const motion = {
+  duration: {
+    fast: 150,
+    base: 220,
+    slow: 320,
+  },
 };
 
 export const typography = {

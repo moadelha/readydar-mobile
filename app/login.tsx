@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Link } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { TextField, Screen, LanguagePicker } from '@/components/ui';
@@ -29,53 +29,51 @@ export default function LoginScreen() {
 
   return (
     <Screen>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <View style={styles.langRow}>
-            <LanguagePicker />
-          </View>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <View style={styles.langRow}>
+          <LanguagePicker />
+        </View>
 
-          <Text style={styles.brand}>DarClean</Text>
-          <Text style={styles.title}>{t.login.title}</Text>
-          <Text style={styles.subtitle}>{t.login.subtitle}</Text>
+        <Text style={styles.brand}>ReadyDar</Text>
+        <Text style={styles.title}>{t.login.title}</Text>
+        <Text style={styles.subtitle}>{t.login.subtitle}</Text>
 
-          <View style={{ marginTop: spacing.lg }}>
-            <TextField
-              label={t.login.email}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              placeholder={t.login.emailPlaceholder}
-            />
-            <TextField
-              label={t.login.password}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder={t.login.passwordPlaceholder}
-            />
-          </View>
-
-          {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-
-          <Button
-            label={isSubmitting ? t.login.loggingIn : t.login.logIn}
-            onPress={handleSubmit}
-            loading={isSubmitting}
+        <View style={{ marginTop: spacing.lg }}>
+          <TextField
+            label={t.login.email}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            placeholder={t.login.emailPlaceholder}
           />
+          <TextField
+            label={t.login.password}
+            value={password}
+            onChangeText={setPassword}
+            isPassword
+            placeholder={t.login.passwordPlaceholder}
+          />
+        </View>
 
-          <View style={styles.footer}>
-            <Text style={typography.bodyMuted}>{t.login.noAccount}</Text>
-            <Link href="/register">
-              <Text style={styles.link}>{t.login.signUp}</Text>
-            </Link>
+        {error && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        )}
+
+        <Button
+          label={isSubmitting ? t.login.loggingIn : t.login.logIn}
+          onPress={handleSubmit}
+          loading={isSubmitting}
+        />
+
+        <View style={styles.footer}>
+          <Text style={typography.bodyMuted}>{t.login.noAccount}</Text>
+          <Link href="/register">
+            <Text style={styles.link}>{t.login.signUp}</Text>
+          </Link>
+        </View>
+      </ScrollView>
     </Screen>
   );
 }

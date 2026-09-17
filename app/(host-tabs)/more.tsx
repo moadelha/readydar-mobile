@@ -12,10 +12,10 @@ const MENU: { icon: string; label: string; description: string; path: string }[]
     path: '/host/guests',
   },
   {
-    icon: 'receipt-outline',
-    label: 'Expenses',
-    description: 'Log and track costs against each property',
-    path: '/host/expenses',
+    icon: 'clipboard-outline',
+    label: 'All bookings',
+    description: 'Every cleaning and maintenance job, across all properties',
+    path: '/host/bookings',
   },
   {
     icon: 'swap-horizontal-outline',
@@ -28,6 +28,18 @@ const MENU: { icon: string; label: string; description: string; path: string }[]
     label: 'Cleaning contacts',
     description: 'Your staff and enrolled cleaning company accounts',
     path: '/host/cleaning-contacts',
+  },
+  {
+    icon: 'link-outline',
+    label: 'Connect Airbnb',
+    description: 'Import your listings and reservations via Hospitable',
+    path: '/host/hospitable',
+  },
+  {
+    icon: 'document-text-outline',
+    label: 'Rental contract',
+    description: 'Require guests to sign a contract during online check-in',
+    path: '/host/contract',
   },
   {
     icon: 'person-outline',
