@@ -233,22 +233,80 @@ export function resolveUploadUrl(path: string) {
 }
 
 /**
- * A resized/optimized version of a Cloudinary photo URL, for use as a small
- * thumbnail. Photo grids (property door photos, job before/after photos,
- * guest ID photos) were rendering `resolveUploadUrl()`'s full original —
- * often several MB straight from a phone camera — at ~64-84 logical px,
- * which is a real, avoidable source of slowness on any screen with more
- * than a couple of photos. Falls back to the untouched URL for anything
- * that isn't a Cloudinary delivery URL (e.g. a leftover local-disk path).
- * Use `resolveUploadUrl` (full resolution) for the full-screen photo viewer.
+ * Options for a larger image than a list thumbnail — the property page's
+ * cover photo being the only current caller. Defaults reproduce the
+ * original thumbnail behaviour exactly, so existing call sites are
+ * unaffected.
  */
-export function resolveThumbnailUrl(path: string, width = 200) {
+export interface ThumbnailOptions {
+  /**
+   * Target height in real device pixels. Only meaningful with a cropping
+   * mode; `limit` ignores it and scales by width alone.
+   */
+  height?: number;
+  /**
+   * `limit` (default) — scale down to fit the width, never up, keep the
+   * whole image. Right for a thumbnail whose container crops it anyway.
+   *
+   * `lfill` — crop to exactly width×height, but **never upscale** past the
+   * original. Right for a fixed-size hero: the server delivers precisely
+   * the pixels the view needs instead of a wider image the device has to
+   * downscale itself, which is what makes a large photo look soft.
+   * Deliberately `lfill` rather than `fill`: plain `fill` happily upscales
+   * a small original server-side, so you download a bigger file that is
+   * no sharper.
+   */
+  crop?: 'limit' | 'lfill';
+  /** Cloudinary quality. `auto` (default) is fine for thumbnails; `auto:good` is worth it on a hero. */
+  quality?: string;
+}
+
+/**
+ * A resized/optimized version of a photo URL, for use at a known display
+ * size. Photo grids (property door photos, job before/after photos, guest
+ * ID photos) were rendering `resolveUploadUrl()`'s full original — often
+ * several MB straight from a phone camera — at ~64-84 logical px, which is
+ * a real, avoidable source of slowness on any screen with more than a
+ * couple of photos. Use `resolveUploadUrl` (full resolution) for the
+ * full-screen photo viewer.
+ *
+ * **`width` is in real device pixels, not logical points.** A 170pt-tall
+ * hero on a 3x phone needs ~1030px of image; asking for 340 and letting
+ * the device stretch it is exactly how a big photo ends up looking worse
+ * than a small one.
+ *
+ * Two different hosts turn up here, and they're handled separately:
+ * - **Cloudinary** (anything a host uploaded) — a transformation segment is
+ *   spliced into the delivery URL.
+ * - **Airbnb/muscache** (a cover photo imported by the Hospitable sync,
+ *   which stores Airbnb's own CDN URL verbatim rather than re-uploading —
+ *   see HospitablePropertySyncService#syncCoverPhoto). Cloudinary
+ *   transformations mean nothing there; that CDN takes an `im_w` query
+ *   parameter instead. If it ever stops honouring it the parameter is
+ *   simply ignored and we get the default rendition — the same image we
+ *   were already getting, so this can't make things worse.
+ *
+ * Anything else (a leftover local-disk path) is returned untouched.
+ */
+export function resolveThumbnailUrl(path: string, width = 200, opts: ThumbnailOptions = {}) {
   const url = resolveUploadUrl(path);
+
   const marker = '/image/upload/';
   const idx = url.indexOf(marker);
-  if (idx === -1) return url;
-  const insertAt = idx + marker.length;
-  return `${url.slice(0, insertAt)}w_${width},c_limit,q_auto,f_auto/${url.slice(insertAt)}`;
+  if (idx !== -1) {
+    const { height, crop = 'limit', quality = 'auto' } = opts;
+    const transform = [`w_${Math.round(width)}`];
+    if (height && crop !== 'limit') transform.push(`h_${Math.round(height)}`);
+    transform.push(`c_${crop}`, `q_${quality}`, 'f_auto');
+    const insertAt = idx + marker.length;
+    return `${url.slice(0, insertAt)}${transform.join(',')}/${url.slice(insertAt)}`;
+  }
+
+  if (url.includes('muscache.com') && !/[?&]im_w=/.test(url)) {
+    return `${url}${url.includes('?') ? '&' : '?'}im_w=${Math.round(width)}`;
+  }
+
+  return url;
 }
 
 /**
@@ -268,9 +326,10 @@ export function resolveThumbnailUrl(path: string, width = 200) {
 export function propertyCoverUrl(
   property: { photos?: PropertyPhoto[] | null } | null | undefined,
   width = 130,
+  opts?: ThumbnailOptions,
 ): string | null {
   const cover = property?.photos?.find((p) => p.type === 'PROPERTY_PHOTO');
-  return cover ? resolveThumbnailUrl(cover.url, width) : null;
+  return cover ? resolveThumbnailUrl(cover.url, width, opts) : null;
 }
 
 /** The guest-facing online check-in form for a given check-in link's token. */

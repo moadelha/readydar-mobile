@@ -33,7 +33,7 @@
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.RECORD_AUDIO"
       ],
-      "versionCode": 22
+      "versionCode": 23
     },
     "ios": {
       "supportsTablet": false,

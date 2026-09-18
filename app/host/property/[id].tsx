@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Pressable, Linking, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Image,
+  Pressable,
+  Linking,
+  Alert,
+  PixelRatio,
+  useWindowDimensions,
+} from 'react-native';
 import { useLocalSearchParams, useFocusEffect, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth, ApiError } from '@/lib/auth-context';
@@ -33,6 +44,14 @@ import { PROPERTY_STATUS_LABELS, PROPERTY_STATUS_TONE, PropertyStatus } from '@/
  * doesn't — "I've cleaned it", "it needs doing", "someone's on it".
  */
 const SETTABLE_STATUSES: PropertyStatus[] = ['READY', 'NEEDS_CLEANING', 'IN_PROGRESS'];
+
+/**
+ * Height of the cover photo, in logical points. A constant rather than a
+ * number in the stylesheet because the image URL is built from it too —
+ * if the two drift apart the server crops to one shape and the view draws
+ * another, and the picture goes soft again.
+ */
+const COVER_HEIGHT = 170;
 
 const CHECKIN_STATUS_LABEL: Record<string, string> = {
   PENDING: 'Awaiting guest',
@@ -69,6 +88,7 @@ export default function PropertyDetailScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   const [property, setProperty] = useState<Property | null>(null);
   const [checkIns, setCheckIns] = useState<GuestCheckIn[]>([]);
   const [isMarkingReady, setIsMarkingReady] = useState(false);
@@ -373,7 +393,30 @@ export default function PropertyDetailScreen() {
 
   const doorPhotos = property.photos?.filter((p) => p.type === 'DOOR_PHOTO') ?? [];
 
-  const coverUrl = propertyCoverUrl(property, 800);
+  /**
+   * The cover photo, asked for at the size it's actually drawn at.
+   *
+   * It used to request a flat 800px wide with `c_limit`, which on a 3x
+   * phone is an upscale — the hero is the full content width (~342pt →
+   * ~1030 real pixels), so the device was stretching an 800px image to
+   * fill it and then cropping it to 170pt tall itself. That is why a big
+   * photo looked worse than the small thumbnails of the same image
+   * elsewhere in the app.
+   *
+   * Now it asks for the real pixel dimensions and lets the server do the
+   * crop, so what arrives is exactly what gets drawn. Capped at 2000px
+   * so a future tablet or a very high-density screen can't request
+   * something absurd.
+   */
+  const heroWidthPx = Math.min(
+    2000,
+    PixelRatio.getPixelSizeForLayoutSize(windowWidth - spacing.lg * 2),
+  );
+  const coverUrl = propertyCoverUrl(property, heroWidthPx, {
+    height: PixelRatio.getPixelSizeForLayoutSize(COVER_HEIGHT),
+    crop: 'lfill',
+    quality: 'auto:good',
+  });
 
   return (
     <Screen>
@@ -911,7 +954,7 @@ const styles = StyleSheet.create({
   },
   cover: {
     width: '100%',
-    height: 170,
+    height: COVER_HEIGHT,
     borderRadius: radius.md,
     marginBottom: spacing.md,
     backgroundColor: 'rgba(27,31,35,0.06)',

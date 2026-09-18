@@ -1,0 +1,52 @@
+# Build the Android preview APK whenever code lands on main.
+#
+# Lives in the repo, not in the EAS dashboard, deliberately: the old
+# dashboard "build triggers" (match a branch pattern, fire a build) are
+# deprecated and disabled for new projects, and EAS Workflows is what
+# replaced them. It also means the build config is reviewable in a diff
+# like everything else.
+#
+# Run it by hand any time with:
+#   npx eas-cli@latest workflow:run .eas/workflows/build.yml
+
+name: Android preview build
+
+on:
+  push:
+    branches: ['main']
+
+    # Every push to main triggers a full build, which is what you asked
+    # for — but an Android build takes 15-25 minutes and counts against
+    # your EAS quota, and most changes in this project are pure JS that
+    # `eas update` could ship in about two minutes.
+    #
+    # To rebuild ONLY when something native actually changed, uncomment
+    # the block below. `app.json` covers the icon, splash, permissions
+    # and plugins; `package.json`/`package-lock.json` cover a new native
+    # module; `assets/` covers the icon files themselves. A push that
+    # only touches app/ or src/ would then build nothing — ship those
+    # with `eas update` instead.
+    #
+    # paths:
+    #   - 'app.json'
+    #   - 'eas.json'
+    #   - 'package.json'
+    #   - 'package-lock.json'
+    #   - 'assets/**'
+
+  # Lets you start a build from the EAS dashboard or the CLI without
+  # pushing anything — useful for re-running a build that failed on a
+  # network error rather than a code problem.
+  workflow_dispatch:
+
+jobs:
+  build_android:
+    name: Build Android (preview)
+    type: build
+    params:
+      platform: android
+      # The internal-distribution APK profile from eas.json — the one you
+      # install by link/QR rather than through the Play Store. Its `env`
+      # block already carries EXPO_PUBLIC_API_URL and EXPO_PUBLIC_WEB_URL,
+      # so builds pick those up without any dashboard configuration.
+      profile: preview
