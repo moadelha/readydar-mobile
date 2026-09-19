@@ -534,6 +534,13 @@ export default function PropertyDetailScreen() {
           style={{ marginTop: spacing.sm }}
         />
 
+        <Button
+          label="Cleaning reports"
+          onPress={() => router.push({ pathname: '/host/cleaning-reports', params: { propertyId: property.id } })}
+          variant="outline"
+          style={{ marginTop: spacing.sm }}
+        />
+
         <View style={styles.sectionHeaderRow}>
           <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0 }]}>Guest check-ins</Text>
           <Pressable

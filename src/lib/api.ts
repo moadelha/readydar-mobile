@@ -34,6 +34,20 @@ export function contractPdfUrl(checkInId: string) {
   return `${API_URL}/checkins/${checkInId}/contract-pdf`;
 }
 
+/**
+ * The host-only PDF export of a cleaning report — every photo grouped by
+ * area, with timestamps/GPS and the QR verification code. Same auth-header
+ * pattern as checkInPdfUrl above.
+ */
+export function cleaningReportPdfUrl(reportId: string) {
+  return `${API_URL}/cleaning-reports/${reportId}/pdf`;
+}
+
+/** The public, no-login page anyone with the report's QR code or link can open to confirm it's authentic — mirrors CleaningReportsService#verificationUrlFor on the backend. */
+export function resolveCleaningReportVerificationUrl(verificationCode: string) {
+  return `${WEB_URL}/verify/cleaning-report/${verificationCode}`;
+}
+
 const SESSION_KEY = 'darclean_session';
 
 export class ApiError extends Error {
@@ -371,6 +385,33 @@ export interface CleaningContact {
   cleanerProfileId?: string | null;
   cleanerProfile?: { user?: { firstName: string; lastName: string } | null } | null;
   createdAt?: string;
+}
+
+export type CleaningReportStatus = 'IN_PROGRESS' | 'COMPLETED';
+
+/** One photo captured during a cleaning-report walkthrough. `capturedAt` is the device's own clock at the moment of the shot; `receivedAt` is this server's clock at upload, which is what the PDF's authenticity statement actually relies on. `url` is a signed, directly-fetchable S3 URL — only present on the detail endpoint (CleaningReportsService#getDetail resolves it fresh on every call), never on the upload response. */
+export interface CleaningReportPhoto {
+  id: string;
+  section: string;
+  url?: string;
+  capturedAt: string;
+  receivedAt: string;
+  latitude: number;
+  longitude: number;
+  locationAccuracyM?: number | null;
+}
+
+/** A camera-verified proof-of-cleaning walkthrough for one property — see property/[id].tsx's "Cleaning reports" action. `_count` and `property` are only present on the list/detail endpoints respectively — see CleaningReportsService#listForProperty vs #getDetail on the backend. */
+export interface CleaningReport {
+  id: string;
+  propertyId: string;
+  status: CleaningReportStatus;
+  verificationCode: string;
+  startedAt: string;
+  completedAt?: string | null;
+  photos?: CleaningReportPhoto[];
+  _count?: { photos: number };
+  property?: { id: string; name: string; addressLine: string; city?: { name: string } | null };
 }
 
 export interface Property {
@@ -1117,6 +1158,44 @@ export const api = {
      */
     guestPhotoUrl: (checkInId: string, guestId: string, token: string) =>
       request<{ url: string }>(`/checkins/${checkInId}/guests/${guestId}/photo-url`, { token }),
+  },
+  cleaningReports: {
+    /** Starts a new in-progress report for a property; the walkthrough then uploads photos to it one at a time. */
+    create: (propertyId: string, token: string) =>
+      request<CleaningReport>('/cleaning-reports', { method: 'POST', body: { propertyId }, token }),
+    listForProperty: (propertyId: string, token: string) =>
+      request<CleaningReport[]>(`/properties/${propertyId}/cleaning-reports`, { token }),
+    getDetail: (reportId: string, token: string) => request<CleaningReport>(`/cleaning-reports/${reportId}`, { token }),
+    /**
+     * Uploads one photo immediately after it's captured — never batched —
+     * so the server's own received-at clock stays close to the moment the
+     * shutter was pressed. `capturedAt` is an ISO string from the device;
+     * `latitude`/`longitude` come from a fresh location fix taken for this
+     * specific photo, not a cached one from when the report started.
+     */
+    uploadPhoto: (
+      reportId: string,
+      meta: { section: string; capturedAt: string; latitude: number; longitude: number; accuracyMeters?: number },
+      photo: PickedFile,
+      token: string,
+    ) =>
+      requestForm<CleaningReportPhoto & { timestampDriftMs: number; timestampSuspicious: boolean }>(
+        `/cleaning-reports/${reportId}/photos`,
+        {
+          section: meta.section,
+          capturedAt: meta.capturedAt,
+          latitude: String(meta.latitude),
+          longitude: String(meta.longitude),
+          ...(meta.accuracyMeters != null ? { accuracyMeters: String(meta.accuracyMeters) } : {}),
+        },
+        { photo },
+        { token },
+      ),
+    removePhoto: (reportId: string, photoId: string, token: string) =>
+      request<{ success: boolean }>(`/cleaning-reports/${reportId}/photos/${photoId}`, { method: 'DELETE', token }),
+    /** Locks the report and makes its PDF/verification link available. Requires at least one photo. */
+    complete: (reportId: string, token: string) =>
+      request<CleaningReport>(`/cleaning-reports/${reportId}/complete`, { method: 'PATCH', token }),
   },
   guestWelcome: {
     listPending: (token: string) => request<PendingWelcomeMessages>('/guest-welcome/pending', { token }),
