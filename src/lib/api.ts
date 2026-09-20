@@ -259,13 +259,25 @@ async function requestForm<T>(
 
 export function resolveUploadUrl(path: string) {
   // Uploaded photos (door photos, job before/after photos, guest ID
-  // photos) are stored on Cloudinary now and already come back as full
-  // `https://res.cloudinary.com/...` URLs — pass those through untouched.
-  // Only a bare relative path (a leftover from the old local-disk storage,
-  // if any such record still exists) gets resolved against the API's
-  // origin. Concatenating the two for an already-absolute URL would
-  // produce a broken, unreachable image link.
-  if (/^https?:\/\//i.test(path)) return path;
+  // photos) are stored on Cloudinary/S3 now and already come back as full
+  // `https://...` URLs — pass those through untouched, except for scheme:
+  // property cover photos synced from Hospitable/Airbnb store whatever
+  // scheme Airbnb's own API happens to hand back, and unlike a browser
+  // (which loads plain http:// images without complaint), both iOS's App
+  // Transport Security and Android's default network security config
+  // silently refuse to load a plain http:// image in a native app — the
+  // request never even leaves the device, so it fails with no visible
+  // error. Upgrading to https:// here is safe (every host this app talks
+  // to serves the same asset over both) and doesn't touch already-https
+  // URLs or relative paths.
+  if (/^http:\/\//i.test(path)) return path.replace(/^http:\/\//i, 'https://');
+  if (/^https:\/\//i.test(path)) return path;
+  // A protocol-relative URL (`//images.muscache.com/...`) is valid in a
+  // browser, which fills in the current page's scheme — there is no such
+  // context here, so left alone it gets misread as a relative path below
+  // and mangled into `${apiOrigin}//images.muscache.com/...`, a
+  // nonsensical address on our own API host.
+  if (/^\/\//.test(path)) return `https:${path}`;
   const apiOrigin = API_URL.replace(/\/api\/v1\/?$/, '');
   return `${apiOrigin}${path}`;
 }

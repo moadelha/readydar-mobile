@@ -154,7 +154,15 @@ export default function JobDetailScreen() {
                 {new Date(booking.scheduledDate).toLocaleDateString()} at {booking.scheduledTime}
               </Text>
             </View>
-            <StatusBadge label={t.bookingStatus[booking.status]} tone={STATUS_TONE[booking.status]} />
+            <View style={{ alignItems: 'flex-end', gap: 6 }}>
+              <StatusBadge label={t.bookingStatus[booking.status]} tone={STATUS_TONE[booking.status]} />
+              {booking.urgency === 'URGENT' && (
+                <View style={styles.urgentBadge}>
+                  <Ionicons name="alert-circle" size={12} color={colors.white} />
+                  <Text style={styles.urgentBadgeText}>{t.jobDetail.urgentBadge}</Text>
+                </View>
+              )}
+            </View>
           </View>
         </Reveal>
 
@@ -299,6 +307,16 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: spacing.sm },
+  urgentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.danger,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.full,
+  },
+  urgentBadgeText: { fontSize: 10, fontWeight: '700', color: colors.white },
   navigateButton: {
     flexDirection: 'row',
     alignItems: 'center',

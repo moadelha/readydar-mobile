@@ -6,7 +6,7 @@ import { api, Booking } from '@/lib/api';
 import { Screen, Card, EmptyState, StatusBadge, ErrorBanner, Reveal, SkeletonListItem } from '@/components/ui';
 import { STATUS_TONE } from '@/lib/status';
 import { useLanguage } from '@/lib/i18n/language-context';
-import { colors, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function MyJobsScreen() {
@@ -70,7 +70,15 @@ export default function MyJobsScreen() {
               <Card style={{ marginBottom: spacing.sm }} onPress={() => router.push(`/job/${item.id}`)}>
                 <View style={styles.row}>
                   <View style={{ flex: 1 }}>
-                    <Text style={typography.h3}>{item.service.name}</Text>
+                    <View style={styles.titleRow}>
+                      <Text style={typography.h3}>{item.service.name}</Text>
+                      {item.urgency === 'URGENT' && (
+                        <View style={styles.urgentBadge}>
+                          <Ionicons name="alert-circle" size={11} color={colors.white} />
+                          <Text style={styles.urgentBadgeText}>{t.jobDetail.urgentBadge}</Text>
+                        </View>
+                      )}
+                    </View>
                     <View style={styles.metaRow}>
                       <Ionicons name="location-outline" size={13} color={colors.inkFaint} />
                       <Text style={typography.bodyMuted}>{item.property.name}</Text>
@@ -94,5 +102,16 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md },
   listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   row: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  urgentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.danger,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+  },
+  urgentBadgeText: { fontSize: 9, fontWeight: '700', color: colors.white },
 });

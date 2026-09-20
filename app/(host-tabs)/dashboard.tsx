@@ -1133,6 +1133,25 @@ export default function HostDashboardScreen() {
                       </>
                     )}
 
+                    {/* Same-day turnovers are already time-critical enough
+                        that the host is watching them closely — offered
+                        here mainly for the quieter case, where nothing's
+                        arranged yet and a note/urgency flag is how that
+                        gets to whichever cleaner picks it up. */}
+                    {!openCheckout.turnover && (!followUp?.next) && (
+                      <Button
+                        label="Request cleaning for this turnover"
+                        variant="outline"
+                        onPress={() => {
+                          const id = openCheckout.propertyId;
+                          const date = openCheckout.event.endDate.slice(0, 10);
+                          setOpenCheckout(null);
+                          router.push({ pathname: '/host/booking/new', params: { propertyId: id, date } });
+                        }}
+                        style={{ marginTop: spacing.lg }}
+                      />
+                    )}
+
                     <Button
                       label="Open property"
                       onPress={() => {
@@ -1140,7 +1159,7 @@ export default function HostDashboardScreen() {
                         setOpenCheckout(null);
                         router.push(`/host/property/${id}`);
                       }}
-                      style={{ marginTop: spacing.lg }}
+                      style={{ marginTop: spacing.sm }}
                     />
                     <Button
                       label="Open this property's calendar"

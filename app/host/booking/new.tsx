@@ -14,7 +14,13 @@ function todayIso() {
 }
 
 export default function NewBookingScreen() {
-  const { propertyId: preselectedPropertyId } = useLocalSearchParams<{ propertyId?: string }>();
+  // `date` arrives from Home's tomorrow-checkout card ("Request cleaning for
+  // this turnover") — pre-filling the checkout date it's already showing
+  // saves re-typing something the host is looking straight at.
+  const { propertyId: preselectedPropertyId, date: preselectedDate } = useLocalSearchParams<{
+    propertyId?: string;
+    date?: string;
+  }>();
   const { session } = useAuth();
   const router = useRouter();
 
@@ -22,7 +28,7 @@ export default function NewBookingScreen() {
   const [services, setServices] = useState<Service[]>([]);
   const [propertyId, setPropertyId] = useState<string | null>(preselectedPropertyId ?? null);
   const [serviceType, setServiceType] = useState<string | null>(null);
-  const [scheduledDate, setScheduledDate] = useState(todayIso());
+  const [scheduledDate, setScheduledDate] = useState(preselectedDate ?? todayIso());
   const [scheduledTime, setScheduledTime] = useState('14:00');
   const [urgency, setUrgency] = useState<'STANDARD' | 'URGENT'>('STANDARD');
   const [specialRequests, setSpecialRequests] = useState('');

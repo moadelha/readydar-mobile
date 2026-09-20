@@ -257,6 +257,8 @@ export interface Dict {
     checkedInSuccess: string;
     startedSuccess: string;
     completedSuccess: string;
+    /** Shown on the job feed card and the job detail header when the host marked this one urgency: URGENT — see Booking.urgency. */
+    urgentBadge: string;
   };
   myJobs: {
     title: string;
@@ -531,6 +533,7 @@ export const en: Dict = {
     checkedInSuccess: 'Checked in',
     startedSuccess: 'Cleaning started',
     completedSuccess: 'Job marked complete',
+    urgentBadge: 'Urgent',
   },
   myJobs: {
     title: 'My jobs',
@@ -800,6 +803,7 @@ export const fr: Dict = {
     checkedInSuccess: 'Arrivée enregistrée',
     startedSuccess: 'Ménage démarré',
     completedSuccess: 'Mission marquée comme terminée',
+    urgentBadge: 'Urgent',
   },
   myJobs: {
     title: 'Mes missions',
@@ -1067,6 +1071,7 @@ export const ar: Dict = {
     checkedInSuccess: 'تم تسجيل الوصول',
     startedSuccess: 'بدأ التنظيف',
     completedSuccess: 'تم تحديد المهمة كمكتملة',
+    urgentBadge: 'عاجل',
   },
   myJobs: {
     title: 'مهامي',
