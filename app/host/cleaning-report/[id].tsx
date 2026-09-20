@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Pressable, Alert, Share } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, Pressable, Alert, Share, PixelRatio } from 'react-native';
 import { useLocalSearchParams, useFocusEffect, Stack } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -9,6 +9,7 @@ import {
   api,
   CleaningReport,
   CleaningReportPhoto,
+  CalendarEvent,
   PickedFile,
   resolveUploadUrl,
   resolveThumbnailUrl,
@@ -19,8 +20,28 @@ import { Screen, Card, LoadingScreen, StatusBadge, TextField, ErrorBanner, Photo
 import { Button } from '@/components/Button';
 import { downloadAndShare } from '@/lib/files';
 import { useToast } from '@/lib/toast';
+import { todayIso, addDaysIso } from '@/lib/calendar-visuals';
 import { colors, radius, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
+
+/** Same formatting dashboard.tsx's checkout sheet uses for a property's configured check-in time (e.g. "3:00 PM"). Airbnb/Hospitable gives a check-in *date*, not a time — the time shown is the property's own expected check-in time, same as everywhere else in the app that shows one. */
+function checkInTimeLabel(checkInTime?: string | null): string | null {
+  const raw = checkInTime?.trim();
+  if (!raw) return null;
+  const [h, m] = raw.split(':').map(Number);
+  if (!Number.isFinite(h)) return raw;
+  const date = new Date();
+  date.setHours(h, Number.isFinite(m) ? m : 0, 0, 0);
+  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+/**
+ * Logical size of a photo tile in the capture grid. Was 96 — hard to tell a
+ * clean corner from a smudge at that size, especially checking your own
+ * work right after taking the shot. Bumped up; still fits 2 per row
+ * comfortably on a normal phone width with room for a partial 3rd.
+ */
+const PHOTO_SIZE = 150;
 
 /** Groups photos by section, preserving the order sections were first added in — mirrors the PDF's own grouping and the web viewer's. */
 function groupBySection(photos: CleaningReportPhoto[]): { section: string; photos: CleaningReportPhoto[] }[] {
@@ -58,6 +79,8 @@ export default function CleaningReportDetailScreen() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  /** The next confirmed guest stay for this property after today, if any — see the effect below. Silently absent (not an error) for a co-host without CALENDAR permission, or a property with nothing booked yet. */
+  const [nextGuest, setNextGuest] = useState<{ event: CalendarEvent; checkInTime: string | null } | null>(null);
 
   const load = useCallback(async () => {
     if (!session || !id) return;
@@ -75,6 +98,43 @@ export default function CleaningReportDetailScreen() {
       load();
     }, [load]),
   );
+
+  /**
+   * Who's arriving next, and when — so a cleaner working through this
+   * report can see straight away whether there's a same-day turnover to
+   * hurry for. Mirrors the exact "next booking" lookup the Home screen's
+   * checkout card already does (dashboard.tsx): the calendar feed 30 days
+   * out, filtered to this property's non-blocked guest stays, soonest
+   * first. `checkInTime` comes from the property's own configured
+   * check-in time, not the reservation — Airbnb/Hospitable only ever gives
+   * a check-in *date*.
+   *
+   * Both calls need CALENDAR permission, which a co-host can now lack
+   * while still having CLEANING_REPORTS (see HostTeamPermission) — that
+   * 403s here, and this section just doesn't show rather than failing the
+   * whole report screen over a permission gap.
+   */
+  useEffect(() => {
+    if (!session || !report) return;
+    let cancelled = false;
+    Promise.all([
+      api.properties.getOne(report.propertyId, session.accessToken),
+      api.properties.getCalendar(todayIso(), addDaysIso(todayIso(), 30), session.accessToken),
+    ])
+      .then(([property, events]) => {
+        if (cancelled) return;
+        const next = events
+          .filter((e) => e.propertyId === report.propertyId && e.kind === 'GUEST_STAY' && !e.isBlocked)
+          .sort((a, b) => a.date.localeCompare(b.date))[0];
+        setNextGuest(next ? { event: next, checkInTime: checkInTimeLabel(property.checkInTime) } : null);
+      })
+      .catch(() => {
+        if (!cancelled) setNextGuest(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session, report?.propertyId]);
 
   async function handleAddPhoto() {
     if (!session || !report) return;
@@ -230,6 +290,26 @@ export default function CleaningReportDetailScreen() {
           </Text>
         </View>
 
+        {nextGuest && (
+          <Card style={styles.nextGuestCard}>
+            <Ionicons name="person-circle-outline" size={22} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.nextGuestLabel}>Next guest{nextGuest.event.source === 'AIRBNB' ? ' · Airbnb' : ''}</Text>
+              <Text style={typography.h3} numberOfLines={1}>
+                {nextGuest.event.title || 'Guest stay'}
+              </Text>
+              <Text style={typography.bodyMuted}>
+                {new Date(nextGuest.event.date).toLocaleDateString(undefined, {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                })}
+                {nextGuest.checkInTime ? ` · check-in ${nextGuest.checkInTime}` : ''}
+              </Text>
+            </View>
+          </Card>
+        )}
+
         {error && <ErrorBanner message={error} />}
 
         {isInProgress && (
@@ -262,7 +342,10 @@ export default function CleaningReportDetailScreen() {
                   <View key={p.id} style={styles.photoWrap}>
                     <Pressable onPress={() => p.url && setViewerUrl(resolveUploadUrl(p.url))}>
                       {p.url ? (
-                        <Image source={{ uri: resolveThumbnailUrl(p.url, 150) }} style={styles.photo} />
+                        <Image
+                          source={{ uri: resolveThumbnailUrl(p.url, PixelRatio.getPixelSizeForLayoutSize(PHOTO_SIZE)) }}
+                          style={styles.photo}
+                        />
                       ) : (
                         <View style={styles.photo} />
                       )}
@@ -329,9 +412,17 @@ export default function CleaningReportDetailScreen() {
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
+  nextGuestCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    backgroundColor: colors.successBg,
+  },
+  nextGuestLabel: { ...typography.caption, color: colors.primary, fontWeight: '600', marginBottom: 1 },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
   photoWrap: { position: 'relative' },
-  photo: { width: 96, height: 96, borderRadius: radius.sm, backgroundColor: colors.border },
+  photo: { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: radius.sm, backgroundColor: colors.border },
   removeBadge: {
     position: 'absolute',
     top: 4,
