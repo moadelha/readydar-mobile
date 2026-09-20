@@ -250,6 +250,21 @@ export default function PropertyDetailScreen() {
     }
   }
 
+  /**
+   * Opens a WhatsApp chat straight to the guest's own number — as opposed to
+   * `handleShareCheckIn`, which shares the check-in *link* for the guest to
+   * fill in themselves. This only ever shows for a check-in whose phone came
+   * from Hospitable's synced reservation data (a guest who hasn't submitted
+   * the online check-in form yet has no other way to be reached), so the
+   * host can message them ("what time will you arrive?", an early
+   * check-in question, etc.) well before the guest ever opens the form.
+   */
+  function handleMessageGuestWhatsApp(checkIn: GuestCheckIn) {
+    if (!checkIn.guestPhone) return;
+    const digits = checkIn.guestPhone.replace(/[^\d]/g, '');
+    Linking.openURL(`https://wa.me/${digits}`);
+  }
+
   async function handleExpandWelcome(checkIn: GuestCheckIn) {
     if (!session) return;
     if (expandedCheckInId === checkIn.id) {
@@ -775,6 +790,17 @@ export default function PropertyDetailScreen() {
 
               {c.status === 'PENDING' && (
                 <>
+                  {c.guestPhone && (
+                    <>
+                      <Text style={[styles.detailLine, { marginTop: spacing.sm }]}>Phone: {c.guestPhone}</Text>
+                      <Button
+                        label="Message guest on WhatsApp"
+                        onPress={() => handleMessageGuestWhatsApp(c)}
+                        variant="secondary"
+                        style={{ marginTop: spacing.xs }}
+                      />
+                    </>
+                  )}
                   <Button
                     label={sharingId === c.id ? 'Opening…' : 'Share via WhatsApp'}
                     onPress={() => handleShareCheckIn(c)}
