@@ -61,8 +61,13 @@ export default function CleaningReportDetailScreen() {
 
   const load = useCallback(async () => {
     if (!session || !id) return;
-    const data = await api.cleaningReports.getDetail(id, session.accessToken);
-    setReport(data);
+    setError(null);
+    try {
+      const data = await api.cleaningReports.getDetail(id, session.accessToken);
+      setReport(data);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not load this report.');
+    }
   }, [session, id]);
 
   useFocusEffect(
@@ -186,7 +191,21 @@ export default function CleaningReportDetailScreen() {
     }
   }
 
-  if (!report) return <LoadingScreen />;
+  if (!report) {
+    // Same fix as the property page: a permission gap (a co-host without
+    // CLEANING_REPORTS, say) or any other load failure used to leave this
+    // screen spinning forever instead of showing what went wrong.
+    if (error) {
+      return (
+        <Screen>
+          <View style={{ padding: spacing.lg }}>
+            <ErrorBanner message={error} onRetry={load} />
+          </View>
+        </Screen>
+      );
+    }
+    return <LoadingScreen />;
+  }
 
   const isInProgress = report.status === 'IN_PROGRESS';
   const sections = groupBySection(report.photos ?? []);

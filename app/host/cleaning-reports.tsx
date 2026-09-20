@@ -31,7 +31,12 @@ export default function CleaningReportsScreen() {
     setError(null);
     try {
       const [p, list] = await Promise.all([
-        api.properties.getOne(propertyId, session.accessToken),
+        // A co-host can have CLEANING_REPORTS without also having CALENDAR
+        // (see HostTeamPermission's doc comment) — that 403s here, but it's
+        // only used for the property name in the header, not for anything
+        // this screen actually needs to function. Tolerated so a co-host
+        // with just report access isn't blocked from using it.
+        api.properties.getOne(propertyId, session.accessToken).catch(() => null),
         api.cleaningReports.listForProperty(propertyId, session.accessToken),
       ]);
       setProperty(p);

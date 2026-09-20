@@ -160,7 +160,12 @@ export default function PropertyDetailScreen() {
     try {
       const [propertyData, checkInList, overview] = await Promise.all([
         api.properties.getOne(id, session.accessToken),
-        api.checkins.listForProperty(id, session.accessToken),
+        // A Staff co-host can have CALENDAR (which is all this page itself
+        // needs) without CHECKINS — that 403s here. Tolerated the same way
+        // getStatusOverview already is just below: the check-ins section
+        // just renders empty for them instead of the whole page failing to
+        // load over one section they don't have access to.
+        api.checkins.listForProperty(id, session.accessToken).catch(() => [] as GuestCheckIn[]),
         // `GET /properties/:id` returns the stored record, which carries the
         // manual override but not the status the backend actually works out
         // from bookings and reservations. Only the overview has that, so the
@@ -404,7 +409,22 @@ export default function PropertyDetailScreen() {
     }
   }
 
-  if (!property) return <LoadingScreen />;
+  if (!property) {
+    // A permission gap (a Staff co-host without CALENDAR, say) or any other
+    // load failure used to leave this screen spinning forever: `error` was
+    // set, but nothing ever checked it before this point, and `property`
+    // never arrives to get past it. Surface it instead of spinning.
+    if (error) {
+      return (
+        <Screen>
+          <View style={{ padding: spacing.lg }}>
+            <ErrorBanner message={error} onRetry={load} />
+          </View>
+        </Screen>
+      );
+    }
+    return <LoadingScreen />;
+  }
 
   const doorPhotos = property.photos?.filter((p) => p.type === 'DOOR_PHOTO') ?? [];
 
