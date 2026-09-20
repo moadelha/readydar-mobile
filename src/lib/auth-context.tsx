@@ -9,6 +9,7 @@ import {
   writeStoredSession,
   clearStoredSession,
   registerForceLogoutHandler,
+  registerSessionRefreshHandler,
 } from './api';
 
 interface AuthContextValue {
@@ -69,6 +70,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.replace('/login');
     });
   }, [router]);
+
+  useEffect(() => {
+    // Keeps React state in step with every silent, 401-triggered token
+    // refresh api.ts performs — see registerSessionRefreshHandler's doc
+    // comment for the bug this closes (a stale accessToken in every
+    // screen's `session` otherwise causes redundant, sometimes-losing
+    // refresh races on the very next request).
+    registerSessionRefreshHandler((next) => {
+      setSession(next);
+    });
+  }, []);
 
   const persist = useCallback(async (next: StoredSession) => {
     await writeStoredSession(next);

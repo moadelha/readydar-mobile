@@ -103,10 +103,33 @@ export async function clearStoredSession() {
 
 let refreshInFlight: Promise<string | null> | null = null;
 let onForceLogout: (() => void) | null = null;
+let onSessionRefreshed: ((session: StoredSession) => void) | null = null;
 
 /** Called once by AuthProvider so the API layer can trigger a clean logout. */
 export function registerForceLogoutHandler(handler: () => void) {
   onForceLogout = handler;
+}
+
+/**
+ * Called once by AuthProvider so a *silent*, 401-triggered refresh (below)
+ * can push the rotated token pair into React state, not just SecureStore.
+ *
+ * Without this, every screen keeps reading the stale `session.accessToken`
+ * it was mounted with — `request()` still recovers on that screen's own
+ * next 401 (it always re-reads SecureStore fresh), but every other
+ * concurrent or subsequent call made with the stale token pays for its own
+ * redundant 401-then-refresh round trip, and a `Promise.all` of several
+ * such calls (property/checkins/status-overview firing together — see the
+ * property page's `load()`) can race the backend's refresh-token rotation:
+ * more than one of them reads the *same* now-stale refresh token before
+ * either has written the rotated one back, so only the first actually
+ * succeeds and the rest fail outright instead of quietly retrying. That
+ * race is what made changing a property's status back to "Ready" seem to
+ * randomly error — the status write itself succeeded; the reload right
+ * after it was the one that lost the race.
+ */
+export function registerSessionRefreshHandler(handler: (session: StoredSession) => void) {
+  onSessionRefreshed = handler;
 }
 
 async function refreshAccessToken(): Promise<string | null> {
@@ -131,6 +154,7 @@ async function refreshAccessToken(): Promise<string | null> {
         user: data.user,
       };
       await writeStoredSession(next);
+      onSessionRefreshed?.(next);
       return next.accessToken;
     } catch {
       return null;
@@ -694,6 +718,10 @@ export interface CalendarEvent {
   /** The check-in link auto-created for a synced reservation, if any — lets the calendar offer "share check-in link" without a second lookup. */
   checkInToken?: string | null;
   checkInStatus?: string | null;
+  /** GUEST_STAY only — whether this stay's guest asked for an earlier-than-standard check-in or a later-than-standard checkout, plus any free-text note about timing. Used on Home's tomorrow's-checkouts card. */
+  earlyCheckInRequested?: boolean;
+  lateCheckOutRequested?: boolean;
+  timingRequestNote?: string | null;
 }
 
 export interface CreatePropertyPayload {
@@ -1050,7 +1078,10 @@ export const api = {
      */
     updateReservation: (
       reservationId: string,
-      payload: { isBlocked?: boolean; nightlyRate?: number; note?: string },
+      // nightlyRate: null explicitly clears a saved override back to the
+      // property's default rate — omitting the field leaves it untouched.
+      // See UpdateReservationDto and PropertiesService#updateReservation.
+      payload: { isBlocked?: boolean; nightlyRate?: number | null; note?: string },
       token: string,
     ) => request<any>(`/properties/reservations/${reservationId}`, { method: 'PATCH', body: payload, token }),
     /** One shared rental-contract setting for the whole host account (not per property) — see PropertiesController#getContract/setContract on the backend. */

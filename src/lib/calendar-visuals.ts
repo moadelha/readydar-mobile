@@ -123,10 +123,30 @@ export function eventStatusTone(event: CalendarEvent): 'neutral' | 'primary' | '
   if (event.source === 'DIRECT' && event.status === 'PENDING') return 'accent';
   return 'success';
 }
-/** A night the host blocked on Airbnb themselves — not a real guest, so it gets a neutral color/icon instead of the property's own color and a bed icon. */
+/**
+ * Booking color, by source rather than by property — Airbnb pink, Booking.com
+ * blue, anything host-entered (an offline booking or a standalone check-in
+ * link with no synced reservation) yellow, and a blocked night grey
+ * regardless of which platform it was blocked on. Replaces the old
+ * per-property rotating palette (still used for the Expenses list's
+ * property dots, see property-colors.ts) — a host telling stays apart by
+ * platform at a glance was more useful than telling properties apart by
+ * color, and the source is now shown as text on every bar anyway (see
+ * sourceShortLabel).
+ */
+const SOURCE_ACCENT_COLOR: Record<string, string> = {
+  AIRBNB: '#FF385C', // Airbnb's own brand pink/rose
+  BOOKING_COM: '#003580', // Booking.com's own brand navy blue
+};
+const OFFLINE_ACCENT_COLOR = '#EAB308'; // host-entered booking — offline (MANUAL, not blocked) or a standalone check-in link (DIRECT)
+
 export function eventAccentColor(event: CalendarEvent): string {
   if (event.kind === 'CLEANING') return colors.accent;
   if (event.isBlocked) return colors.inkFaint;
+  if (event.source && SOURCE_ACCENT_COLOR[event.source]) return SOURCE_ACCENT_COLOR[event.source];
+  if (event.source === 'MANUAL' || event.source === 'DIRECT') return OFFLINE_ACCENT_COLOR;
+  // Anything else (a source the app doesn't know about yet) falls back to
+  // the old per-property color rather than an undefined/blank bar.
   return propertyColor(event.propertyId);
 }
 export function eventIcon(event: CalendarEvent): string {

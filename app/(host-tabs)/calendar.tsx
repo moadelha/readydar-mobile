@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Modal, Linking } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import {
@@ -39,7 +39,6 @@ import {
   eventAccentColor,
   eventIcon,
 } from '@/lib/calendar-visuals';
-import { propertyColor } from '@/lib/property-colors';
 import { useToast } from '@/lib/toast';
 import { colors, radius, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -98,14 +97,20 @@ export default function CalendarScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const toast = useToast();
+  // Arriving from a property-specific entry point (Home's "tomorrow's
+  // checkouts" card, the property page) rather than the Calendar tab itself
+  // — pre-select that property and land straight on Month view, which is
+  // what actually reads as "this property's calendar" rather than the
+  // all-properties list.
+  const { propertyId: initialPropertyId } = useLocalSearchParams<{ propertyId?: string }>();
 
-  const [view, setView] = useState<CalendarView>('LIST');
+  const [view, setView] = useState<CalendarView>(initialPropertyId ? 'MONTH' : 'LIST');
   const [monthCursor, setMonthCursor] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
   const [properties, setProperties] = useState<Property[]>([]);
-  const [propertyFilter, setPropertyFilter] = useState<string | null>(null);
+  const [propertyFilter, setPropertyFilter] = useState<string | null>(initialPropertyId ?? null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [listEvents, setListEvents] = useState<CalendarEvent[]>([]);
   const [statusOverview, setStatusOverview] = useState<PropertyStatusItem[]>([]);
@@ -191,20 +196,22 @@ export default function CalendarScreen() {
     return map;
   }, [statusOverview]);
 
-  /** What a single day's dot should show for one property — a guest stay/block wins over a same-day cleaning, which wins over an empty day. */
-  function dayStatusForProperty(propertyId: string, dateIso: string): 'blocked' | 'stay' | 'cleaning' | 'free' {
+  /** What a single day's dot should show for one property — a guest stay/block wins over a same-day cleaning, which wins over an empty day. Carries the actual event along so the dot can be colored by source (see eventAccentColor), not just by status. */
+  function dayStatusForProperty(
+    propertyId: string,
+    dateIso: string,
+  ): { status: 'blocked' | 'stay' | 'cleaning' | 'free'; event: CalendarEvent | null } {
     const dayEvents = listEventsByProperty[propertyId] ?? [];
     const stay = dayEvents.find(
       (e) => e.kind === 'GUEST_STAY' && dateIso >= e.date.slice(0, 10) && dateIso <= (e.endDate || e.date).slice(0, 10),
     );
-    if (stay) return stay.isBlocked ? 'blocked' : 'stay';
-    const hasCleaning = dayEvents.some((e) => e.kind === 'CLEANING' && e.date.slice(0, 10) === dateIso);
-    return hasCleaning ? 'cleaning' : 'free';
+    if (stay) return { status: stay.isBlocked ? 'blocked' : 'stay', event: stay };
+    const cleaning = dayEvents.find((e) => e.kind === 'CLEANING' && e.date.slice(0, 10) === dateIso);
+    return { status: cleaning ? 'cleaning' : 'free', event: cleaning ?? null };
   }
-  function listDotColor(status: 'blocked' | 'stay' | 'cleaning' | 'free', propertyId: string) {
-    if (status === 'stay') return propertyColor(propertyId);
-    if (status === 'blocked') return colors.inkFaint;
-    if (status === 'cleaning') return colors.accent;
+  function listDotColor(day: { status: 'blocked' | 'stay' | 'cleaning' | 'free'; event: CalendarEvent | null }) {
+    if ((day.status === 'stay' || day.status === 'blocked') && day.event) return eventAccentColor(day.event);
+    if (day.status === 'cleaning') return colors.accent;
     return colors.border;
   }
 
@@ -413,6 +420,13 @@ export default function CalendarScreen() {
     return Number.isInteger(value) && value > 0 && value <= 30 ? value : null;
   }
 
+  /** Opens the event detail sheet, pre-filling the rate field with whatever's already saved on this reservation rather than leaving it blank next to a placeholder. */
+  function openEventSheet(ev: CalendarEvent) {
+    setRateInput(ev.nightlyRate != null ? String(ev.nightlyRate) : '');
+    setGuestInput('');
+    setSelectedEvent(ev);
+  }
+
   async function handleGenerateCheckIn(event: CalendarEvent) {
     if (!session || !event.reservationId) return;
     setError(null);
@@ -469,6 +483,32 @@ export default function CalendarScreen() {
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not update this reservation.');
+    } finally {
+      setSheetBusy(false);
+    }
+  }
+
+  /**
+   * Saves a nightly rate on a blocked or offline entry on its own, without
+   * generating a check-in link or otherwise touching its blocked/booked
+   * state — for a host who just wants this night's price reflected in
+   * Reports (see the reports-pdf "Other Bookings" breakdown) without
+   * collecting guest details for it. Clearing the box back to blank and
+   * saving explicitly removes the override (falls back to the property's
+   * default rate) — see parsedRate's own doc comment.
+   */
+  async function handleSaveRate(event: CalendarEvent) {
+    if (!session || !event.reservationId) return;
+    setError(null);
+    setSheetBusy(true);
+    try {
+      const rate = parsedRate();
+      await api.properties.updateReservation(event.reservationId, { nightlyRate: rate }, session.accessToken);
+      toast.show(rate !== null ? `Saved — ${rate} MAD/night` : 'Rate cleared — using the property default', 'success');
+      setSelectedEvent({ ...event, nightlyRate: rate });
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save this rate.');
     } finally {
       setSheetBusy(false);
     }
@@ -567,7 +607,7 @@ export default function CalendarScreen() {
                     return (
                       <Pressable
                         key={seg.event.id}
-                        onPress={() => setSelectedEvent(seg.event)}
+                        onPress={() => openEventSheet(seg.event)}
                         style={[
                           styles.monthBar,
                           {
@@ -678,7 +718,7 @@ export default function CalendarScreen() {
                               key={day}
                               style={[
                                 styles.listDot,
-                                { backgroundColor: listDotColor(dayStatus, p.id) },
+                                { backgroundColor: listDotColor(dayStatus) },
                                 isToday && styles.listDotToday,
                               ]}
                             />
@@ -712,9 +752,7 @@ export default function CalendarScreen() {
                   key={ev.id}
                   onPress={() => {
                     setSelectedDay(null);
-                    setRateInput('');
-                    setGuestInput('');
-                    setSelectedEvent(ev);
+                    openEventSheet(ev);
                   }}
                 >
                   <Card style={{ marginBottom: spacing.sm }}>
@@ -797,23 +835,32 @@ export default function CalendarScreen() {
                     that came through nameless, or a block that's really a
                     Booking.com guest. Generating the link also un-blocks it
                     server-side, which is why the wording changes. */}
-                {/* Only worth asking for a rate while the range is still a
-                    block — once it's a real booking the rate belongs on the
-                    booking itself, which mobile doesn't edit yet. */}
-                {selectedEvent.kind === 'GUEST_STAY' && selectedEvent.reservationId && selectedEvent.isBlocked && (
+                {/*
+                    Editable for any host-entered entry — a block or an
+                    offline booking (source MANUAL) — since both need a
+                    price to show up correctly in Reports. Not shown for a
+                    synced Airbnb/Booking.com reservation: that price comes
+                    from the platform, and mobile doesn't override it.
+                */}
+                {selectedEvent.kind === 'GUEST_STAY' && selectedEvent.reservationId && selectedEvent.source === 'MANUAL' && (
                   <View style={{ marginTop: spacing.lg }}>
                     <TextField
                       label="Rate per night (MAD) — optional"
                       value={rateInput}
                       onChangeText={setRateInput}
                       keyboardType="numeric"
-                      placeholder={
-                        selectedEvent.nightlyRate != null ? String(selectedEvent.nightlyRate) : 'e.g. 650'
-                      }
+                      placeholder="e.g. 650"
                     />
                     <Text style={typography.caption}>
-                      Sets what this stay earns in your reports. Leave blank to use the property's default rate.
+                      Sets what this night earns in your reports. Leave blank and save to fall back to the property's default rate.
                     </Text>
+                    <Button
+                      label={sheetBusy ? 'Saving…' : 'Save price'}
+                      variant="outline"
+                      loading={sheetBusy}
+                      onPress={() => handleSaveRate(selectedEvent)}
+                      style={{ marginTop: spacing.sm }}
+                    />
                   </View>
                 )}
 

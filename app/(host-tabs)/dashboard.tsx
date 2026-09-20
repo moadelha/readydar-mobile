@@ -29,10 +29,9 @@ import {
   PROPERTY_STATUS_TONE,
   PropertyStatus,
   UPCOMING_CHECKIN_WINDOW_MS,
-  STATUS_LABELS,
 } from '@/lib/status';
 import { stayLabel } from '@/lib/checkin-groups';
-import { todayIso } from '@/lib/calendar-visuals';
+import { todayIso, addDaysIso } from '@/lib/calendar-visuals';
 import { addDismissed, clearDismissed, pruneDismissed } from '@/lib/dismissed';
 import {
   buildNotifications,
@@ -51,31 +50,25 @@ import { Ionicons } from '@expo/vector-icons';
  * Home is a summary — a host who wants the full list has a tab for it.
  */
 const CHECKIN_LIMIT = 3;
-const NOT_READY_LIMIT = 4;
+const TOMORROW_LIMIT = 4;
 
-/** Filters offered on the "Not ready" section. */
-type NotReadyFilter = 'ALL' | 'NEEDS_CLEANING' | 'IN_PROGRESS';
 /** Filters offered on the "All apartments" section. */
 type AllFilter = 'ALL' | PropertyStatus;
 
 /**
- * One row of the "Not ready" section. Covers both a property whose *status*
- * says it isn't ready and a cleaning job nobody has accepted — from a host's
- * point of view both mean "this won't be ready for the next guest unless I
- * do something", which is what the section is for.
+ * One row of the "Tomorrow's checkouts" section — a property with a guest
+ * leaving tomorrow, so the host can see what needs to be turned around
+ * before the day is out. `turnover` and `incomingEvent` flag the tighter,
+ * same-day case where another guest checks in on the same date.
  */
-type NotReadyItem = {
+type TomorrowCheckout = {
   propertyId: string;
   propertyName: string;
   location: string;
   photoUrl: string | null;
-  /** Sort key — same-day turnovers first, then unaccepted jobs, then the rest. */
-  priority: number;
-  tag: { label: string; tone: 'accent' | 'danger' | 'primary'; icon?: keyof typeof Ionicons.glyphMap };
+  event: CalendarEvent;
   turnover: boolean;
-  status: PropertyStatus | 'UNASSIGNED_JOB';
-  /** Where tapping the row goes — the job for an unaccepted cleaning, otherwise the property. */
-  href: string;
+  incomingEvent: CalendarEvent | null;
 };
 
 /** A pending link has no submitted guest record yet, so the only name available is the hint carried over from the reservation. */
@@ -136,6 +129,17 @@ function checkInTimeLabel(property?: Property | null): string | null {
   return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
+/** Same as `checkInTimeLabel` but for the property's configured checkout time. */
+function checkOutTimeLabel(property?: Property | null): string | null {
+  const raw = property?.checkOutTime?.trim();
+  if (!raw) return null;
+  const [h, m] = raw.split(':').map(Number);
+  if (!Number.isFinite(h)) return raw;
+  const date = new Date();
+  date.setHours(h, Number.isFinite(m) ? m : 0, 0, 0);
+  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
 /** "City Center · Apartment 3" — the unit number only when the property has one. */
 function locationLine(property?: Property | null, fallbackName?: string) {
   const city = property?.city?.name ?? '';
@@ -150,16 +154,32 @@ export default function HostDashboardScreen() {
 
   const [overview, setOverview] = useState<PropertyStatusItem[]>([]);
   const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
+  const [tomorrowEvents, setTomorrowEvents] = useState<CalendarEvent[]>([]);
   const [pendingCheckIns, setPendingCheckIns] = useState<PendingCheckIn[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notReadyFilter, setNotReadyFilter] = useState<NotReadyFilter>('ALL');
   const [allFilter, setAllFilter] = useState<AllFilter>('ALL');
   /** The check-in whose reservation card is open, if any. */
   const [openCheckIn, setOpenCheckIn] = useState<PendingCheckIn | null>(null);
+  /** The tomorrow's-checkout row whose detail card is open, if any. */
+  const [openCheckout, setOpenCheckout] = useState<TomorrowCheckout | null>(null);
+  /**
+   * What happens after this checkout, for properties that *aren't* a
+   * same-day turnover (those already show their incoming guest inline —
+   * see `tomorrowCheckouts`). Fetched lazily per property, only once the
+   * sheet is actually open, rather than upfront for every row: it's a
+   * second network call per property and most hosts only open a couple of
+   * these on any given day.
+   */
+  const [followUp, setFollowUp] = useState<{
+    propertyId: string;
+    loading: boolean;
+    next: CalendarEvent | null;
+    blockedNextDay: boolean;
+  } | null>(null);
   const [timingBusy, setTimingBusy] = useState(false);
   const [guestBusy, setGuestBusy] = useState(false);
   /** Check-in ids the host has cleared off Home — see src/lib/dismissed.ts. */
@@ -175,9 +195,13 @@ export default function HostDashboardScreen() {
     setError(null);
     try {
       const today = todayIso();
-      const [statusList, todayList, checkIns, everyCheckIn] = await Promise.all([
+      const tomorrow = addDaysIso(today, 1);
+      const [statusList, todayList, tomorrowList, checkIns, everyCheckIn] = await Promise.all([
         api.properties.getStatusOverview(session.accessToken),
         api.properties.getCalendar(today, today, session.accessToken),
+        // A separate day range rather than widening the first call — Home
+        // only ever needs today's and tomorrow's events, never a range.
+        api.properties.getCalendar(tomorrow, tomorrow, session.accessToken),
         // /checkins/pending, not /checkins/all — the server already drops
         // anything submitted or past its expiry, so the years of stale links
         // a pre-fix Hospitable backfill created never reach this screen.
@@ -190,6 +214,7 @@ export default function HostDashboardScreen() {
       ]);
       setOverview(statusList);
       setTodayEvents(todayList);
+      setTomorrowEvents(tomorrowList);
       setPendingCheckIns(checkIns);
       setAllCheckIns(everyCheckIn);
       // Prune on every load: a check-in that's been submitted or has expired
@@ -297,71 +322,95 @@ export default function HostDashboardScreen() {
       .sort((a, b) => new Date(a.expectedCheckIn).getTime() - new Date(b.expectedCheckIn).getTime());
   }, [pendingCheckIns, dismissedIds]);
 
-  const notReadyItems = useMemo<NotReadyItem[]>(() => {
-    const items: NotReadyItem[] = [];
-
-    for (const o of overview) {
-      if (o.status !== 'NEEDS_CLEANING' && o.status !== 'IN_PROGRESS') continue;
-      const turnover = turnoverToday.has(o.property.id);
-      items.push({
-        propertyId: o.property.id,
-        propertyName: o.property.name,
-        location: locationLine(o.property),
-        photoUrl: propertyCoverUrl(o.property, 160),
-        priority: turnover ? 0 : o.status === 'NEEDS_CLEANING' ? 2 : 3,
-        tag:
-          o.status === 'NEEDS_CLEANING'
-            ? { label: 'Needs cleaning', tone: 'accent', icon: 'sparkles' }
-            : { label: 'Cleaning in progress', tone: 'primary', icon: 'construct-outline' },
-        turnover,
-        status: o.status,
-        href: `/host/property/${o.property.id}`,
-      });
+  /**
+   * Guests checking out tomorrow, with same-day-turnover detection.
+   *
+   * Mirrors `turnoverToday`'s out/inn approach but one day ahead, over a
+   * separate `getCalendar(tomorrow, tomorrow)` fetch — this is what lets a
+   * host see tomorrow's turnaround work today instead of finding out when
+   * it's already tomorrow.
+   */
+  const tomorrowCheckouts = useMemo<TomorrowCheckout[]>(() => {
+    const tomorrow = addDaysIso(todayIso(), 1);
+    const outEvents: CalendarEvent[] = [];
+    const innByProperty = new Map<string, CalendarEvent>();
+    for (const ev of tomorrowEvents) {
+      if (ev.kind !== 'GUEST_STAY' || ev.isBlocked) continue;
+      if (ev.endDate.slice(0, 10) === tomorrow && ev.endDate !== ev.date) outEvents.push(ev);
+      if (ev.date.slice(0, 10) === tomorrow) innByProperty.set(ev.propertyId, ev);
     }
-
-    // A cleaning nobody has accepted is its own kind of "not ready" — the
-    // property status may still read READY while the job silently goes
-    // unfilled, so it would otherwise appear nowhere on this screen.
-    for (const ev of todayEvents) {
-      if (ev.kind !== 'CLEANING') continue;
-      if (ev.status !== 'PENDING_MATCH' && ev.status !== 'DISPUTED') continue;
-      if (!ev.bookingId) continue;
+    const items: TomorrowCheckout[] = outEvents.map((ev) => {
+      const incoming = innByProperty.get(ev.propertyId) ?? null;
       const property = propertyById[ev.propertyId];
-      items.push({
+      return {
         propertyId: ev.propertyId,
         propertyName: ev.propertyName,
         location: locationLine(property, ev.propertyName),
         photoUrl: propertyCoverUrl(property, 160),
-        priority: turnoverToday.has(ev.propertyId) ? 0 : 1,
-        tag: {
-          label: STATUS_LABELS[ev.status as keyof typeof STATUS_LABELS] ?? ev.status,
-          tone: 'danger',
-          icon: 'alert-circle-outline',
-        },
-        turnover: turnoverToday.has(ev.propertyId),
-        status: 'UNASSIGNED_JOB',
-        href: `/host/booking/${ev.bookingId}`,
-      });
-    }
+        event: ev,
+        turnover: !!incoming,
+        incomingEvent: incoming,
+      };
+    });
+    // Same-day turnovers are the tighter, more urgent case — surface those first.
+    return items.sort((a, b) =>
+      a.turnover === b.turnover ? a.propertyName.localeCompare(b.propertyName) : a.turnover ? -1 : 1,
+    );
+  }, [tomorrowEvents, propertyById]);
 
-    return items.sort((a, b) => a.priority - b.priority || a.propertyName.localeCompare(b.propertyName));
-  }, [overview, todayEvents, turnoverToday, propertyById]);
-
-  const filteredNotReady = useMemo(() => {
-    if (notReadyFilter === 'ALL') return notReadyItems;
-    if (notReadyFilter === 'NEEDS_CLEANING') {
-      // An unaccepted cleaning job is a cleaning problem, so it belongs in
-      // the "needs cleaning" view even though the property's own status may
-      // not say NEEDS_CLEANING.
-      return notReadyItems.filter((i) => i.status === 'NEEDS_CLEANING' || i.status === 'UNASSIGNED_JOB');
-    }
-    return notReadyItems.filter((i) => i.status === 'IN_PROGRESS');
-  }, [notReadyItems, notReadyFilter]);
 
   const filteredAll = useMemo(
     () => (allFilter === 'ALL' ? overview : overview.filter((o) => o.status === allFilter)),
     [overview, allFilter],
   );
+
+  /**
+   * Looks ahead for whatever's next at a property once its guest leaves.
+   *
+   * Same-day turnovers already carry their incoming guest inline (see
+   * `tomorrowCheckouts`), so this only runs for the more common case — a
+   * checkout with nothing arriving that same day — where "what's next" is
+   * genuinely unknown without asking: another booking a few days out,
+   * nothing booked at all (stays Ready), or the host has blocked the days
+   * right after checkout (maintenance, personal use, etc).
+   *
+   * A 30-day window is generous on purpose — a host turning a property
+   * around wants to know if it's about to sit empty for a while, not just
+   * whether tomorrow is booked.
+   */
+  useEffect(() => {
+    if (!session || !openCheckout || openCheckout.turnover) {
+      setFollowUp(null);
+      return;
+    }
+    let cancelled = false;
+    setFollowUp({ propertyId: openCheckout.propertyId, loading: true, next: null, blockedNextDay: false });
+    const checkoutDay = openCheckout.event.endDate.slice(0, 10);
+    const dayAfter = addDaysIso(checkoutDay, 1);
+    const windowEnd = addDaysIso(checkoutDay, 30);
+    api.properties
+      .getCalendar(dayAfter, windowEnd, session.accessToken)
+      .then((events) => {
+        if (cancelled) return;
+        const forThisProperty = events
+          .filter((e) => e.propertyId === openCheckout.propertyId && e.kind === 'GUEST_STAY')
+          .sort((a, b) => a.date.localeCompare(b.date));
+        const blockedNextDay = forThisProperty.some(
+          (e) => e.isBlocked && dayAfter >= e.date.slice(0, 10) && dayAfter <= (e.endDate || e.date).slice(0, 10),
+        );
+        const next = forThisProperty.find((e) => !e.isBlocked) ?? null;
+        setFollowUp({ propertyId: openCheckout.propertyId, loading: false, next, blockedNextDay });
+      })
+      .catch(() => {
+        if (!cancelled) setFollowUp({ propertyId: openCheckout.propertyId, loading: false, next: null, blockedNextDay: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+    // openCheckout is a freshly-built object every render (see
+    // `tomorrowCheckouts`), so it's compared by id rather than identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, openCheckout?.propertyId, openCheckout?.turnover]);
 
   async function handleMarkReady(propertyId: string, propertyName: string) {
     if (!session) return;
@@ -632,47 +681,21 @@ export default function HostDashboardScreen() {
             )}
 
             {/* ---------------------------------------------------------- */}
-            {/* Apartments not ready                                        */}
+            {/* Tomorrow's checkouts                                        */}
             {/* ---------------------------------------------------------- */}
             <Reveal delay={120}>
               <SectionHeader
-                icon="sparkles-outline"
-                title="Apartments not ready"
-                subtitle="Cleaning or maintenance needed before the next guest"
-                actionLabel={notReadyItems.length > NOT_READY_LIMIT ? 'View all' : undefined}
-                onAction={() => {
-                  setAllFilter('NEEDS_CLEANING');
-                  setNotReadyFilter('ALL');
-                }}
+                icon="log-out-outline"
+                title="Tomorrow's checkouts"
+                subtitle="Guests leaving tomorrow — same-day turnovers are flagged"
               />
             </Reveal>
 
-            {notReadyItems.length > 0 && (
-              <View style={styles.filterRow}>
-                <FilterDropdown
-                  value={notReadyFilter}
-                  onChange={setNotReadyFilter}
-                  options={[
-                    { value: 'ALL', label: `All · ${notReadyItems.length}` },
-                    { value: 'NEEDS_CLEANING', label: 'Needs cleaning' },
-                    { value: 'IN_PROGRESS', label: 'Cleaning in progress' },
-                  ]}
-                />
-              </View>
-            )}
-
-            {filteredNotReady.length === 0 ? (
-              <EmptyState
-                icon="checkmark-circle-outline"
-                message={
-                  notReadyItems.length === 0
-                    ? 'Every apartment is ready for its next guest.'
-                    : 'Nothing matches this filter.'
-                }
-              />
+            {tomorrowCheckouts.length === 0 ? (
+              <EmptyState icon="checkmark-circle-outline" message="No checkouts scheduled for tomorrow." />
             ) : (
-              filteredNotReady.slice(0, NOT_READY_LIMIT).map((item, index) => (
-                <Reveal key={`${item.status}-${item.propertyId}-${index}`} delay={140 + index * 30}>
+              tomorrowCheckouts.slice(0, TOMORROW_LIMIT).map((item, index) => (
+                <Reveal key={`${item.propertyId}-${index}`} delay={140 + index * 30}>
                   <PropertyRow
                     photoUrl={item.photoUrl}
                     title={item.propertyName}
@@ -682,21 +705,16 @@ export default function HostDashboardScreen() {
                         ? [{ label: 'Same-day turnover', tone: 'danger', icon: 'flash' }]
                         : undefined
                     }
-                    right={<StatusTag label={item.tag.label} tone={item.tag.tone} icon={item.tag.icon} />}
-                    onPress={() => router.push(item.href)}
+                    right={<StatusTag label="Checkout" tone="primary" icon="log-out-outline" />}
+                    onPress={() => setOpenCheckout(item)}
                   />
                 </Reveal>
               ))
             )}
 
-            {filteredNotReady.length > NOT_READY_LIMIT && (
-              <Pressable
-                style={styles.moreRow}
-                onPress={() => {
-                  setAllFilter('NEEDS_CLEANING');
-                }}
-              >
-                <Text style={styles.moreText}>{filteredNotReady.length - NOT_READY_LIMIT} more not ready</Text>
+            {tomorrowCheckouts.length > TOMORROW_LIMIT && (
+              <Pressable style={styles.moreRow} onPress={() => router.push('/calendar')}>
+                <Text style={styles.moreText}>{tomorrowCheckouts.length - TOMORROW_LIMIT} more checking out</Text>
                 <Ionicons name="chevron-forward" size={15} color={colors.primary} />
               </Pressable>
             )}
@@ -988,6 +1006,149 @@ export default function HostDashboardScreen() {
                         const id = openCheckIn.propertyId;
                         setOpenCheckIn(null);
                         router.push(`/host/property/${id}`);
+                      }}
+                      style={{ marginTop: spacing.sm }}
+                    />
+                  </ScrollView>
+                );
+              })()}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ------------------------------------------------------------- */}
+      {/* Tomorrow's checkout detail card                                */}
+      {/* ------------------------------------------------------------- */}
+      <Modal
+        visible={!!openCheckout}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOpenCheckout(null)}
+      >
+        <Pressable style={styles.sheetBackdrop} onPress={() => setOpenCheckout(null)}>
+          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+            {openCheckout &&
+              (() => {
+                const property = propertyById[openCheckout.propertyId];
+                const outTime = checkOutTimeLabel(property);
+                const inTime = checkInTimeLabel(property);
+                const { event, incomingEvent } = openCheckout;
+                return (
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    <View style={styles.sheetHeader}>
+                      <PropertyThumb photoUrl={openCheckout.photoUrl} size={64} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={typography.h2} numberOfLines={2}>
+                          {openCheckout.propertyName}
+                        </Text>
+                        {openCheckout.location ? (
+                          <Text style={typography.caption}>{openCheckout.location}</Text>
+                        ) : null}
+                      </View>
+                      <Pressable onPress={() => setOpenCheckout(null)} hitSlop={12}>
+                        <Ionicons name="close" size={22} color={colors.inkFaint} />
+                      </Pressable>
+                    </View>
+
+                    {openCheckout.turnover && (
+                      <View style={styles.sheetStatusRow}>
+                        <Text style={typography.caption}>Turnaround</Text>
+                        <StatusTag label="Same-day turnover" tone="danger" icon="flash" />
+                      </View>
+                    )}
+
+                    <View style={styles.sheetFacts}>
+                      <SheetFact
+                        icon="log-out-outline"
+                        label="Checkout"
+                        value={`${arrivalPhrase(event.endDate)}${outTime ? ` · ${outTime}` : ''}`}
+                      />
+                      <SheetFact
+                        icon="people-outline"
+                        label="Departing guests"
+                        value={`${event.guestCount || 1} guest${(event.guestCount || 1) === 1 ? '' : 's'}`}
+                      />
+                      {event.lateCheckOutRequested && (
+                        <SheetFact icon="time-outline" label="Late checkout requested" value="Yes" />
+                      )}
+                    </View>
+
+                    {event.timingRequestNote ? (
+                      <Text style={[typography.caption, { marginTop: spacing.xs }]}>
+                        Note: {event.timingRequestNote}
+                      </Text>
+                    ) : null}
+
+                    {incomingEvent && (
+                      <>
+                        <Text style={[typography.h3, { marginTop: spacing.lg }]}>Next guest — same day</Text>
+                        <View style={styles.sheetFacts}>
+                          <SheetFact
+                            icon="log-in-outline"
+                            label="Arrives"
+                            value={`${arrivalPhrase(incomingEvent.date)}${inTime ? ` · ${inTime}` : ''}`}
+                          />
+                          <SheetFact
+                            icon="people-outline"
+                            label="Arriving guests"
+                            value={`${incomingEvent.guestCount || 1} guest${(incomingEvent.guestCount || 1) === 1 ? '' : 's'}`}
+                          />
+                          {incomingEvent.earlyCheckInRequested && (
+                            <SheetFact icon="time-outline" label="Early check-in requested" value="Yes" />
+                          )}
+                        </View>
+                        {incomingEvent.timingRequestNote ? (
+                          <Text style={[typography.caption, { marginTop: spacing.xs }]}>
+                            Note: {incomingEvent.timingRequestNote}
+                          </Text>
+                        ) : null}
+                      </>
+                    )}
+
+                    {/* Not a same-day turnover — show what's coming up
+                        instead, once it's back from the lookahead fetch. */}
+                    {!openCheckout.turnover && (
+                      <>
+                        <Text style={[typography.h3, { marginTop: spacing.lg }]}>After this checkout</Text>
+                        {!followUp || followUp.loading || followUp.propertyId !== openCheckout.propertyId ? (
+                          <Text style={typography.bodyMuted}>Checking what's next…</Text>
+                        ) : followUp.next ? (
+                          <View style={styles.sheetFacts}>
+                            <SheetFact
+                              icon="log-in-outline"
+                              label="Next guest arrives"
+                              value={arrivalPhrase(followUp.next.date)}
+                            />
+                            <SheetFact
+                              icon="people-outline"
+                              label="Guests"
+                              value={`${followUp.next.guestCount || 1} guest${(followUp.next.guestCount || 1) === 1 ? '' : 's'}`}
+                            />
+                          </View>
+                        ) : followUp.blockedNextDay ? (
+                          <StatusTag label="Blocked after checkout" tone="neutral" icon="lock-closed-outline" />
+                        ) : (
+                          <Text style={typography.bodyMuted}>Nothing booked yet — stays Ready once cleaned.</Text>
+                        )}
+                      </>
+                    )}
+
+                    <Button
+                      label="Open property"
+                      onPress={() => {
+                        const id = openCheckout.propertyId;
+                        setOpenCheckout(null);
+                        router.push(`/host/property/${id}`);
+                      }}
+                      style={{ marginTop: spacing.lg }}
+                    />
+                    <Button
+                      label="Open this property's calendar"
+                      variant="outline"
+                      onPress={() => {
+                        const id = openCheckout.propertyId;
+                        setOpenCheckout(null);
+                        router.push({ pathname: '/calendar', params: { propertyId: id } });
                       }}
                       style={{ marginTop: spacing.sm }}
                     />
