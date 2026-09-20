@@ -211,7 +211,13 @@ export default function GuestsScreen() {
         month: 'long',
       });
       const text = `Hi! Please complete your online check-in for ${item.property.name}, arriving ${arriving}: ${url}`;
-      await Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
+      // Target the guest's own number directly when known — see the
+      // matching comment on dashboard.tsx's handleShareCheckInLink. Without
+      // this, wa.me/?text=... has no recipient and just opens WhatsApp's
+      // contact picker even when item.guestPhone is already on file.
+      const digits = item.guestPhone?.replace(/[^\d]/g, '');
+      const target = digits ? `https://wa.me/${digits}` : 'https://wa.me/';
+      await Linking.openURL(`${target}?text=${encodeURIComponent(text)}`);
     } finally {
       setBusyId(null);
     }

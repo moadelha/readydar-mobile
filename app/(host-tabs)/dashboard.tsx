@@ -502,7 +502,16 @@ export default function HostDashboardScreen() {
         month: 'long',
       });
       const text = `Hi! Please complete your online check-in for ${item.property.name}, arriving ${arriving}: ${url}`;
-      await Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
+      // Target the guest's own number directly when we have one (from
+      // Hospitable's synced reservation data) — wa.me/<digits>?text=...
+      // opens straight into a chat with that guest, prefilled. Without a
+      // digits segment, wa.me/?text=... has no recipient at all and just
+      // opens WhatsApp's contact picker — which is what this used to do
+      // unconditionally, even for check-ins where the guest's number was
+      // already known.
+      const digits = item.guestPhone?.replace(/[^\d]/g, '');
+      const target = digits ? `https://wa.me/${digits}` : 'https://wa.me/';
+      await Linking.openURL(`${target}?text=${encodeURIComponent(text)}`);
     } finally {
       setBusyId(null);
     }
