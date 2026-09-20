@@ -508,6 +508,21 @@ export default function HostDashboardScreen() {
     }
   }
 
+  /**
+   * Opens a WhatsApp chat straight to the guest's own number — as opposed
+   * to `handleShareCheckInLink`, which shares the check-in *link* for the
+   * guest to fill in themselves. Only shows when `guestPhone` came through
+   * from Hospitable's synced reservation data (see PendingCheckIn's doc
+   * comment), so a host can message a guest who hasn't submitted the
+   * online check-in form yet — "what time will you arrive?", an early
+   * check-in question — well before that form is ever filled in.
+   */
+  function handleMessageGuestWhatsApp(item: PendingCheckIn) {
+    if (!item.guestPhone) return;
+    const digits = item.guestPhone.replace(/[^\d]/g, '');
+    Linking.openURL(`https://wa.me/${digits}`);
+  }
+
   if (isLoading) {
     return (
       <Screen>
@@ -987,10 +1002,18 @@ export default function HostDashboardScreen() {
                       </Text>
                     ) : null}
 
+                    {openCheckIn.guestPhone && (
+                      <Button
+                        label="Message guest on WhatsApp"
+                        onPress={() => handleMessageGuestWhatsApp(openCheckIn)}
+                        variant="secondary"
+                        style={{ marginTop: spacing.lg }}
+                      />
+                    )}
                     <Button
                       label={copiedId === openCheckIn.id ? 'Copied!' : 'Copy check-in link'}
                       onPress={() => handleCopyCheckInLink(openCheckIn)}
-                      style={{ marginTop: spacing.lg }}
+                      style={{ marginTop: openCheckIn.guestPhone ? spacing.sm : spacing.lg }}
                     />
                     <Button
                       label={busyId === openCheckIn.id ? 'Opening…' : 'Share via WhatsApp'}

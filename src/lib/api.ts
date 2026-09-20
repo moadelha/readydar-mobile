@@ -638,6 +638,8 @@ export interface PendingCheckIn {
   earlyCheckInRequested?: boolean;
   lateCheckOutRequested?: boolean;
   timingRequestNote?: string | null;
+  /** Backfilled from Hospitable/Airbnb's own reservation data as soon as a booking syncs — present even before the guest has filled in the online check-in form. See HospitableReservationSyncService. */
+  guestPhone?: string | null;
   property: { id: string; name: string };
 }
 
