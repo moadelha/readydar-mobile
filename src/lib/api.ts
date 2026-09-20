@@ -331,10 +331,14 @@ export interface ThumbnailOptions {
  * - **Airbnb/muscache** (a cover photo imported by the Hospitable sync,
  *   which stores Airbnb's own CDN URL verbatim rather than re-uploading —
  *   see HospitablePropertySyncService#syncCoverPhoto). Cloudinary
- *   transformations mean nothing there; that CDN takes an `im_w` query
- *   parameter instead. If it ever stops honouring it the parameter is
- *   simply ignored and we get the default rendition — the same image we
- *   were already getting, so this can't make things worse.
+ *   transformations mean nothing there, and — confirmed against the live
+ *   CDN, not just assumed — neither does an `im_w` query parameter: it
+ *   isn't silently ignored, it makes the CDN 404 the whole request even on
+ *   a URL that 200s fine without it. This was the actual cause of the
+ *   cover photo going missing on mobile (web never appended it). Passed
+ *   through untouched instead, same as web already does — Hospitable's own
+ *   URL already carries an `aki_policy` size preset, which is as much
+ *   control over the size as this CDN is actually willing to give.
  *
  * Anything else (a leftover local-disk path) is returned untouched.
  */
@@ -352,10 +356,17 @@ export function resolveThumbnailUrl(path: string, width = 200, opts: ThumbnailOp
     return `${url.slice(0, insertAt)}${transform.join(',')}/${url.slice(insertAt)}`;
   }
 
-  if (url.includes('muscache.com') && !/[?&]im_w=/.test(url)) {
-    return `${url}${url.includes('?') ? '&' : '?'}im_w=${Math.round(width)}`;
-  }
-
+  // `im_w` used to be appended here on the assumption that Airbnb's CDN
+  // resizes on request, same as Cloudinary above. Confirmed against the
+  // live CDN that this is wrong: `...jpeg?aki_policy=x_small` (Hospitable's
+  // own URL, already a fixed small rendition) returns 200, but adding
+  // `&im_w=936` to that exact same URL returns 404 — the parameter isn't
+  // silently ignored, it breaks the request outright. That 404 is exactly
+  // why the property cover photo went blank on mobile (the web app never
+  // appended this and never had the problem). Left as a plain pass-through
+  // now, same as web's resolveUploadUrl — Hospitable's own aki_policy
+  // preset is a small-but-reasonable size for a thumbnail or hero either
+  // way, so there's nothing to gain by trying to resize it further.
   return url;
 }
 

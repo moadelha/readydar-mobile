@@ -94,16 +94,6 @@ export default function PropertyDetailScreen() {
   const [isMarkingReady, setIsMarkingReady] = useState(false);
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  /**
-   * Temporary diagnostic: the cover photo has been reported missing since
-   * before the http→https fix, and that fix alone didn't resolve it (still
-   * blank after rebuilding). RN's Image gives no visible failure reason by
-   * default, only a blank/gray box — this surfaces whatever the native
-   * layer actually says went wrong (network error, decode error, etc.) so
-   * the real cause can be pinned down instead of guessed at again. Safe to
-   * remove once the cause is confirmed.
-   */
-  const [coverLoadError, setCoverLoadError] = useState<string | null>(null);
 
   const [expandedCheckInId, setExpandedCheckInId] = useState<string | null>(null);
   const [previewText, setPreviewText] = useState('');
@@ -465,27 +455,7 @@ export default function PropertyDetailScreen() {
             so the property page opens on something recognisable rather than
             a wall of text. Properties with no photo just start at the name,
             no placeholder box. */}
-        {coverUrl && (
-          <>
-            <Image
-              source={{ uri: coverUrl }}
-              style={styles.cover}
-              onError={(e) => setCoverLoadError(e.nativeEvent.error ?? 'Unknown error')}
-              onLoad={() => setCoverLoadError(null)}
-            />
-            {/* Temporary diagnostic — see coverLoadError's doc comment. */}
-            {coverLoadError && (
-              <View style={styles.coverErrorBox}>
-                <Text style={styles.coverErrorText} selectable>
-                  Photo failed to load: {coverLoadError}
-                </Text>
-                <Text style={styles.coverErrorText} selectable>
-                  URL: {coverUrl}
-                </Text>
-              </View>
-            )}
-          </>
-        )}
+        {coverUrl && <Image source={{ uri: coverUrl }} style={styles.cover} />}
         <Text style={typography.h1}>{property.name}</Text>
         <View style={styles.metaRow}>
           <Ionicons name="location-outline" size={13} color={colors.inkFaint} />
@@ -1022,15 +992,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     backgroundColor: 'rgba(27,31,35,0.06)',
   },
-  // Temporary diagnostic — see coverLoadError's doc comment.
-  coverErrorBox: {
-    backgroundColor: colors.dangerBg,
-    borderRadius: radius.sm,
-    padding: spacing.sm,
-    marginTop: -spacing.sm,
-    marginBottom: spacing.md,
-  },
-  coverErrorText: { fontSize: 11, color: colors.danger },
   idPhotoThumb: { width: 64, height: 64, borderRadius: radius.sm },
   idPhotoLocked: {
     alignItems: 'center',
