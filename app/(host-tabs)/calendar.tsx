@@ -24,9 +24,8 @@ import {
 import { PropertySelect } from '@/components/PropertySelect';
 import { Button } from '@/components/Button';
 import { PropertyThumb } from '@/components/host-ui';
-import { PROPERTY_STATUS_LABELS, PROPERTY_STATUS_TONE } from '@/lib/status';
+import { PROPERTY_STATUS_TONE } from '@/lib/status';
 import {
-  SOURCE_LABEL,
   sourceShortLabel,
   eventGuestName,
   staySpanLabel,
@@ -42,6 +41,8 @@ import {
 import { useToast } from '@/lib/toast';
 import { colors, radius, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { Dict } from '@/lib/i18n/dictionary';
 
 type CalendarView = 'LIST' | 'MONTH';
 
@@ -97,6 +98,7 @@ export default function CalendarScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const toast = useToast();
+  const { t } = useLanguage();
   // Arriving from a property-specific entry point (Home's "tomorrow's
   // checkouts" card, the property page) rather than the Calendar tab itself
   // — pre-select that property and land straight on Month view, which is
@@ -158,12 +160,12 @@ export default function CalendarScreen() {
         setEvents(list);
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load the calendar.');
+      setError(err instanceof ApiError ? err.message : t.calendarHost.errorLoad);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [session, view, year, month, daysInMonth]);
+  }, [session, view, year, month, daysInMonth, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -369,7 +371,7 @@ export default function CalendarScreen() {
   async function handleShareCheckIn(event: CalendarEvent) {
     if (!event.checkInToken) return;
     const url = resolveCheckInUrl(event.checkInToken);
-    const text = `Hi! Please complete your online check-in for ${event.propertyName} here: ${url}`;
+    const text = t.calendarHost.checkInShareMessage(event.propertyName, url);
     await Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
   }
 
@@ -444,7 +446,7 @@ export default function CalendarScreen() {
         parsedGuests() ?? undefined,
       );
       await Clipboard.setStringAsync(resolveCheckInUrl(checkIn.token));
-      toast.show(event.isBlocked ? 'Booking created — link copied' : 'Check-in link created and copied', 'success');
+      toast.show(event.isBlocked ? t.calendarHost.bookingCreatedLinkCopied : t.calendarHost.checkInLinkCreatedCopied, 'success');
       // Reflect it on the open sheet straight away rather than making the
       // host close and reopen to see the link appear.
       setSelectedEvent({
@@ -456,7 +458,7 @@ export default function CalendarScreen() {
       });
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not create a check-in link for this reservation.');
+      setError(err instanceof ApiError ? err.message : t.calendarHost.errorCreateCheckIn);
     } finally {
       setSheetBusy(false);
     }
@@ -478,11 +480,11 @@ export default function CalendarScreen() {
         rate !== null ? { isBlocked: false, nightlyRate: rate } : { isBlocked: false },
         session.accessToken,
       );
-      toast.show(rate !== null ? `Booked at ${rate} MAD/night` : 'Marked as a real booking', 'success');
+      toast.show(rate !== null ? t.calendarHost.bookedAtRate(rate) : t.calendarHost.markedRealBooking, 'success');
       setSelectedEvent({ ...event, isBlocked: false, nightlyRate: rate ?? event.nightlyRate });
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update this reservation.');
+      setError(err instanceof ApiError ? err.message : t.calendarHost.errorUpdateReservation);
     } finally {
       setSheetBusy(false);
     }
@@ -504,11 +506,11 @@ export default function CalendarScreen() {
     try {
       const rate = parsedRate();
       await api.properties.updateReservation(event.reservationId, { nightlyRate: rate }, session.accessToken);
-      toast.show(rate !== null ? `Saved — ${rate} MAD/night` : 'Rate cleared — using the property default', 'success');
+      toast.show(rate !== null ? t.calendarHost.savedRate(rate) : t.calendarHost.rateCleared, 'success');
       setSelectedEvent({ ...event, nightlyRate: rate });
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save this rate.');
+      setError(err instanceof ApiError ? err.message : t.calendarHost.errorSaveRate);
     } finally {
       setSheetBusy(false);
     }
@@ -518,7 +520,7 @@ export default function CalendarScreen() {
     if (!event.checkInToken) return;
     await Clipboard.setStringAsync(resolveCheckInUrl(event.checkInToken));
     setCopiedEventId(event.id);
-    toast.show('Check-in link copied');
+    toast.show(t.calendarHost.checkInLinkCopied);
     setTimeout(() => setCopiedEventId((id) => (id === event.id ? null : id)), 2000);
   }
 
@@ -527,13 +529,13 @@ export default function CalendarScreen() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Text style={typography.h1}>Calendar</Text>
+        <Text style={typography.h1}>{t.calendarHost.title}</Text>
         <View style={{ marginTop: spacing.sm }}>
           <PropertySelect
             properties={properties}
             value={propertyFilter}
             onChange={setPropertyFilter}
-            extraOptions={[{ value: '__NONE__', label: 'All properties' }]}
+            extraOptions={[{ value: '__NONE__', label: t.calendarHost.allProperties }]}
           />
         </View>
         <View style={{ marginTop: spacing.sm }}>
@@ -541,8 +543,8 @@ export default function CalendarScreen() {
             value={view}
             onChange={setView}
             options={[
-              { value: 'LIST', label: 'Listings' },
-              { value: 'MONTH', label: 'Calendar' },
+              { value: 'LIST', label: t.calendarHost.viewListings },
+              { value: 'MONTH', label: t.calendarHost.viewCalendar },
             ]}
           />
         </View>
@@ -598,7 +600,7 @@ export default function CalendarScreen() {
 
                   {week.segments.map((seg) => {
                     const name = eventGuestName(seg.event);
-                    const source = sourceShortLabel(seg.event);
+                    const source = sourceShortLabel(seg.event, t);
                     // Only a bar with room for it shows the source as well as
                     // the name; below that the name alone is more useful than
                     // two truncated fragments.
@@ -654,21 +656,21 @@ export default function CalendarScreen() {
                 <View style={[styles.legendSwatch, { backgroundColor: colors.accent }]}>
                   <Ionicons name="sparkles-outline" size={9} color={colors.white} />
                 </View>
-                <Text style={styles.legendText}>Cleaning</Text>
+                <Text style={styles.legendText}>{t.calendarHost.legendCleaning}</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendSwatch, { backgroundColor: colors.primary }]}>
                   <Ionicons name="bed-outline" size={9} color={colors.white} />
                 </View>
-                <Text style={styles.legendText}>Guest stay</Text>
+                <Text style={styles.legendText}>{t.calendarHost.legendGuestStay}</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendSwatch, { backgroundColor: colors.inkFaint }]}>
                   <Ionicons name="lock-closed-outline" size={9} color={colors.white} />
                 </View>
-                <Text style={styles.legendText}>Blocked</Text>
+                <Text style={styles.legendText}>{t.calendarHost.legendBlocked}</Text>
               </View>
-              <Text style={styles.legendHint}>Tap a booking for details</Text>
+              <Text style={styles.legendHint}>{t.calendarHost.tapForDetails}</Text>
             </View>
           </View>
         )}
@@ -676,7 +678,7 @@ export default function CalendarScreen() {
         {view === 'LIST' && (
           <View>
             {visibleProperties.length === 0 ? (
-              <EmptyState message="No properties to show." />
+              <EmptyState message={t.calendarHost.noPropertiesToShow} />
             ) : (
               visibleProperties.map((p) => {
                 const photoUrl = propertyCoverUrl(p, 130);
@@ -699,13 +701,13 @@ export default function CalendarScreen() {
                           {p.hospitableListingId && (
                             <View style={styles.syncBadge}>
                               <Ionicons name="link-outline" size={10} color={colors.primary} />
-                              <Text style={styles.syncBadgeText}>Airbnb</Text>
+                              <Text style={styles.syncBadgeText}>{t.calendarHost.airbnbBadge}</Text>
                             </View>
                           )}
                         </View>
                         {status && (
                           <View style={{ marginTop: 4, alignSelf: 'flex-start' }}>
-                            <StatusBadge label={PROPERTY_STATUS_LABELS[status.status]} tone={PROPERTY_STATUS_TONE[status.status]} />
+                            <StatusBadge label={t.propertyStatus[status.status]} tone={PROPERTY_STATUS_TONE[status.status]} />
                           </View>
                         )}
                       </View>
@@ -766,7 +768,7 @@ export default function CalendarScreen() {
                         {/* The full span, so a day that's the middle of an
                             existing stay is obviously not a new arrival. */}
                         {ev.kind === 'GUEST_STAY' && (
-                          <Text style={typography.caption}>{staySpanLabel(ev)}</Text>
+                          <Text style={typography.caption}>{staySpanLabel(ev, t)}</Text>
                         )}
                       </View>
                     </View>
@@ -798,12 +800,12 @@ export default function CalendarScreen() {
                   {selectedEvent.kind === 'GUEST_STAY' && (
                     <>
                       <Text style={typography.bodyMuted}>
-                        {selectedEvent.isBlocked ? 'Blocked on' : 'Platform:'} {SOURCE_LABEL[selectedEvent.source ?? 'DIRECT']}
+                        {selectedEvent.isBlocked ? t.calendarHost.blockedOnPrefix : t.calendarHost.platformPrefix} {t.sourceLabel[(selectedEvent.source ?? 'DIRECT') as keyof Dict['sourceLabel']]}
                       </Text>
-                      <Text style={typography.bodyMuted}>{staySpanLabel(selectedEvent)}</Text>
+                      <Text style={typography.bodyMuted}>{staySpanLabel(selectedEvent, t)}</Text>
                       {selectedEvent.guestCount != null && selectedEvent.guestCount > 0 && (
                         <Text style={typography.bodyMuted}>
-                          {selectedEvent.guestCount} guest{selectedEvent.guestCount === 1 ? '' : 's'}
+                          {t.common.guestsCount(selectedEvent.guestCount)}
                         </Text>
                       )}
                     </>
@@ -813,18 +815,18 @@ export default function CalendarScreen() {
                       {parseDateOnly(selectedEvent.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                     </Text>
                   )}
-                  <StatusBadge label={eventStatusLabel(selectedEvent)} tone={eventStatusTone(selectedEvent)} />
+                  <StatusBadge label={eventStatusLabel(selectedEvent, t)} tone={eventStatusTone(selectedEvent)} />
                 </View>
 
                 {selectedEvent.checkInToken && selectedEvent.checkInStatus === 'PENDING' && (
                   <>
                     <Button
-                      label={copiedEventId === selectedEvent.id ? 'Copied!' : 'Copy check-in link'}
+                      label={copiedEventId === selectedEvent.id ? t.calendarHost.copiedExclaim : t.calendarHost.copyCheckInLink}
                       onPress={() => handleCopyCheckIn(selectedEvent)}
                       style={{ marginTop: spacing.lg }}
                     />
                     <Button
-                      label="Share via WhatsApp"
+                      label={t.calendarHost.shareViaWhatsApp}
                       onPress={() => handleShareCheckIn(selectedEvent)}
                       variant="outline"
                       style={{ marginTop: spacing.sm }}
@@ -845,17 +847,17 @@ export default function CalendarScreen() {
                 {selectedEvent.kind === 'GUEST_STAY' && selectedEvent.reservationId && selectedEvent.source === 'MANUAL' && (
                   <View style={{ marginTop: spacing.lg }}>
                     <TextField
-                      label="Rate per night (MAD) — optional"
+                      label={t.calendarHost.ratePerNightLabel}
                       value={rateInput}
                       onChangeText={setRateInput}
                       keyboardType="numeric"
                       placeholder="e.g. 650"
                     />
                     <Text style={typography.caption}>
-                      Sets what this night earns in your reports. Leave blank and save to fall back to the property's default rate.
+                      {t.calendarHost.ratePerNightHint}
                     </Text>
                     <Button
-                      label={sheetBusy ? 'Saving…' : 'Save price'}
+                      label={sheetBusy ? t.calendarHost.savingEllipsis : t.calendarHost.savePrice}
                       variant="outline"
                       loading={sheetBusy}
                       onPress={() => handleSaveRate(selectedEvent)}
@@ -871,14 +873,14 @@ export default function CalendarScreen() {
                   !selectedEvent.checkInToken && (
                     <View style={{ marginTop: spacing.md }}>
                       <TextField
-                        label="Number of guests — optional"
+                        label={t.calendarHost.guestsOptionalLabel}
                         value={guestInput}
                         onChangeText={setGuestInput}
                         keyboardType="number-pad"
                         placeholder="e.g. 4"
                       />
                       <Text style={typography.caption}>
-                        How many people the guest can register on the check-in form. Defaults to 1.
+                        {t.calendarHost.guestsOptionalHint}
                       </Text>
                     </View>
                   )}
@@ -890,10 +892,10 @@ export default function CalendarScreen() {
                       <Button
                         label={
                           sheetBusy
-                            ? 'Working…'
+                            ? t.calendarHost.workingEllipsis
                             : selectedEvent.isBlocked
-                              ? 'This is a real booking — create check-in link'
-                              : 'Create check-in link'
+                              ? t.calendarHost.confirmRealBookingCreateLink
+                              : t.calendarHost.createCheckInLink
                         }
                         loading={sheetBusy}
                         onPress={() => handleGenerateCheckIn(selectedEvent)}
@@ -901,7 +903,7 @@ export default function CalendarScreen() {
                       />
                       {selectedEvent.isBlocked && (
                         <Button
-                          label="Mark as booked (no guest link)"
+                          label={t.calendarHost.markBookedNoLink}
                           variant="outline"
                           loading={sheetBusy}
                           onPress={() => handleUnblock(selectedEvent)}
@@ -911,7 +913,7 @@ export default function CalendarScreen() {
                     </>
                   )}
                 <Button
-                  label={selectedEvent.bookingId ? 'View booking' : 'View property'}
+                  label={selectedEvent.bookingId ? t.calendarHost.viewBooking : t.calendarHost.viewProperty}
                   onPress={() => openBookingOrProperty(selectedEvent)}
                   style={{
                     marginTop:
@@ -921,7 +923,7 @@ export default function CalendarScreen() {
                         : spacing.lg,
                   }}
                 />
-                <Button label="Close" variant="outline" onPress={() => setSelectedEvent(null)} style={{ marginTop: spacing.sm }} />
+                <Button label={t.calendarHost.close} variant="outline" onPress={() => setSelectedEvent(null)} style={{ marginTop: spacing.sm }} />
               </>
             )}
           </Pressable>
@@ -932,7 +934,7 @@ export default function CalendarScreen() {
       <Modal visible={quickAddOpen} animationType="fade" transparent onRequestClose={() => setQuickAddOpen(false)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setQuickAddOpen(false)}>
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
-            <Text style={typography.h3}>Add</Text>
+            <Text style={typography.h3}>{t.calendarHost.addSheetTitle}</Text>
             <Pressable
               style={styles.quickAddRow}
               onPress={() => {
@@ -944,8 +946,8 @@ export default function CalendarScreen() {
                 <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={typography.h3}>Add cleaning</Text>
-                <Text style={typography.bodyMuted}>Request a cleaning or maintenance visit</Text>
+                <Text style={typography.h3}>{t.calendarHost.addCleaning}</Text>
+                <Text style={typography.bodyMuted}>{t.calendarHost.addCleaningSubtitle}</Text>
               </View>
             </Pressable>
             <Pressable
@@ -959,8 +961,8 @@ export default function CalendarScreen() {
                 <Ionicons name="key-outline" size={18} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={typography.h3}>Guest online check-in</Text>
-                <Text style={typography.bodyMuted}>Generate a check-in link for a guest stay</Text>
+                <Text style={typography.h3}>{t.calendarHost.guestOnlineCheckIn}</Text>
+                <Text style={typography.bodyMuted}>{t.calendarHost.guestOnlineCheckInSubtitle}</Text>
               </View>
             </Pressable>
           </Pressable>

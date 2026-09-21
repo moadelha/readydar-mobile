@@ -4,9 +4,10 @@ import { Stack, useRouter, useFocusEffect } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, Booking } from '@/lib/api';
 import { Screen, Card, EmptyState, StatusBadge, ErrorBanner, Reveal, AnimatedPressable, SkeletonListItem } from '@/components/ui';
-import { STATUS_LABELS, STATUS_TONE } from '@/lib/status';
+import { STATUS_TONE } from '@/lib/status';
 import { colors, radius, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '@/lib/i18n/language-context';
 
 /**
  * All cleaning/maintenance jobs across every property — no longer a bottom
@@ -18,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 export default function HostBookingsScreen() {
   const { session } = useAuth();
   const router = useRouter();
+  const { t } = useLanguage();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,7 +32,7 @@ export default function HostBookingsScreen() {
       const list = await api.bookings.listMine(session.accessToken);
       setBookings(list);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load your bookings.');
+      setError(err instanceof ApiError ? err.message : t.bookingsList.errorLoad);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -45,12 +47,12 @@ export default function HostBookingsScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'All bookings', headerBackTitle: 'More' }} />
+      <Stack.Screen options={{ headerShown: true, title: t.bookingsList.pageTitle, headerBackTitle: t.bookingsList.headerBack }} />
       <Reveal>
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <Text style={typography.h1}>Bookings</Text>
-            <Text style={[typography.bodyMuted, { marginTop: 2 }]}>Across all your properties</Text>
+            <Text style={typography.h1}>{t.bookingsList.title}</Text>
+            <Text style={[typography.bodyMuted, { marginTop: 2 }]}>{t.bookingsList.subtitle}</Text>
           </View>
           <AnimatedPressable scaleTo={0.9} onPress={() => router.push('/host/booking/new')} style={styles.addButton}>
             <Ionicons name="add" size={22} color={colors.white} />
@@ -78,8 +80,8 @@ export default function HostBookingsScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={colors.primary} />}
           ListEmptyComponent={
             <EmptyState
-              message="No bookings yet."
-              actionLabel="Request a cleaning or service"
+              message={t.bookingsList.emptyMessage}
+              actionLabel={t.bookingsList.actionLabel}
               onAction={() => router.push('/host/booking/new')}
               icon="clipboard-outline"
             />
@@ -94,7 +96,7 @@ export default function HostBookingsScreen() {
                       {item.urgency === 'URGENT' && (
                         <View style={styles.urgentBadge}>
                           <Ionicons name="flash" size={11} color="#B45309" />
-                          <Text style={styles.urgentText}>Urgent</Text>
+                          <Text style={styles.urgentText}>{t.bookingsList.urgent}</Text>
                         </View>
                       )}
                     </View>
@@ -103,10 +105,10 @@ export default function HostBookingsScreen() {
                       <Text style={typography.bodyMuted}>{item.property.name}</Text>
                     </View>
                     <Text style={typography.caption}>
-                      {new Date(item.scheduledDate).toLocaleDateString()} at {item.scheduledTime}
+                      {new Date(item.scheduledDate).toLocaleDateString()} {t.bookingsList.at} {item.scheduledTime}
                     </Text>
                   </View>
-                  <StatusBadge label={STATUS_LABELS[item.status]} tone={STATUS_TONE[item.status]} />
+                  <StatusBadge label={t.bookingStatus[item.status]} tone={STATUS_TONE[item.status]} />
                 </View>
               </Card>
             </Reveal>

@@ -7,10 +7,12 @@ import { Screen, Card, EmptyState, LoadingScreen, ErrorBanner } from '@/componen
 import { PropertyThumb } from '@/components/host-ui';
 import { colors, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '@/lib/i18n/language-context';
 
 export default function PropertiesScreen() {
   const { session } = useAuth();
   const router = useRouter();
+  const { t } = useLanguage();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -23,7 +25,7 @@ export default function PropertiesScreen() {
       const list = await api.properties.listMine(session.accessToken);
       setProperties(list);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load your properties.');
+      setError(err instanceof ApiError ? err.message : t.propertiesList.errorLoad);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -42,12 +44,12 @@ export default function PropertiesScreen() {
     <Screen>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={typography.h1}>Properties</Text>
-          <Text style={[typography.bodyMuted, { marginTop: 2 }]}>{properties.length} listed</Text>
+          <Text style={typography.h1}>{t.propertiesList.title}</Text>
+          <Text style={[typography.bodyMuted, { marginTop: 2 }]}>{t.propertiesList.listedCount(properties.length)}</Text>
         </View>
         <Pressable onPress={() => router.push('/host/hospitable')} style={styles.airbnbButton} hitSlop={8}>
           <Ionicons name="link-outline" size={16} color={colors.primary} />
-          <Text style={styles.airbnbButtonText}>Airbnb</Text>
+          <Text style={styles.airbnbButtonText}>{t.propertiesList.airbnbButton}</Text>
         </Pressable>
         <Pressable onPress={() => router.push('/host/property/new')} style={styles.addButton}>
           <Ionicons name="add" size={22} color={colors.white} />
@@ -67,8 +69,8 @@ export default function PropertiesScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={colors.primary} />}
         ListEmptyComponent={
           <EmptyState
-            message="No properties yet."
-            actionLabel="Add your first property"
+            message={t.propertiesList.emptyMessage}
+            actionLabel={t.propertiesList.addFirstProperty}
             onAction={() => router.push('/host/property/new')}
           />
         }
@@ -83,7 +85,7 @@ export default function PropertiesScreen() {
                     {item.hospitableListingId && (
                       <View style={styles.syncBadge}>
                         <Ionicons name="link-outline" size={11} color={colors.primary} />
-                        <Text style={styles.syncBadgeText}>Airbnb</Text>
+                        <Text style={styles.syncBadgeText}>{t.propertiesList.airbnbBadge}</Text>
                       </View>
                     )}
                   </View>
@@ -96,11 +98,11 @@ export default function PropertiesScreen() {
                   <View style={styles.metaRow}>
                     <Ionicons name="bed-outline" size={13} color={colors.inkFaint} />
                     <Text style={typography.caption}>
-                      {item.bedrooms} bed · {item.bathrooms} bath · up to {item.maxGuests} guests
+                      {t.propertiesList.bedBathGuests(item.bedrooms, item.bathrooms, item.maxGuests)}
                     </Text>
                   </View>
                   {item.nightlyRate && (
-                    <Text style={styles.rate}>{Number(item.nightlyRate).toFixed(0)} MAD / night</Text>
+                    <Text style={styles.rate}>{t.propertiesList.ratePerNight(Math.round(Number(item.nightlyRate)))}</Text>
                   )}
                 </View>
               </View>

@@ -8,15 +8,22 @@
  * not duplicated per-screen — see the project's duplication rule.
  */
 import { CalendarEvent } from './api';
-import { STATUS_LABELS, STATUS_TONE } from './status';
+import { STATUS_TONE } from './status';
 import { propertyColor } from './property-colors';
 import { colors } from '@/theme';
+import { Dict } from './i18n/dictionary';
 
 export const KIND_ICON: Record<CalendarEvent['kind'], string> = {
   CLEANING: 'sparkles-outline',
   GUEST_STAY: 'bed-outline',
 };
 
+/**
+ * @deprecated English-only fallback for call sites that don't have `t`
+ * handy. Prefer `t.sourceLabel` (see the Dict interface) — every screen
+ * this module is actually used from does have `t`, so this should shrink
+ * to zero call sites over time rather than grow new ones.
+ */
 export const SOURCE_LABEL: Record<string, string> = {
   AIRBNB: 'Airbnb',
   BOOKING_COM: 'Booking.com',
@@ -32,10 +39,10 @@ export const SOURCE_LABEL: Record<string, string> = {
  * on Airbnb is not an Airbnb *booking*, and labelling it "Airbnb" is the
  * exact confusion Part 27 set out to fix.
  */
-export function sourceShortLabel(event: CalendarEvent): string {
-  if (event.isBlocked) return 'Blocked';
-  if (!event.source) return 'Direct';
-  return SOURCE_LABEL[event.source] ?? event.source;
+export function sourceShortLabel(event: CalendarEvent, t: Dict): string {
+  if (event.isBlocked) return t.calendarHost.legendBlocked;
+  if (!event.source) return t.sourceLabel.DIRECT;
+  return t.sourceLabel[event.source as keyof Dict['sourceLabel']] ?? event.source;
 }
 
 /**
@@ -60,14 +67,14 @@ export function sourceShortLabel(event: CalendarEvent): string {
  * glance that today's entry is part of a longer stay they've already seen,
  * rather than a new arrival.
  */
-export function staySpanLabel(event: CalendarEvent): string {
+export function staySpanLabel(event: CalendarEvent, t: Dict): string {
   const start = parseDateOnly(event.date);
   const end = parseDateOnly(event.endDate || event.date);
   const nights = Math.max(0, Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)));
   const startLabel = start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   const endLabel = end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   if (nights <= 0) return startLabel;
-  return `${startLabel} – ${endLabel} · ${nights} night${nights === 1 ? '' : 's'}`;
+  return `${startLabel} – ${endLabel} · ${t.calendarHost.nightsCount(nights)}`;
 }
 
 export function eventGuestName(event: CalendarEvent): string | null {
@@ -82,7 +89,10 @@ export function eventGuestName(event: CalendarEvent): string | null {
   return only && only !== 'Guest stay' ? only : null;
 }
 
-/** Host-facing wording for a guest stay's check-in status, as shown on a calendar event. */
+/**
+ * @deprecated English-only fallback for call sites without `t` handy —
+ * prefer `t.guestStayStatus` (see eventStatusLabel below, which does).
+ */
 export const GUEST_STAY_STATUS_LABEL: Record<string, string> = {
   PENDING: 'Awaiting online check-in',
   SUBMITTED: 'Check-in complete',
@@ -111,11 +121,11 @@ export function addDaysIso(iso: string, n: number) {
   return ymd(shifted.getFullYear(), shifted.getMonth(), shifted.getDate());
 }
 
-export function eventStatusLabel(event: CalendarEvent) {
-  if (event.kind === 'CLEANING') return STATUS_LABELS[event.status as keyof typeof STATUS_LABELS] ?? event.status;
-  if (event.isBlocked) return 'Blocked';
-  if (event.source === 'DIRECT') return GUEST_STAY_STATUS_LABEL[event.status] ?? event.status;
-  return 'Confirmed';
+export function eventStatusLabel(event: CalendarEvent, t: Dict) {
+  if (event.kind === 'CLEANING') return t.bookingStatus[event.status as keyof Dict['bookingStatus']] ?? event.status;
+  if (event.isBlocked) return t.calendarHost.legendBlocked;
+  if (event.source === 'DIRECT') return t.guestStayStatus[event.status as keyof Dict['guestStayStatus']] ?? event.status;
+  return t.calendarHost.confirmedStatus;
 }
 export function eventStatusTone(event: CalendarEvent): 'neutral' | 'primary' | 'accent' | 'success' {
   if (event.kind === 'CLEANING') return STATUS_TONE[event.status as keyof typeof STATUS_TONE] ?? 'neutral';

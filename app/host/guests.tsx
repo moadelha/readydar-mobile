@@ -11,6 +11,8 @@ import { useToast } from '@/lib/toast';
 import { bucketOf, groupByMonth, stayLabel, CheckInBucket, MonthGroup } from '@/lib/checkin-groups';
 import { colors, spacing, typography, radius } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { Dict } from '@/lib/i18n/dictionary';
 
 /**
  * The three sections this screen is built around.
@@ -22,56 +24,55 @@ import { Ionicons } from '@expo/vector-icons';
  * months ago — with no way to get at just the ones needing action. Status
  * first, month second, matches what the host is actually looking for.
  */
-const SECTIONS: {
+function getSections(t: Dict): {
   key: CheckInBucket;
   title: string;
   subtitle: string;
   icon: keyof typeof Ionicons.glyphMap;
   tint: string;
-}[] = [
-  {
-    key: 'UPCOMING',
-    title: 'Upcoming',
-    subtitle: 'Links still waiting on the guest',
-    icon: 'key-outline',
-    tint: colors.accentBg,
-  },
-  {
-    key: 'SUBMITTED',
-    title: 'Submitted by guest',
-    subtitle: 'Details received — ID, contract and PDF on the property page',
-    icon: 'checkmark-circle-outline',
-    tint: colors.successBg,
-  },
-  {
-    key: 'EXPIRED',
-    title: 'Expired',
-    subtitle: 'The stay has passed and the link no longer works',
-    icon: 'time-outline',
-    tint: 'rgba(27,31,35,0.06)',
-  },
-];
+}[] {
+  return [
+    {
+      key: 'UPCOMING',
+      title: t.guestsList.sectionUpcomingTitle,
+      subtitle: t.guestsList.sectionUpcomingSubtitle,
+      icon: 'key-outline',
+      tint: colors.accentBg,
+    },
+    {
+      key: 'SUBMITTED',
+      title: t.guestsList.sectionSubmittedTitle,
+      subtitle: t.guestsList.sectionSubmittedSubtitle,
+      icon: 'checkmark-circle-outline',
+      tint: colors.successBg,
+    },
+    {
+      key: 'EXPIRED',
+      title: t.guestsList.sectionExpiredTitle,
+      subtitle: t.guestsList.sectionExpiredSubtitle,
+      icon: 'time-outline',
+      tint: 'rgba(27,31,35,0.06)',
+    },
+  ];
+}
 
-const CHECKIN_STATUS_LABEL: Record<string, string> = {
-  PENDING: 'Awaiting guest',
-  SUBMITTED: 'Submitted',
-  EXPIRED: 'Expired',
-};
 const CHECKIN_STATUS_TONE: Record<string, 'neutral' | 'primary' | 'accent' | 'success'> = {
   PENDING: 'accent',
   SUBMITTED: 'success',
   EXPIRED: 'neutral',
 };
 
-function guestLabel(item: AllCheckIn) {
+function guestLabel(item: AllCheckIn, t: Dict) {
   if (item.guestFirstName) return `${item.guestFirstName} ${item.guestLastName ?? ''}`.trim();
-  return item.guestNameHint || 'Guest';
+  return item.guestNameHint || t.propertyDetail.guestFallback;
 }
 
 export default function GuestsScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const toast = useToast();
+  const { t } = useLanguage();
+  const SECTIONS = useMemo(() => getSections(t), [t]);
   const [checkIns, setCheckIns] = useState<AllCheckIn[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -104,7 +105,7 @@ export default function GuestsScreen() {
       const data = await api.checkins.listAll(session.accessToken);
       setCheckIns(data);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load guest check-ins.');
+      setError(err instanceof ApiError ? err.message : t.guestsList.errorLoad);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -131,11 +132,11 @@ export default function GuestsScreen() {
         // Submitted check-ins are filed by when the stay happened, same as
         // the others — a host looking for "who stayed in July" wants the
         // stay's month, not the date the form happened to be filled in.
-        months: groupByMonth(items, (i) => i.expectedCheckIn),
+        months: groupByMonth(items, (i) => i.expectedCheckIn, t),
       };
     }
     return result;
-  }, [checkIns]);
+  }, [checkIns, SECTIONS, t]);
 
   function toggleSection(key: CheckInBucket) {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -155,7 +156,7 @@ export default function GuestsScreen() {
     const url = resolveCheckInUrl(item.token);
     await Clipboard.setStringAsync(url);
     setCopiedId(item.id);
-    toast.show('Check-in link copied');
+    toast.show(t.guestsList.checkInLinkCopiedToast);
     setTimeout(() => setCopiedId((id) => (id === item.id ? null : id)), 2000);
   }
 
@@ -170,14 +171,14 @@ export default function GuestsScreen() {
    */
   async function handleDeleteCheckIn(item: AllCheckIn) {
     if (!session) return;
-    const label = item.guestNameHint?.trim() || 'this guest';
+    const label = item.guestNameHint?.trim() || t.propertyDetail.guestFallback;
     const confirmed = await new Promise<boolean>((resolve) => {
       Alert.alert(
-        'Delete check-in link?',
-        `The link for ${label} at ${item.property.name} will stop working and can't be recovered. The guest hasn't submitted anything yet, so no guest details are lost.`,
+        t.propertyDetail.deleteCheckInTitle,
+        t.guestsList.deleteCheckInMessage(label, item.property.name),
         [
-          { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-          { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
+          { text: t.common.cancel, style: 'cancel', onPress: () => resolve(false) },
+          { text: t.propertyDetail.deleteThisLink, style: 'destructive', onPress: () => resolve(true) },
         ],
         { cancelable: true, onDismiss: () => resolve(false) },
       );
@@ -191,9 +192,9 @@ export default function GuestsScreen() {
       // Drop it locally rather than refetching — clearing a run of stale
       // links shouldn't cost a round-trip each.
       setCheckIns((prev) => prev.filter((c) => c.id !== item.id));
-      toast.show('Check-in link deleted');
+      toast.show(t.guestsList.checkInLinkDeletedToast);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not delete that check-in link.');
+      setError(err instanceof ApiError ? err.message : t.propertyDetail.errorDeleteCheckIn);
     } finally {
       setBusyId(null);
     }
@@ -210,7 +211,7 @@ export default function GuestsScreen() {
         day: 'numeric',
         month: 'long',
       });
-      const text = `Hi! Please complete your online check-in for ${item.property.name}, arriving ${arriving}: ${url}`;
+      const text = t.propertyDetail.checkInShareMessage(item.property.name, arriving, url);
       // Target the guest's own number directly when known — see the
       // matching comment on dashboard.tsx's handleShareCheckInLink. Without
       // this, wa.me/?text=... has no recipient and just opens WhatsApp's
@@ -236,7 +237,7 @@ export default function GuestsScreen() {
       const { text } = await api.guestWelcome.preview(item.id, session.accessToken);
       setPreviewText(text);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load the message preview.');
+      setError(err instanceof ApiError ? err.message : t.propertyDetail.errorPreview);
     } finally {
       setIsPreviewLoading(false);
     }
@@ -255,7 +256,7 @@ export default function GuestsScreen() {
       setExpandedId(null);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send the welcome message.');
+      setError(err instanceof ApiError ? err.message : t.propertyDetail.errorSendWelcome);
     } finally {
       setBusyId(null);
     }
@@ -270,7 +271,7 @@ export default function GuestsScreen() {
       await api.guestWelcome.acknowledge(item.id, session.accessToken);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not open WhatsApp.');
+      setError(err instanceof ApiError ? err.message : t.propertyDetail.errorOpenWhatsApp);
     } finally {
       setBusyId(null);
     }
@@ -280,7 +281,7 @@ export default function GuestsScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'Guests', headerBackTitle: 'Back' }} />
+      <Stack.Screen options={{ headerShown: true, title: t.guestsList.title, headerBackTitle: t.guestsList.headerBack }} />
       <ScrollView
         contentContainerStyle={styles.container}
         refreshControl={
@@ -295,17 +296,17 @@ export default function GuestsScreen() {
         }
       >
         <Text style={typography.bodyMuted}>
-          Every guest check-in, grouped by what still needs doing and then by month.
+          {t.guestsList.subtitle}
         </Text>
 
         {error && <ErrorBanner message={error} onRetry={load} />}
 
         {checkIns.length === 0 ? (
           <Card style={{ marginTop: spacing.lg }}>
-            <EmptyState message="No guest check-ins yet. They'll show up here as soon as you create a check-in link for a property." />
+            <EmptyState message={t.guestsList.emptyMessage} />
             <Pressable onPress={() => router.push('/(host-tabs)/properties')} style={styles.linkAction}>
               <Ionicons name="add-circle-outline" size={14} color={colors.primary} />
-              <Text style={styles.linkText}>Start a guest's online check-in from a property</Text>
+              <Text style={styles.linkText}>{t.guestsList.emptyAction}</Text>
             </Pressable>
           </Card>
         ) : (
@@ -329,7 +330,7 @@ export default function GuestsScreen() {
 
                 {open &&
                   (group.total === 0 ? (
-                    <Text style={styles.sectionEmpty}>Nothing here.</Text>
+                    <Text style={styles.sectionEmpty}>{t.guestsList.nothingHere}</Text>
                   ) : (
                     group.months.map((monthGroup, monthIndex) => {
                       const monthOpen = isMonthOpen(section.key, monthGroup, monthIndex);
@@ -360,18 +361,18 @@ export default function GuestsScreen() {
                                   />
                                   <View style={{ flex: 1 }}>
                                     <Text style={styles.guestName} numberOfLines={1}>
-                                      {guestLabel(item)}
+                                      {guestLabel(item, t)}
                                     </Text>
                                     <Text style={typography.caption} numberOfLines={1}>
                                       {item.property.name}
                                     </Text>
                                     <Text style={styles.stayLine}>
-                                      {stayLabel(item)}
-                                      {item.guestCount > 1 ? ` · ${item.guestCount} guests` : ''}
+                                      {stayLabel(item, t)}
+                                      {item.guestCount > 1 ? ` · ${t.common.guestsCount(item.guestCount)}` : ''}
                                     </Text>
                                   </View>
                                   <StatusBadge
-                                    label={CHECKIN_STATUS_LABEL[item.status] ?? item.status}
+                                    label={t.guestStayStatus[item.status as keyof Dict['guestStayStatus']] ?? item.status}
                                     tone={CHECKIN_STATUS_TONE[item.status] ?? 'neutral'}
                                   />
                                 </View>
@@ -383,12 +384,12 @@ export default function GuestsScreen() {
                                 {section.key === 'UPCOMING' && (
                                   <View style={styles.actionRow}>
                                     <Button
-                                      label={copiedId === item.id ? 'Copied!' : 'Copy link'}
+                                      label={copiedId === item.id ? t.guestsList.copiedExclaim : t.guestsList.copyLink}
                                       onPress={() => handleCopyLink(item)}
                                       variant="outline"
                                     />
                                     <Button
-                                      label={busyId === item.id ? 'Opening…' : 'Share via WhatsApp'}
+                                      label={busyId === item.id ? t.propertyDetail.openingEllipsis : t.propertyDetail.shareViaWhatsApp}
                                       onPress={() => handleShareCheckIn(item)}
                                       loading={busyId === item.id}
                                       variant="secondary"
@@ -400,7 +401,7 @@ export default function GuestsScreen() {
                                       disabled={busyId === item.id}
                                     >
                                       <Ionicons name="trash-outline" size={14} color={colors.danger} />
-                                      <Text style={styles.deleteText}>Delete this link</Text>
+                                      <Text style={styles.deleteText}>{t.propertyDetail.deleteThisLink}</Text>
                                     </Pressable>
                                   </View>
                                 )}
@@ -412,7 +413,7 @@ export default function GuestsScreen() {
                                     disabled={busyId === item.id}
                                   >
                                     <Ionicons name="trash-outline" size={14} color={colors.danger} />
-                                    <Text style={styles.deleteText}>Delete this link</Text>
+                                    <Text style={styles.deleteText}>{t.propertyDetail.deleteThisLink}</Text>
                                   </Pressable>
                                 )}
 
@@ -421,11 +422,11 @@ export default function GuestsScreen() {
                                     {item.welcomeWhatsappSent ? (
                                       <View style={styles.welcomeStatusRow}>
                                         <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
-                                        <Text style={typography.caption}>Welcome message sent</Text>
+                                        <Text style={typography.caption}>{t.propertyDetail.welcomeMessageSent}</Text>
                                       </View>
                                     ) : item.welcomeNotifiedAt && item.welcomeWaLink ? (
                                       <Button
-                                        label={busyId === item.id ? 'Opening…' : 'Open WhatsApp — welcome message ready'}
+                                        label={busyId === item.id ? t.propertyDetail.openingEllipsis : t.propertyDetail.openWhatsAppWelcomeReady}
                                         onPress={() => handleOpenReadyWelcome(item)}
                                         loading={busyId === item.id}
                                         variant="secondary"
@@ -444,25 +445,25 @@ export default function GuestsScreen() {
                                             color={colors.primary}
                                           />
                                           <Text style={[typography.caption, { color: colors.primary, fontWeight: '600' }]}>
-                                            {expandedId === item.id ? 'Hide welcome message' : 'Send welcome message'}
+                                            {expandedId === item.id ? t.propertyDetail.hideWelcomeMessage : t.propertyDetail.sendWelcomeMessage}
                                           </Text>
                                         </Pressable>
 
                                         {expandedId === item.id && (
                                           <View style={{ marginTop: spacing.sm }}>
                                             {isPreviewLoading ? (
-                                              <Text style={typography.bodyMuted}>Loading preview…</Text>
+                                              <Text style={typography.bodyMuted}>{t.propertyDetail.loadingPreview}</Text>
                                             ) : (
                                               <>
                                                 <TextField
-                                                  label="Message (edit if needed)"
+                                                  label={t.propertyDetail.messageEditLabel}
                                                   value={previewText}
                                                   onChangeText={setPreviewText}
                                                   multiline
                                                   numberOfLines={6}
                                                 />
                                                 <Button
-                                                  label={busyId === item.id ? 'Sending…' : 'Send via WhatsApp'}
+                                                  label={busyId === item.id ? t.propertyDetail.sendingEllipsis : t.propertyDetail.sendViaWhatsApp}
                                                   onPress={() => handleSendWelcome(item)}
                                                   loading={busyId === item.id}
                                                 />
@@ -479,7 +480,7 @@ export default function GuestsScreen() {
                                   onPress={() => router.push(`/host/property/${item.property.id}`)}
                                   style={styles.viewPropertyLink}
                                 >
-                                  <Text style={styles.linkText}>View ID photo, contract &amp; PDF in property →</Text>
+                                  <Text style={styles.linkText}>{t.guestsList.viewPropertyLink}</Text>
                                 </Pressable>
                               </View>
                             ))}

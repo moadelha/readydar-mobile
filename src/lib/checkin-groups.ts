@@ -1,4 +1,5 @@
 import { GuestCheckIn } from './api';
+import { Dict } from './i18n/dictionary';
 
 /**
  * How the app classifies and buckets check-ins for the Guests screen and the
@@ -65,7 +66,7 @@ function monthOffset(key: string, now: Date) {
  * month then last. Sorting by `|offset|` gives both from one rule, with
  * future edging out past on a tie.
  */
-export function groupByMonth<T>(items: T[], getDate: (item: T) => string, now = new Date()): MonthGroup<T>[] {
+export function groupByMonth<T>(items: T[], getDate: (item: T) => string, t: Dict, now = new Date()): MonthGroup<T>[] {
   const map = new Map<string, MonthGroup<T>>();
 
   for (const item of items) {
@@ -75,7 +76,7 @@ export function groupByMonth<T>(items: T[], getDate: (item: T) => string, now = 
     let group = map.get(key);
     if (!group) {
       const offset = monthOffset(key, now);
-      group = { key, label: monthLabel(key, offset), offset, items: [] };
+      group = { key, label: monthLabel(key, offset, t), offset, items: [] };
       map.set(key, group);
     }
     group.items.push(item);
@@ -90,16 +91,16 @@ export function groupByMonth<T>(items: T[], getDate: (item: T) => string, now = 
   );
 }
 
-function monthLabel(key: string, offset: number) {
-  if (offset === 0) return 'This month';
-  if (offset === 1) return 'Next month';
-  if (offset === -1) return 'Last month';
+function monthLabel(key: string, offset: number, t: Dict) {
+  if (offset === 0) return t.relativeDate.thisMonth;
+  if (offset === 1) return t.relativeDate.nextMonth;
+  if (offset === -1) return t.relativeDate.lastMonth;
   const [y, m] = key.split('-').map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 }
 
 /** "12 – 16 Sep · 4 nights" for a stay. */
-export function stayLabel(item: { expectedCheckIn: string; expectedCheckOut: string }) {
+export function stayLabel(item: { expectedCheckIn: string; expectedCheckOut: string }, t: Dict) {
   const start = new Date(item.expectedCheckIn);
   const end = new Date(item.expectedCheckOut);
   const nights = Math.max(
@@ -112,5 +113,5 @@ export function stayLabel(item: { expectedCheckIn: string; expectedCheckOut: str
   );
   const fmt = (d: Date) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   if (nights <= 0) return fmt(start);
-  return `${fmt(start)} – ${fmt(end)} · ${nights} night${nights === 1 ? '' : 's'}`;
+  return `${fmt(start)} – ${fmt(end)} · ${t.calendarHost.nightsCount(nights)}`;
 }

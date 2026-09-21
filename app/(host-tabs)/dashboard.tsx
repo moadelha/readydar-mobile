@@ -25,7 +25,6 @@ import {
 } from '@/components/host-ui';
 import { Button } from '@/components/Button';
 import {
-  PROPERTY_STATUS_LABELS,
   PROPERTY_STATUS_TONE,
   PropertyStatus,
   UPCOMING_CHECKIN_WINDOW_MS,
@@ -44,6 +43,8 @@ import {
 import { useToast } from '@/lib/toast';
 import { colors, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { Dict } from '@/lib/i18n/dictionary';
 
 /**
  * How many rows each section shows before the rest go behind "View all".
@@ -72,8 +73,8 @@ type TomorrowCheckout = {
 };
 
 /** A pending link has no submitted guest record yet, so the only name available is the hint carried over from the reservation. */
-function guestLabel(item: PendingCheckIn) {
-  return item.guestNameHint?.trim() || 'Guest';
+function guestLabel(item: PendingCheckIn, t: Dict) {
+  return item.guestNameHint?.trim() || t.dashboardHost.guestFallback;
 }
 
 /**
@@ -88,11 +89,11 @@ function daysAway(iso: string) {
 }
 
 /** The short pill that sits on a check-in's photo: "Today", "Tomorrow", or the date. */
-function arrivalBadge(iso: string): { label: string; tone: 'primary' | 'accent' | 'danger' } {
+function arrivalBadge(iso: string, t: Dict): { label: string; tone: 'primary' | 'accent' | 'danger' } {
   const days = daysAway(iso);
-  if (days < 0) return { label: 'Overdue', tone: 'danger' };
-  if (days === 0) return { label: 'Today', tone: 'primary' };
-  if (days === 1) return { label: 'Tomorrow', tone: 'accent' };
+  if (days < 0) return { label: t.relativeDate.overdue, tone: 'danger' };
+  if (days === 0) return { label: t.relativeDate.today, tone: 'primary' };
+  if (days === 1) return { label: t.relativeDate.tomorrow, tone: 'accent' };
   return {
     label: new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
     tone: 'accent',
@@ -100,14 +101,14 @@ function arrivalBadge(iso: string): { label: string; tone: 'primary' | 'accent' 
 }
 
 /** "Today · Sat 13 Sep" — relative wording first, with the real date attached. */
-function arrivalPhrase(iso: string) {
+function arrivalPhrase(iso: string, t: Dict) {
   const days = daysAway(iso);
   const date = new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-  if (days === 0) return `Today · ${date}`;
-  if (days === 1) return `Tomorrow · ${date}`;
-  if (days === -1) return `Yesterday · ${date}`;
-  if (days < -1) return `${Math.abs(days)} days ago · ${date}`;
-  return `In ${days} days · ${date}`;
+  if (days === 0) return t.relativeDate.todayAt(date);
+  if (days === 1) return t.relativeDate.tomorrowAt(date);
+  if (days === -1) return t.relativeDate.yesterdayAt(date);
+  if (days < -1) return t.relativeDate.daysAgoAt(Math.abs(days), date);
+  return t.relativeDate.inDaysAt(days, date);
 }
 
 /**
@@ -151,6 +152,7 @@ export default function HostDashboardScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const toast = useToast();
+  const { t } = useLanguage();
 
   const [overview, setOverview] = useState<PropertyStatusItem[]>([]);
   const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
@@ -221,12 +223,12 @@ export default function HostDashboardScreen() {
       // has dropped out of this list, so its dismissal is dead weight.
       setDismissedIds(await pruneDismissed(checkIns.map((c) => c.id)));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load your dashboard.');
+      setError(err instanceof ApiError ? err.message : t.dashboardHost.errorLoad);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
-  }, [session]);
+  }, [session, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -271,8 +273,8 @@ export default function HostDashboardScreen() {
    * and the bell must never disagree about what counts as a turnover.
    */
   const notifications = useMemo(
-    () => buildNotifications({ allCheckIns, todayEvents, turnoverPropertyIds: turnoverToday }),
-    [allCheckIns, todayEvents, turnoverToday],
+    () => buildNotifications({ allCheckIns, todayEvents, turnoverPropertyIds: turnoverToday, t }),
+    [allCheckIns, todayEvents, turnoverToday, t],
   );
 
   const notifIdsKey = useMemo(() => notifications.map((n) => n.id).join('|'), [notifications]);
@@ -419,9 +421,9 @@ export default function HostDashboardScreen() {
     try {
       await api.properties.markReady(propertyId, session.accessToken);
       await load();
-      toast.show(`${propertyName} marked ready`, 'success');
+      toast.show(t.dashboardHost.markedReady(propertyName), 'success');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update the property.');
+      setError(err instanceof ApiError ? err.message : t.dashboardHost.errorUpdateProperty);
     } finally {
       setBusyId(null);
     }
@@ -445,7 +447,7 @@ export default function HostDashboardScreen() {
       setPendingCheckIns((prev) => prev.map((c) => (c.id === item.id ? { ...c, [field]: value } : c)));
     } catch (err) {
       setOpenCheckIn((prev) => (prev && prev.id === item.id ? { ...prev, [field]: !value } : prev));
-      setError(err instanceof ApiError ? err.message : 'Could not save that timing request.');
+      setError(err instanceof ApiError ? err.message : t.dashboardHost.errorTiming);
     } finally {
       setTimingBusy(false);
     }
@@ -471,7 +473,7 @@ export default function HostDashboardScreen() {
       setPendingCheckIns((prev) => prev.map((c) => (c.id === item.id ? { ...c, guestCount: next } : c)));
     } catch (err) {
       setOpenCheckIn((prev) => (prev && prev.id === item.id ? { ...prev, guestCount: previous } : prev));
-      setError(err instanceof ApiError ? err.message : 'Could not update the number of guests.');
+      setError(err instanceof ApiError ? err.message : t.dashboardHost.errorGuestCount);
     } finally {
       setGuestBusy(false);
     }
@@ -479,13 +481,13 @@ export default function HostDashboardScreen() {
 
   async function handleDismissCheckIn(item: PendingCheckIn) {
     setDismissedIds(await addDismissed(item.id));
-    toast.show('Hidden from Home', 'info');
+    toast.show(t.dashboardHost.hiddenFromHome, 'info');
   }
 
   async function handleCopyCheckInLink(item: PendingCheckIn) {
     await Clipboard.setStringAsync(resolveCheckInUrl(item.token));
     setCopiedId(item.id);
-    toast.show('Check-in link copied');
+    toast.show(t.dashboardHost.checkInLinkCopied);
     setTimeout(() => setCopiedId((id) => (id === item.id ? null : id)), 2000);
   }
 
@@ -501,7 +503,7 @@ export default function HostDashboardScreen() {
         day: 'numeric',
         month: 'long',
       });
-      const text = `Hi! Please complete your online check-in for ${item.property.name}, arriving ${arriving}: ${url}`;
+      const text = t.dashboardHost.checkInShareMessage(item.property.name, arriving, url);
       // Target the guest's own number directly when we have one (from
       // Hospitable's synced reservation data) — wa.me/<digits>?text=...
       // opens straight into a chat with that guest, prefilled. Without a
@@ -567,10 +569,10 @@ export default function HostDashboardScreen() {
           <View style={styles.headerRow}>
             <View style={{ flex: 1 }}>
               <Text style={typography.h1}>
-                {session?.user.firstName ? `Hi ${session.user.firstName}` : 'Your properties'}
+                {session?.user.firstName ? t.dashboardHost.greeting(session.user.firstName) : t.dashboardHost.greetingFallback}
               </Text>
               <Text style={[typography.bodyMuted, { marginTop: 2 }]}>
-                Here's what's happening across your properties.
+                {t.dashboardHost.subtitle}
               </Text>
             </View>
             <NotificationBell count={unread} onPress={() => setNotifOpen(true)} />
@@ -582,12 +584,12 @@ export default function HostDashboardScreen() {
         {overview.length === 0 ? (
           <Reveal delay={60}>
             <Card elevated style={{ marginTop: spacing.lg }}>
-              <Text style={typography.h3}>Add your first property</Text>
+              <Text style={typography.h3}>{t.dashboardHost.emptyTitle}</Text>
               <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>
-                Once it's added you can request cleanings and track turnovers here.
+                {t.dashboardHost.emptySubtitle}
               </Text>
               <Button
-                label="Add property"
+                label={t.dashboardHost.addProperty}
                 onPress={() => router.push('/host/property/new')}
                 style={{ marginTop: spacing.md, alignSelf: 'flex-start', paddingHorizontal: spacing.lg }}
               />
@@ -601,13 +603,13 @@ export default function HostDashboardScreen() {
                   <View style={styles.quickActionIcon}>
                     <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
                   </View>
-                  <Text style={styles.quickActionLabel}>Request cleaning</Text>
+                  <Text style={styles.quickActionLabel}>{t.dashboardHost.quickRequestCleaning}</Text>
                 </Pressable>
                 <Pressable style={styles.quickAction} onPress={() => router.push('/host/checkin/new')}>
                   <View style={styles.quickActionIcon}>
                     <Ionicons name="key-outline" size={18} color={colors.primary} />
                   </View>
-                  <Text style={styles.quickActionLabel}>Guest check-in</Text>
+                  <Text style={styles.quickActionLabel}>{t.dashboardHost.quickGuestCheckIn}</Text>
                 </Pressable>
               </View>
             </Reveal>
@@ -618,9 +620,9 @@ export default function HostDashboardScreen() {
             <Reveal delay={80}>
               <SectionHeader
                 icon="calendar-outline"
-                title="Next check-ins"
-                subtitle="Guests arriving soon · check-in links ready"
-                actionLabel={pendingCheckIns.length > 0 ? 'View all' : undefined}
+                title={t.dashboardHost.nextCheckIns}
+                subtitle={t.dashboardHost.nextCheckInsSubtitle}
+                actionLabel={pendingCheckIns.length > 0 ? t.dashboardHost.viewAll : undefined}
                 onAction={() => router.push('/host/guests')}
               />
             </Reveal>
@@ -630,8 +632,8 @@ export default function HostDashboardScreen() {
                 icon="key-outline"
                 message={
                   pendingCheckIns.length > 0
-                    ? 'No arrivals in the next few days.'
-                    : 'No guests waiting to check in.'
+                    ? t.dashboardHost.noArrivalsSoon
+                    : t.dashboardHost.noGuestsWaiting
                 }
               />
             ) : (
@@ -642,13 +644,13 @@ export default function HostDashboardScreen() {
                   <Reveal key={c.id} delay={100 + index * 30}>
                     <PropertyRow
                       photoUrl={propertyCoverUrl(property, 160)}
-                      topBadge={arrivalBadge(c.expectedCheckIn)}
-                      title={guestLabel(c)}
+                      topBadge={arrivalBadge(c.expectedCheckIn, t)}
+                      title={guestLabel(c, t)}
                       subtitle={`${c.property.name}${locationLine(property) ? ` · ${locationLine(property)}` : ''}`}
                       meta={[
-                        { icon: 'people-outline', label: `${c.guestCount || 1} guest${(c.guestCount || 1) === 1 ? '' : 's'}` },
-                        ...(time ? [{ icon: 'time-outline' as const, label: `Check-in ${time}` }] : []),
-                        { icon: 'link-outline', label: 'Check-in link ready', tone: 'primary' as const },
+                        { icon: 'people-outline', label: t.common.guestsCount(c.guestCount || 1) },
+                        ...(time ? [{ icon: 'time-outline' as const, label: t.dashboardHost.checkInAt(time) }] : []),
+                        { icon: 'link-outline', label: t.dashboardHost.checkInLinkReady, tone: 'primary' as const },
                       ]}
                       onPress={() => setOpenCheckIn(c)}
                       onDismiss={() => handleDismissCheckIn(c)}
@@ -661,7 +663,7 @@ export default function HostDashboardScreen() {
                               size={13}
                               color={colors.white}
                             />
-                            <Text style={styles.linkButtonText}>{copiedId === c.id ? 'Copied' : 'Copy link'}</Text>
+                            <Text style={styles.linkButtonText}>{copiedId === c.id ? t.dashboardHost.copied : t.dashboardHost.copyLink}</Text>
                           </Pressable>
                           <Pressable
                             style={styles.shareButton}
@@ -681,7 +683,7 @@ export default function HostDashboardScreen() {
             {upcomingCheckIns.length > CHECKIN_LIMIT && (
               <Pressable style={styles.moreRow} onPress={() => router.push('/host/guests')}>
                 <Text style={styles.moreText}>
-                  {upcomingCheckIns.length - CHECKIN_LIMIT} more arriving soon
+                  {t.dashboardHost.moreArrivingSoon(upcomingCheckIns.length - CHECKIN_LIMIT)}
                 </Text>
                 <Ionicons name="chevron-forward" size={15} color={colors.primary} />
               </Pressable>
@@ -694,12 +696,12 @@ export default function HostDashboardScreen() {
                 style={styles.moreRow}
                 onPress={async () => {
                   setDismissedIds(await clearDismissed());
-                  toast.show('Hidden check-ins restored', 'info');
+                  toast.show(t.dashboardHost.hiddenRestored, 'info');
                 }}
               >
                 <Ionicons name="eye-outline" size={15} color={colors.inkMuted} />
                 <Text style={styles.restoreText}>
-                  {dismissedIds.length} hidden check-in{dismissedIds.length === 1 ? '' : 's'} · show
+                  {t.dashboardHost.hiddenCheckIns(dismissedIds.length)}
                 </Text>
               </Pressable>
             )}
@@ -710,13 +712,13 @@ export default function HostDashboardScreen() {
             <Reveal delay={120}>
               <SectionHeader
                 icon="log-out-outline"
-                title="Tomorrow's checkouts"
-                subtitle="Guests leaving tomorrow — same-day turnovers are flagged"
+                title={t.dashboardHost.tomorrowCheckouts}
+                subtitle={t.dashboardHost.tomorrowCheckoutsSubtitle}
               />
             </Reveal>
 
             {tomorrowCheckouts.length === 0 ? (
-              <EmptyState icon="checkmark-circle-outline" message="No checkouts scheduled for tomorrow." />
+              <EmptyState icon="checkmark-circle-outline" message={t.dashboardHost.noCheckoutsTomorrow} />
             ) : (
               tomorrowCheckouts.slice(0, TOMORROW_LIMIT).map((item, index) => (
                 <Reveal key={`${item.propertyId}-${index}`} delay={140 + index * 30}>
@@ -726,10 +728,10 @@ export default function HostDashboardScreen() {
                     subtitle={item.location}
                     tags={
                       item.turnover
-                        ? [{ label: 'Same-day turnover', tone: 'danger', icon: 'flash' }]
+                        ? [{ label: t.dashboardHost.sameDayTurnover, tone: 'danger', icon: 'flash' }]
                         : undefined
                     }
-                    right={<StatusTag label="Checkout" tone="primary" icon="log-out-outline" />}
+                    right={<StatusTag label={t.dashboardHost.checkoutTag} tone="primary" icon="log-out-outline" />}
                     onPress={() => setOpenCheckout(item)}
                   />
                 </Reveal>
@@ -738,7 +740,7 @@ export default function HostDashboardScreen() {
 
             {tomorrowCheckouts.length > TOMORROW_LIMIT && (
               <Pressable style={styles.moreRow} onPress={() => router.push('/calendar')}>
-                <Text style={styles.moreText}>{tomorrowCheckouts.length - TOMORROW_LIMIT} more checking out</Text>
+                <Text style={styles.moreText}>{t.dashboardHost.moreCheckingOut(tomorrowCheckouts.length - TOMORROW_LIMIT)}</Text>
                 <Ionicons name="chevron-forward" size={15} color={colors.primary} />
               </Pressable>
             )}
@@ -747,7 +749,7 @@ export default function HostDashboardScreen() {
             {/* All apartments                                              */}
             {/* ---------------------------------------------------------- */}
             <Reveal delay={160}>
-              <SectionHeader icon="business-outline" title="All apartments" subtitle="The status of every property" />
+              <SectionHeader icon="business-outline" title={t.dashboardHost.allApartments} subtitle={t.dashboardHost.allApartmentsSubtitle} />
             </Reveal>
 
             <View style={styles.filterRow}>
@@ -755,17 +757,17 @@ export default function HostDashboardScreen() {
                 value={allFilter}
                 onChange={setAllFilter}
                 options={[
-                  { value: 'ALL', label: `All statuses · ${overview.length}` },
-                  { value: 'READY', label: PROPERTY_STATUS_LABELS.READY },
-                  { value: 'NEEDS_CLEANING', label: PROPERTY_STATUS_LABELS.NEEDS_CLEANING },
-                  { value: 'IN_PROGRESS', label: PROPERTY_STATUS_LABELS.IN_PROGRESS },
-                  { value: 'OCCUPIED', label: PROPERTY_STATUS_LABELS.OCCUPIED },
+                  { value: 'ALL', label: t.dashboardHost.allStatuses(overview.length) },
+                  { value: 'READY', label: t.propertyStatus.READY },
+                  { value: 'NEEDS_CLEANING', label: t.propertyStatus.NEEDS_CLEANING },
+                  { value: 'IN_PROGRESS', label: t.propertyStatus.IN_PROGRESS },
+                  { value: 'OCCUPIED', label: t.propertyStatus.OCCUPIED },
                 ]}
               />
             </View>
 
             {filteredAll.length === 0 ? (
-              <EmptyState icon="business-outline" message="No properties with this status." />
+              <EmptyState icon="business-outline" message={t.dashboardHost.noPropertiesWithStatus} />
             ) : (
               filteredAll.map((item, index) => (
                 <Reveal key={item.property.id} delay={180 + Math.min(index, 8) * 25}>
@@ -775,7 +777,7 @@ export default function HostDashboardScreen() {
                     subtitle={locationLine(item.property)}
                     right={
                       <StatusTag
-                        label={PROPERTY_STATUS_LABELS[item.status]}
+                        label={t.propertyStatus[item.status]}
                         tone={
                           item.status === 'READY'
                             ? 'success'
@@ -798,7 +800,7 @@ export default function HostDashboardScreen() {
                 cleaning they did themselves is done. */}
             {allFilter === 'NEEDS_CLEANING' && filteredAll.length > 0 && (
               <View style={styles.markReadyHint}>
-                <Text style={typography.caption}>Cleaned one yourself? Mark it ready:</Text>
+                <Text style={typography.caption}>{t.dashboardHost.markReadyHint}</Text>
                 <View style={styles.markReadyRow}>
                   {filteredAll.slice(0, 4).map((item) => (
                     <Pressable
@@ -827,10 +829,10 @@ export default function HostDashboardScreen() {
         <Pressable style={styles.sheetBackdrop} onPress={() => setNotifOpen(false)}>
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
             <View style={styles.notifHeader}>
-              <Text style={typography.h2}>Notifications</Text>
+              <Text style={typography.h2}>{t.dashboardHost.notifications}</Text>
               {unread > 0 && (
                 <Pressable onPress={markAllRead} hitSlop={8}>
-                  <Text style={styles.notifMarkAll}>Mark all read</Text>
+                  <Text style={styles.notifMarkAll}>{t.dashboardHost.markAllRead}</Text>
                 </Pressable>
               )}
               <Pressable onPress={() => setNotifOpen(false)} hitSlop={12}>
@@ -842,7 +844,7 @@ export default function HostDashboardScreen() {
               <View style={styles.notifEmpty}>
                 <Ionicons name="notifications-off-outline" size={26} color={colors.inkFaint} />
                 <Text style={[typography.bodyMuted, { marginTop: spacing.sm, textAlign: 'center' }]}>
-                  Nothing new. You'll see it here when a guest completes their check-in.
+                  {t.dashboardHost.notificationsEmpty}
                 </Text>
               </View>
             ) : (
@@ -867,7 +869,7 @@ export default function HostDashboardScreen() {
                         <Text style={typography.caption} numberOfLines={2}>
                           {item.body}
                         </Text>
-                        <Text style={styles.notifWhen}>{notificationTime(item.at)}</Text>
+                        <Text style={styles.notifWhen}>{notificationTime(item.at, t)}</Text>
                       </View>
                       {isUnread && <View style={styles.notifDot} />}
                       <Ionicons name="chevron-forward" size={15} color={colors.inkFaint} />
@@ -902,7 +904,7 @@ export default function HostDashboardScreen() {
                       <PropertyThumb photoUrl={propertyCoverUrl(property, 200)} size={64} />
                       <View style={{ flex: 1 }}>
                         <Text style={typography.h2} numberOfLines={2}>
-                          {guestLabel(openCheckIn)}
+                          {guestLabel(openCheckIn, t)}
                         </Text>
                         <Text style={typography.bodyMuted} numberOfLines={1}>
                           {openCheckIn.property.name}
@@ -918,35 +920,35 @@ export default function HostDashboardScreen() {
 
                     {status && (
                       <View style={styles.sheetStatusRow}>
-                        <Text style={typography.caption}>Property status</Text>
-                        <StatusBadge label={PROPERTY_STATUS_LABELS[status]} tone={PROPERTY_STATUS_TONE[status]} />
+                        <Text style={typography.caption}>{t.dashboardHost.sheetPropertyStatus}</Text>
+                        <StatusBadge label={t.propertyStatus[status]} tone={PROPERTY_STATUS_TONE[status]} />
                       </View>
                     )}
 
                     <View style={styles.sheetFacts}>
                       <SheetFact
                         icon="log-in-outline"
-                        label="Arrives"
-                        value={`${arrivalPhrase(openCheckIn.expectedCheckIn)}${time ? ` · ${time}` : ''}`}
+                        label={t.dashboardHost.sheetArrives}
+                        value={`${arrivalPhrase(openCheckIn.expectedCheckIn, t)}${time ? ` · ${time}` : ''}`}
                       />
                       <SheetFact
                         icon="log-out-outline"
-                        label="Leaves"
+                        label={t.dashboardHost.sheetLeaves}
                         value={new Date(openCheckIn.expectedCheckOut).toLocaleDateString(undefined, {
                           weekday: 'short',
                           day: 'numeric',
                           month: 'short',
                         })}
                       />
-                      <SheetFact icon="moon-outline" label="Length of stay" value={stayLabel(openCheckIn)} />
+                      <SheetFact icon="moon-outline" label={t.dashboardHost.sheetLengthOfStay} value={stayLabel(openCheckIn, t)} />
                       <View style={styles.fact}>
                         <View style={styles.factIcon}>
                           <Ionicons name="people-outline" size={15} color={colors.primary} />
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={typography.caption}>Guests</Text>
+                          <Text style={typography.caption}>{t.dashboardHost.sheetGuests}</Text>
                           <Text style={styles.factValue}>
-                            {openCheckIn.guestCount || 1} guest{(openCheckIn.guestCount || 1) === 1 ? '' : 's'}
+                            {t.common.guestsCount(openCheckIn.guestCount || 1)}
                           </Text>
                         </View>
                         {/* Editable here because this is the number the
@@ -974,15 +976,15 @@ export default function HostDashboardScreen() {
                       </View>
                     </View>
 
-                    <Text style={[typography.h3, { marginTop: spacing.lg }]}>Timing requests</Text>
+                    <Text style={[typography.h3, { marginTop: spacing.lg }]}>{t.dashboardHost.timingRequestsTitle}</Text>
                     <Text style={typography.caption}>
-                      Flag an early arrival or a late departure so cleaning is scheduled around it.
+                      {t.dashboardHost.timingRequestsSubtitle}
                     </Text>
 
                     <View style={styles.switchRow}>
                       <View style={{ flex: 1 }}>
-                        <Text style={typography.body}>Early check-in</Text>
-                        <Text style={typography.caption}>Arriving before {time ?? 'the usual time'}</Text>
+                        <Text style={typography.body}>{t.dashboardHost.earlyCheckIn}</Text>
+                        <Text style={typography.caption}>{time ? t.dashboardHost.arrivingBefore(time) : t.dashboardHost.arrivingBeforeUsual}</Text>
                       </View>
                       <Switch
                         value={!!openCheckIn.earlyCheckInRequested}
@@ -994,8 +996,8 @@ export default function HostDashboardScreen() {
 
                     <View style={styles.switchRow}>
                       <View style={{ flex: 1 }}>
-                        <Text style={typography.body}>Late checkout</Text>
-                        <Text style={typography.caption}>Leaving after the usual checkout time</Text>
+                        <Text style={typography.body}>{t.dashboardHost.lateCheckout}</Text>
+                        <Text style={typography.caption}>{t.dashboardHost.leavingAfterUsual}</Text>
                       </View>
                       <Switch
                         value={!!openCheckIn.lateCheckOutRequested}
@@ -1007,32 +1009,32 @@ export default function HostDashboardScreen() {
 
                     {openCheckIn.timingRequestNote ? (
                       <Text style={[typography.caption, { marginTop: spacing.xs }]}>
-                        Note: {openCheckIn.timingRequestNote}
+                        {t.dashboardHost.note(openCheckIn.timingRequestNote)}
                       </Text>
                     ) : null}
 
                     {openCheckIn.guestPhone && (
                       <Button
-                        label="Message guest on WhatsApp"
+                        label={t.dashboardHost.messageGuestWhatsApp}
                         onPress={() => handleMessageGuestWhatsApp(openCheckIn)}
                         variant="secondary"
                         style={{ marginTop: spacing.lg }}
                       />
                     )}
                     <Button
-                      label={copiedId === openCheckIn.id ? 'Copied!' : 'Copy check-in link'}
+                      label={copiedId === openCheckIn.id ? t.dashboardHost.copiedExclaim : t.dashboardHost.copyCheckInLink}
                       onPress={() => handleCopyCheckInLink(openCheckIn)}
                       style={{ marginTop: openCheckIn.guestPhone ? spacing.sm : spacing.lg }}
                     />
                     <Button
-                      label={busyId === openCheckIn.id ? 'Opening…' : 'Share via WhatsApp'}
+                      label={busyId === openCheckIn.id ? t.dashboardHost.opening : t.dashboardHost.shareViaWhatsApp}
                       onPress={() => handleShareCheckInLink(openCheckIn)}
                       loading={busyId === openCheckIn.id}
                       variant="outline"
                       style={{ marginTop: spacing.sm }}
                     />
                     <Button
-                      label="Open property"
+                      label={t.dashboardHost.openProperty}
                       variant="outline"
                       onPress={() => {
                         const id = openCheckIn.propertyId;
@@ -1084,54 +1086,54 @@ export default function HostDashboardScreen() {
 
                     {openCheckout.turnover && (
                       <View style={styles.sheetStatusRow}>
-                        <Text style={typography.caption}>Turnaround</Text>
-                        <StatusTag label="Same-day turnover" tone="danger" icon="flash" />
+                        <Text style={typography.caption}>{t.dashboardHost.turnaround}</Text>
+                        <StatusTag label={t.dashboardHost.sameDayTurnover} tone="danger" icon="flash" />
                       </View>
                     )}
 
                     <View style={styles.sheetFacts}>
                       <SheetFact
                         icon="log-out-outline"
-                        label="Checkout"
-                        value={`${arrivalPhrase(event.endDate)}${outTime ? ` · ${outTime}` : ''}`}
+                        label={t.dashboardHost.checkoutTag}
+                        value={`${arrivalPhrase(event.endDate, t)}${outTime ? ` · ${outTime}` : ''}`}
                       />
                       <SheetFact
                         icon="people-outline"
-                        label="Departing guests"
-                        value={`${event.guestCount || 1} guest${(event.guestCount || 1) === 1 ? '' : 's'}`}
+                        label={t.dashboardHost.departingGuests}
+                        value={t.common.guestsCount(event.guestCount || 1)}
                       />
                       {event.lateCheckOutRequested && (
-                        <SheetFact icon="time-outline" label="Late checkout requested" value="Yes" />
+                        <SheetFact icon="time-outline" label={t.dashboardHost.lateCheckoutRequested} value={t.dashboardHost.yes} />
                       )}
                     </View>
 
                     {event.timingRequestNote ? (
                       <Text style={[typography.caption, { marginTop: spacing.xs }]}>
-                        Note: {event.timingRequestNote}
+                        {t.dashboardHost.note(event.timingRequestNote)}
                       </Text>
                     ) : null}
 
                     {incomingEvent && (
                       <>
-                        <Text style={[typography.h3, { marginTop: spacing.lg }]}>Next guest — same day</Text>
+                        <Text style={[typography.h3, { marginTop: spacing.lg }]}>{t.dashboardHost.nextGuestSameDay}</Text>
                         <View style={styles.sheetFacts}>
                           <SheetFact
                             icon="log-in-outline"
-                            label="Arrives"
-                            value={`${arrivalPhrase(incomingEvent.date)}${inTime ? ` · ${inTime}` : ''}`}
+                            label={t.dashboardHost.sheetArrives}
+                            value={`${arrivalPhrase(incomingEvent.date, t)}${inTime ? ` · ${inTime}` : ''}`}
                           />
                           <SheetFact
                             icon="people-outline"
-                            label="Arriving guests"
-                            value={`${incomingEvent.guestCount || 1} guest${(incomingEvent.guestCount || 1) === 1 ? '' : 's'}`}
+                            label={t.dashboardHost.arrivingGuests}
+                            value={t.common.guestsCount(incomingEvent.guestCount || 1)}
                           />
                           {incomingEvent.earlyCheckInRequested && (
-                            <SheetFact icon="time-outline" label="Early check-in requested" value="Yes" />
+                            <SheetFact icon="time-outline" label={t.dashboardHost.earlyCheckInRequested} value={t.dashboardHost.yes} />
                           )}
                         </View>
                         {incomingEvent.timingRequestNote ? (
                           <Text style={[typography.caption, { marginTop: spacing.xs }]}>
-                            Note: {incomingEvent.timingRequestNote}
+                            {t.dashboardHost.note(incomingEvent.timingRequestNote)}
                           </Text>
                         ) : null}
                       </>
@@ -1141,26 +1143,26 @@ export default function HostDashboardScreen() {
                         instead, once it's back from the lookahead fetch. */}
                     {!openCheckout.turnover && (
                       <>
-                        <Text style={[typography.h3, { marginTop: spacing.lg }]}>After this checkout</Text>
+                        <Text style={[typography.h3, { marginTop: spacing.lg }]}>{t.dashboardHost.afterThisCheckout}</Text>
                         {!followUp || followUp.loading || followUp.propertyId !== openCheckout.propertyId ? (
-                          <Text style={typography.bodyMuted}>Checking what's next…</Text>
+                          <Text style={typography.bodyMuted}>{t.dashboardHost.checkingWhatsNext}</Text>
                         ) : followUp.next ? (
                           <View style={styles.sheetFacts}>
                             <SheetFact
                               icon="log-in-outline"
-                              label="Next guest arrives"
-                              value={arrivalPhrase(followUp.next.date)}
+                              label={t.dashboardHost.nextGuestArrives}
+                              value={arrivalPhrase(followUp.next.date, t)}
                             />
                             <SheetFact
                               icon="people-outline"
-                              label="Guests"
-                              value={`${followUp.next.guestCount || 1} guest${(followUp.next.guestCount || 1) === 1 ? '' : 's'}`}
+                              label={t.dashboardHost.sheetGuests}
+                              value={t.common.guestsCount(followUp.next.guestCount || 1)}
                             />
                           </View>
                         ) : followUp.blockedNextDay ? (
-                          <StatusTag label="Blocked after checkout" tone="neutral" icon="lock-closed-outline" />
+                          <StatusTag label={t.dashboardHost.blockedAfterCheckout} tone="neutral" icon="lock-closed-outline" />
                         ) : (
-                          <Text style={typography.bodyMuted}>Nothing booked yet — stays Ready once cleaned.</Text>
+                          <Text style={typography.bodyMuted}>{t.dashboardHost.nothingBookedYet}</Text>
                         )}
                       </>
                     )}
@@ -1172,7 +1174,7 @@ export default function HostDashboardScreen() {
                         gets to whichever cleaner picks it up. */}
                     {!openCheckout.turnover && (!followUp?.next) && (
                       <Button
-                        label="Request cleaning for this turnover"
+                        label={t.dashboardHost.requestCleaningForTurnover}
                         variant="outline"
                         onPress={() => {
                           const id = openCheckout.propertyId;
@@ -1185,7 +1187,7 @@ export default function HostDashboardScreen() {
                     )}
 
                     <Button
-                      label="Open property"
+                      label={t.dashboardHost.openProperty}
                       onPress={() => {
                         const id = openCheckout.propertyId;
                         setOpenCheckout(null);
@@ -1194,7 +1196,7 @@ export default function HostDashboardScreen() {
                       style={{ marginTop: spacing.sm }}
                     />
                     <Button
-                      label="Open this property's calendar"
+                      label={t.dashboardHost.openPropertyCalendar}
                       variant="outline"
                       onPress={() => {
                         const id = openCheckout.propertyId;

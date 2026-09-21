@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { AllCheckIn, CalendarEvent, resolveThumbnailUrl } from './api';
 import { stayLabel } from './checkin-groups';
+import { Dict } from './i18n/dictionary';
 
 /**
  * Host notifications — derived on the device, not fetched.
@@ -74,9 +75,9 @@ function startOfDay(ms: number): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
-function guestLabel(c: AllCheckIn): string {
+function guestLabel(c: AllCheckIn, t: Dict): string {
   const full = `${c.guestFirstName ?? ''} ${c.guestLastName ?? ''}`.trim();
-  return full || c.guestNameHint || 'Your guest';
+  return full || c.guestNameHint || t.notifications.guestFallback;
 }
 
 /**
@@ -95,8 +96,9 @@ export function buildNotifications(input: {
   /** Properties with a checkout and an arrival on the same day, as Home derives them. */
   turnoverPropertyIds: Set<string>;
   now?: number;
+  t: Dict;
 }): HostNotification[] {
-  const { allCheckIns, todayEvents, turnoverPropertyIds } = input;
+  const { allCheckIns, todayEvents, turnoverPropertyIds, t } = input;
   const now = input.now ?? Date.now();
   const items: HostNotification[] = [];
 
@@ -114,8 +116,8 @@ export function buildNotifications(input: {
       id: `checkin:${c.id}`,
       kind: 'CHECKIN_SUBMITTED',
       at,
-      title: `${guestLabel(c)} completed their check-in`,
-      body: `${c.property.name} · ${stayLabel(c)}`,
+      title: t.notifications.checkinTitle(guestLabel(c, t)),
+      body: t.notifications.checkinBody(c.property.name, stayLabel(c, t)),
       // Straight to the property page with that check-in opened — where the
       // ID photos, signed contract, PDF export and welcome message all are.
       href: `/host/property/${c.propertyId}?checkin=${c.id}`,
@@ -137,8 +139,8 @@ export function buildNotifications(input: {
       id: `job:${ev.bookingId}`,
       kind: 'JOB_UNACCEPTED',
       at: Number.isFinite(at) ? at : now,
-      title: 'Cleaning still has no cleaner',
-      body: `${ev.propertyName} · scheduled today`,
+      title: t.notifications.jobTitle,
+      body: t.notifications.jobBody(ev.propertyName),
       href: `/host/booking/${ev.bookingId}`,
       photoUrl: null,
       icon: 'alert-circle-outline',
@@ -163,8 +165,8 @@ export function buildNotifications(input: {
       id: `turnover:${propertyId}:${today}`,
       kind: 'SAME_DAY_TURNOVER',
       at: Number.isFinite(at) ? at : now,
-      title: 'Same-day turnover today',
-      body: `${turnoverNames[propertyId] ?? 'A property'} · a guest leaves and another arrives`,
+      title: t.notifications.turnoverTitle,
+      body: t.notifications.turnoverBody(turnoverNames[propertyId] ?? t.notifications.aProperty),
       href: `/host/property/${propertyId}`,
       photoUrl: null,
       icon: 'flash',
@@ -184,16 +186,16 @@ export function buildNotifications(input: {
  * "11h ago" — the host thinks in days, and an hours figure that crosses
  * midnight quietly lies about which day it was.
  */
-export function notificationTime(at: number, now = Date.now()): string {
+export function notificationTime(at: number, t: Dict, now = Date.now()): string {
   const diff = now - at;
-  if (diff < 60 * 1000) return 'Just now';
+  if (diff < 60 * 1000) return t.notifications.justNow;
   const minutes = Math.floor(diff / (60 * 1000));
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return t.notifications.minutesAgo(minutes);
 
   const days = Math.round((startOfDay(now) - startOfDay(at)) / (24 * 60 * 60 * 1000));
-  if (days <= 0) return `${Math.floor(diff / (60 * 60 * 1000))}h ago`;
-  if (days === 1) return 'Yesterday';
-  if (days < 7) return `${days} days ago`;
+  if (days <= 0) return t.notifications.hoursAgo(Math.floor(diff / (60 * 60 * 1000)));
+  if (days === 1) return t.notifications.yesterday;
+  if (days < 7) return t.notifications.daysAgo(days);
   return new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
 

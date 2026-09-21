@@ -32,7 +32,9 @@ import { colors, radius, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { downloadAndShare } from '@/lib/files';
 import { groupByMonth } from '@/lib/checkin-groups';
-import { PROPERTY_STATUS_LABELS, PROPERTY_STATUS_TONE, PropertyStatus } from '@/lib/status';
+import { PROPERTY_STATUS_TONE, PropertyStatus } from '@/lib/status';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { Dict } from '@/lib/i18n/dictionary';
 
 /**
  * The statuses a host can set by hand.
@@ -53,11 +55,6 @@ const SETTABLE_STATUSES: PropertyStatus[] = ['READY', 'NEEDS_CLEANING', 'IN_PROG
  */
 const COVER_HEIGHT = 170;
 
-const CHECKIN_STATUS_LABEL: Record<string, string> = {
-  PENDING: 'Awaiting guest',
-  SUBMITTED: 'Submitted',
-  EXPIRED: 'Expired',
-};
 const CHECKIN_STATUS_TONE: Record<string, 'neutral' | 'primary' | 'accent' | 'success'> = {
   PENDING: 'accent',
   SUBMITTED: 'success',
@@ -87,6 +84,7 @@ export default function PropertyDetailScreen() {
   const { id, checkin: focusCheckInId } = useLocalSearchParams<{ id: string; checkin?: string }>();
   const { session } = useAuth();
   const router = useRouter();
+  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const [property, setProperty] = useState<Property | null>(null);
@@ -148,7 +146,7 @@ export default function PropertyDetailScreen() {
       setProperty(updated);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not change the status.');
+      setError(err instanceof ApiError ? err.message : t.propertyDetail.errorSetStatus);
     } finally {
       setStatusBusy(null);
     }
@@ -177,7 +175,7 @@ export default function PropertyDetailScreen() {
       setCheckIns(checkInList);
       setDerivedStatus(overview.find((o) => o.property.id === id)?.status ?? null);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load this property.');
+      setError(err instanceof ApiError ? err.message : t.propertyDetail.errorLoad);
     }
   }, [session, id]);
 
@@ -188,7 +186,7 @@ export default function PropertyDetailScreen() {
   );
 
   /** This property's check-in links bucketed by the month the stay starts in. */
-  const checkInMonths = useMemo(() => groupByMonth(checkIns, (c) => c.expectedCheckIn), [checkIns]);
+  const checkInMonths = useMemo(() => groupByMonth(checkIns, (c) => c.expectedCheckIn, t), [checkIns, t]);
 
   /**
    * Open and reveal the check-in a `?checkin=` link points at.
@@ -233,7 +231,7 @@ export default function PropertyDetailScreen() {
       await api.properties.markReady(id, session.accessToken);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not update the property.');
+      setError(err instanceof ApiError ? err.message : t.propertyDetail.errorMarkReady);
     } finally {
       setIsMarkingReady(false);
     }
@@ -248,7 +246,7 @@ export default function PropertyDetailScreen() {
         day: 'numeric',
         month: 'long',
       });
-      const text = `Hi! Please complete your online check-in${property ? ` for ${property.name}` : ''}, arriving ${arriving}: ${url}`;
+      const text = t.propertyDetail.checkInShareMessage(property ? property.name : null, arriving, url);
       // Target the guest's own number directly when known — see the
       // matching comment on dashboard.tsx's handleShareCheckInLink. Without
       // this, wa.me/?text=... has no recipient and just opens WhatsApp's
@@ -289,7 +287,7 @@ export default function PropertyDetailScreen() {
       const { text } = await api.guestWelcome.preview(checkIn.id, session.accessToken);
       setPreviewText(text);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load the message preview.');
+      setError(err instanceof ApiError ? err.message : t.propertyDetail.errorPreview);
     } finally {
       setIsPreviewLoading(false);
     }
@@ -308,7 +306,7 @@ export default function PropertyDetailScreen() {
       setExpandedCheckInId(null);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not send the welcome message.');
+      setError(err instanceof ApiError ? err.message : t.propertyDetail.errorSendWelcome);
     } finally {
       setWelcomeBusyId(null);
     }
@@ -323,7 +321,7 @@ export default function PropertyDetailScreen() {
       await api.guestWelcome.acknowledge(checkIn.id, session.accessToken);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not open WhatsApp.');
+      setError(err instanceof ApiError ? err.message : t.propertyDetail.errorOpenWhatsApp);
     } finally {
       setWelcomeBusyId(null);
     }
@@ -345,7 +343,7 @@ export default function PropertyDetailScreen() {
       const { url } = await api.checkins.guestPhotoUrl(checkInId, guestId, session.accessToken);
       setViewerUrl(url);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not open that ID photo.');
+      setError(err instanceof ApiError ? err.message : t.propertyDetail.errorOpenIdPhoto);
     } finally {
       setPhotoBusyKey(null);
     }
@@ -359,14 +357,14 @@ export default function PropertyDetailScreen() {
    */
   async function handleDeleteCheckIn(checkIn: GuestCheckIn) {
     if (!session || deleteBusyId) return;
-    const label = checkIn.guestNameHint?.trim() || 'this guest';
+    const label = checkIn.guestNameHint?.trim() || t.propertyDetail.guestFallback;
     const confirmed = await new Promise<boolean>((resolve) => {
       Alert.alert(
-        'Delete check-in link?',
-        `The link for ${label} will stop working and can't be recovered. The guest hasn't submitted anything yet, so no guest details are lost.`,
+        t.propertyDetail.deleteCheckInTitle,
+        t.propertyDetail.deleteCheckInMessage(label),
         [
-          { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-          { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
+          { text: t.common.cancel, style: 'cancel', onPress: () => resolve(false) },
+          { text: t.propertyDetail.deleteThisLink, style: 'destructive', onPress: () => resolve(true) },
         ],
         { cancelable: true, onDismiss: () => resolve(false) },
       );
@@ -379,7 +377,7 @@ export default function PropertyDetailScreen() {
       await api.properties.deleteGuestCheckIn(checkIn.id, session.accessToken);
       setCheckIns((prev) => prev.filter((c) => c.id !== checkIn.id));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not delete that check-in link.');
+      setError(err instanceof ApiError ? err.message : t.propertyDetail.errorDeleteCheckIn);
     } finally {
       setDeleteBusyId(null);
     }
@@ -394,7 +392,7 @@ export default function PropertyDetailScreen() {
         Authorization: `Bearer ${session.accessToken}`,
       });
     } catch (err) {
-      setError('Could not download the PDF. Please try again.');
+      setError(t.propertyDetail.errorDownloadPdf);
     } finally {
       setPdfBusyId(null);
     }
@@ -409,7 +407,7 @@ export default function PropertyDetailScreen() {
         Authorization: `Bearer ${session.accessToken}`,
       });
     } catch (err) {
-      setError('Could not download the contract. Please try again.');
+      setError(t.propertyDetail.errorDownloadContract);
     } finally {
       setContractPdfBusyId(null);
     }
@@ -465,7 +463,7 @@ export default function PropertyDetailScreen() {
         options={{
           headerShown: true,
           title: property.name,
-          headerBackTitle: 'Back',
+          headerBackTitle: t.propertyDetail.headerBack,
           headerRight: () => (
             <Pressable onPress={() => router.push(`/host/property-settings/${property.id}`)} hitSlop={8}>
               <Ionicons name="settings-outline" size={22} color={colors.primary} />
@@ -490,15 +488,15 @@ export default function PropertyDetailScreen() {
           </Text>
         </View>
         <Text style={typography.caption}>
-          {property.bedrooms} bed · {property.bathrooms} bath · up to {property.maxGuests} guests
+          {t.propertiesList.bedBathGuests(property.bedrooms, property.bathrooms, property.maxGuests)}
         </Text>
-        {property.nightlyRate && <Text style={styles.rate}>{Number(property.nightlyRate).toFixed(0)} MAD / night</Text>}
+        {property.nightlyRate && <Text style={styles.rate}>{t.propertiesList.ratePerNight(Math.round(Number(property.nightlyRate)))}</Text>}
 
         {property.hospitableListingId && (
           <View style={styles.syncNotice}>
             <Ionicons name="link-outline" size={14} color={colors.primary} />
             <Text style={[typography.caption, { flex: 1 }]}>
-              Imported from Airbnb — name, address, and room counts sync automatically. Edit those on Airbnb, not here.
+              {t.propertyDetail.syncNotice}
             </Text>
           </View>
         )}
@@ -517,9 +515,9 @@ export default function PropertyDetailScreen() {
             why "Back to automatic" is always offered. */}
         <View style={styles.statusCard}>
           <View style={styles.statusHeaderRow}>
-            <Text style={styles.statusLabel}>Status</Text>
+            <Text style={styles.statusLabel}>{t.propertyDetail.statusLabel}</Text>
             <StatusBadge
-              label={PROPERTY_STATUS_LABELS[effectiveStatus] ?? effectiveStatus}
+              label={t.propertyStatus[effectiveStatus] ?? effectiveStatus}
               tone={PROPERTY_STATUS_TONE[effectiveStatus] ?? 'neutral'}
             />
           </View>
@@ -537,7 +535,7 @@ export default function PropertyDetailScreen() {
                     property.manualStatusOverride === s && styles.statusChipTextActive,
                   ]}
                 >
-                  {statusBusy === s ? '…' : PROPERTY_STATUS_LABELS[s]}
+                  {statusBusy === s ? '…' : t.propertyStatus[s]}
                 </Text>
               </Pressable>
             ))}
@@ -545,22 +543,22 @@ export default function PropertyDetailScreen() {
           {property.manualStatusOverride ? (
             <Pressable onPress={() => handleSetStatus(null)} disabled={statusBusy !== null}>
               <Text style={styles.statusAuto}>
-                Set by you — it won't change on its own. Tap to go back to automatic.
+                {t.propertyDetail.statusAuto}
               </Text>
             </Pressable>
           ) : (
-            <Text style={typography.caption}>Working itself out from bookings and cleanings.</Text>
+            <Text style={typography.caption}>{t.propertyDetail.statusWorkingItOut}</Text>
           )}
         </View>
 
         <View style={styles.actionRow}>
           <Button
-            label="Request a cleaning"
+            label={t.propertyDetail.requestCleaning}
             onPress={() => router.push({ pathname: '/host/booking/new', params: { propertyId: property.id } })}
             style={{ flex: 1 }}
           />
           <Button
-            label={isMarkingReady ? '…' : 'Mark ready'}
+            label={isMarkingReady ? '…' : t.propertyDetail.markReady}
             onPress={handleMarkReady}
             loading={isMarkingReady}
             variant="outline"
@@ -569,21 +567,21 @@ export default function PropertyDetailScreen() {
         </View>
 
         <Button
-          label="Log an expense for this property"
+          label={t.propertyDetail.logExpense}
           onPress={() => router.push({ pathname: '/host/expense/new', params: { propertyId: property.id } })}
           variant="outline"
           style={{ marginTop: spacing.sm }}
         />
 
         <Button
-          label="Cleaning reports"
+          label={t.propertyDetail.cleaningReports}
           onPress={() => router.push({ pathname: '/host/cleaning-reports', params: { propertyId: property.id } })}
           variant="outline"
           style={{ marginTop: spacing.sm }}
         />
 
         <View style={styles.sectionHeaderRow}>
-          <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0 }]}>Guest check-ins</Text>
+          <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0 }]}>{t.propertyDetail.guestCheckIns}</Text>
           <Pressable
             onPress={() => router.push({ pathname: '/host/checkin/new', params: { propertyId: property.id } })}
             style={styles.addButton}
@@ -595,7 +593,7 @@ export default function PropertyDetailScreen() {
         {checkIns.length === 0 ? (
           <Card>
             <Text style={typography.bodyMuted}>
-              No check-in links yet. Add one to collect the guest's arrival details and ID before you meet them.
+              {t.propertyDetail.noCheckInsYet}
             </Text>
           </Card>
         ) : (
@@ -636,35 +634,35 @@ export default function PropertyDetailScreen() {
                 <View style={{ flex: 1 }}>
                   <View style={styles.checkinTitleRow}>
                     <Text style={typography.h3}>
-                      {c.guestFirstName ? `${c.guestFirstName} ${c.guestLastName ?? ''}`.trim() : c.guestNameHint || 'Guest'}
+                      {c.guestFirstName ? `${c.guestFirstName} ${c.guestLastName ?? ''}`.trim() : c.guestNameHint || t.propertyDetail.guestFallback}
                     </Text>
                     {c.externalReservationId && (
                       <View style={styles.syncBadge}>
                         <Ionicons name="link-outline" size={11} color={colors.primary} />
-                        <Text style={styles.syncBadgeText}>Airbnb</Text>
+                        <Text style={styles.syncBadgeText}>{t.propertiesList.airbnbBadge}</Text>
                       </View>
                     )}
                   </View>
                   <Text style={typography.bodyMuted}>
                     {new Date(c.expectedCheckIn).toLocaleDateString()} → {new Date(c.expectedCheckOut).toLocaleDateString()}
-                    {c.guestCount > 1 ? ` · ${c.guestCount} guests` : ''}
+                    {c.guestCount > 1 ? ` · ${t.common.guestsCount(c.guestCount)}` : ''}
                   </Text>
                 </View>
-                <StatusBadge label={CHECKIN_STATUS_LABEL[c.status] ?? c.status} tone={CHECKIN_STATUS_TONE[c.status] ?? 'neutral'} />
+                <StatusBadge label={t.guestStayStatus[c.status as keyof Dict['guestStayStatus']] ?? c.status} tone={CHECKIN_STATUS_TONE[c.status] ?? 'neutral'} />
               </View>
 
               {c.externalReservationId && c.status === 'PENDING' && (
                 <Text style={[typography.caption, { marginTop: 4 }]}>
-                  Created automatically from an Airbnb booking — share the link below to collect the guest's details.
+                  {t.propertyDetail.createdFromAirbnb}
                 </Text>
               )}
 
               {c.status === 'SUBMITTED' && (
                 <View style={{ marginTop: spacing.sm }}>
-                  {c.guestPhone && <Text style={styles.detailLine}>Phone: {c.guestPhone}</Text>}
+                  {c.guestPhone && <Text style={styles.detailLine}>{t.propertyDetail.phoneLabel(c.guestPhone)}</Text>}
                   {c.nationality && (
                     <Text style={styles.detailLine}>
-                      {c.nationality} · {c.idType === 'passport' ? 'Passport' : 'National ID'} {c.idNumber}
+                      {t.propertyDetail.nationalityIdLine(c.nationality, c.idType === 'passport' ? t.propertyDetail.passport : t.propertyDetail.nationalId, c.idNumber ?? '')}
                     </Text>
                   )}
 
@@ -686,7 +684,7 @@ export default function PropertyDetailScreen() {
                     if (idPhotos.length === 0) return null;
                     return (
                       <View style={{ marginTop: spacing.sm }}>
-                        <Text style={styles.idPhotoLabel}>ID photo{idPhotos.length > 1 ? 's' : ''}</Text>
+                        <Text style={styles.idPhotoLabel}>{idPhotos.length > 1 ? t.propertyDetail.idPhotos : t.propertyDetail.idPhoto}</Text>
                         <View style={styles.photoGrid}>
                           {idPhotos.map((g) => {
                             // Two storage eras live side by side here. Photos
@@ -720,7 +718,7 @@ export default function PropertyDetailScreen() {
                                   size={20}
                                   color={colors.primary}
                                 />
-                                <Text style={styles.idPhotoLockedText}>{busy ? 'Opening…' : 'View ID'}</Text>
+                                <Text style={styles.idPhotoLockedText}>{busy ? t.propertyDetail.openingEllipsis : t.propertyDetail.viewId}</Text>
                               </Pressable>
                             );
                           })}
@@ -740,7 +738,7 @@ export default function PropertyDetailScreen() {
                       color={colors.primary}
                     />
                     <Text style={[typography.caption, { color: colors.primary, fontWeight: '600' }]}>
-                      {pdfBusyId === c.id ? 'Preparing PDF…' : 'Download check-in PDF'}
+                      {pdfBusyId === c.id ? t.propertyDetail.preparingPdf : t.propertyDetail.downloadCheckInPdf}
                     </Text>
                   </Pressable>
 
@@ -756,7 +754,7 @@ export default function PropertyDetailScreen() {
                         color={colors.primary}
                       />
                       <Text style={[typography.caption, { color: colors.primary, fontWeight: '600' }]}>
-                        {contractPdfBusyId === c.id ? 'Preparing contract…' : 'Download signed contract'}
+                        {contractPdfBusyId === c.id ? t.propertyDetail.preparingContract : t.propertyDetail.downloadContract}
                       </Text>
                     </Pressable>
                   )}
@@ -764,11 +762,11 @@ export default function PropertyDetailScreen() {
                   {c.welcomeWhatsappSent ? (
                     <View style={styles.welcomeStatusRow}>
                       <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
-                      <Text style={typography.caption}>Welcome message sent</Text>
+                      <Text style={typography.caption}>{t.propertyDetail.welcomeMessageSent}</Text>
                     </View>
                   ) : c.welcomeNotifiedAt && c.welcomeWaLink ? (
                     <Button
-                      label={welcomeBusyId === c.id ? 'Opening…' : 'Open WhatsApp — welcome message ready'}
+                      label={welcomeBusyId === c.id ? t.propertyDetail.openingEllipsis : t.propertyDetail.openWhatsAppWelcomeReady}
                       onPress={() => handleOpenReadyWelcome(c)}
                       loading={welcomeBusyId === c.id}
                       variant="secondary"
@@ -783,25 +781,25 @@ export default function PropertyDetailScreen() {
                           color={colors.primary}
                         />
                         <Text style={[typography.caption, { color: colors.primary, fontWeight: '600' }]}>
-                          {expandedCheckInId === c.id ? 'Hide welcome message' : 'Send welcome message'}
+                          {expandedCheckInId === c.id ? t.propertyDetail.hideWelcomeMessage : t.propertyDetail.sendWelcomeMessage}
                         </Text>
                       </Pressable>
 
                       {expandedCheckInId === c.id && (
                         <View style={{ marginTop: spacing.sm }}>
                           {isPreviewLoading ? (
-                            <Text style={typography.bodyMuted}>Loading preview…</Text>
+                            <Text style={typography.bodyMuted}>{t.propertyDetail.loadingPreview}</Text>
                           ) : (
                             <>
                               <TextField
-                                label="Message (edit if needed)"
+                                label={t.propertyDetail.messageEditLabel}
                                 value={previewText}
                                 onChangeText={setPreviewText}
                                 multiline
                                 numberOfLines={6}
                               />
                               <Button
-                                label={welcomeBusyId === c.id ? 'Sending…' : 'Send via WhatsApp'}
+                                label={welcomeBusyId === c.id ? t.propertyDetail.sendingEllipsis : t.propertyDetail.sendViaWhatsApp}
                                 onPress={() => handleSendWelcome(c)}
                                 loading={welcomeBusyId === c.id}
                               />
@@ -818,9 +816,9 @@ export default function PropertyDetailScreen() {
                 <>
                   {c.guestPhone && (
                     <>
-                      <Text style={[styles.detailLine, { marginTop: spacing.sm }]}>Phone: {c.guestPhone}</Text>
+                      <Text style={[styles.detailLine, { marginTop: spacing.sm }]}>{t.propertyDetail.phoneLabel(c.guestPhone)}</Text>
                       <Button
-                        label="Message guest on WhatsApp"
+                        label={t.propertyDetail.messageGuestWhatsApp}
                         onPress={() => handleMessageGuestWhatsApp(c)}
                         variant="secondary"
                         style={{ marginTop: spacing.xs }}
@@ -828,7 +826,7 @@ export default function PropertyDetailScreen() {
                     </>
                   )}
                   <Button
-                    label={sharingId === c.id ? 'Opening…' : 'Share via WhatsApp'}
+                    label={sharingId === c.id ? t.propertyDetail.openingEllipsis : t.propertyDetail.shareViaWhatsApp}
                     onPress={() => handleShareCheckIn(c)}
                     loading={sharingId === c.id}
                     variant="outline"
@@ -846,7 +844,7 @@ export default function PropertyDetailScreen() {
                       color={colors.danger}
                     />
                     <Text style={styles.deleteText}>
-                      {deleteBusyId === c.id ? 'Deleting…' : 'Delete this link'}
+                      {deleteBusyId === c.id ? t.propertyDetail.deletingEllipsis : t.propertyDetail.deleteThisLink}
                     </Text>
                   </Pressable>
                 </>
@@ -861,10 +859,10 @@ export default function PropertyDetailScreen() {
 
         {(property.checkInTime || property.checkOutTime) && (
           <>
-            <Text style={styles.sectionTitle}>Check-in / check-out</Text>
+            <Text style={styles.sectionTitle}>{t.propertyDetail.checkInOutTitle}</Text>
             <Card>
               <Text style={typography.body}>
-                Check-in {property.checkInTime ?? '—'} · Check-out {property.checkOutTime ?? '—'}
+                {t.propertyDetail.checkInOutLine(property.checkInTime ?? '—', property.checkOutTime ?? '—')}
               </Text>
             </Card>
           </>
@@ -872,11 +870,11 @@ export default function PropertyDetailScreen() {
 
         {(property.gateCode || property.doorAccessCode || property.apartmentNumber || property.accessInstructions) && (
           <>
-            <Text style={styles.sectionTitle}>Access details</Text>
+            <Text style={styles.sectionTitle}>{t.propertyDetail.accessDetailsTitle}</Text>
             <Card>
-              {property.apartmentNumber && <Text style={styles.detailLine}>Unit / apartment: {property.apartmentNumber}</Text>}
-              {property.gateCode && <Text style={styles.detailLine}>Gate code: {property.gateCode}</Text>}
-              {property.doorAccessCode && <Text style={styles.detailLine}>Door code: {property.doorAccessCode}</Text>}
+              {property.apartmentNumber && <Text style={styles.detailLine}>{t.propertyDetail.unitApartment(property.apartmentNumber)}</Text>}
+              {property.gateCode && <Text style={styles.detailLine}>{t.propertyDetail.gateCode(property.gateCode)}</Text>}
+              {property.doorAccessCode && <Text style={styles.detailLine}>{t.propertyDetail.doorCode(property.doorAccessCode)}</Text>}
               {property.accessInstructions && (
                 <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>{property.accessInstructions}</Text>
               )}
@@ -886,7 +884,7 @@ export default function PropertyDetailScreen() {
 
         {property.wifiInfo && (
           <>
-            <Text style={styles.sectionTitle}>Wifi</Text>
+            <Text style={styles.sectionTitle}>{t.propertyDetail.wifiTitle}</Text>
             <Card>
               <Text style={typography.body}>{property.wifiInfo}</Text>
             </Card>
@@ -895,7 +893,7 @@ export default function PropertyDetailScreen() {
 
         {property.houseRules && (
           <>
-            <Text style={styles.sectionTitle}>House rules</Text>
+            <Text style={styles.sectionTitle}>{t.propertyDetail.houseRulesTitle}</Text>
             <Card>
               <Text style={typography.body}>{property.houseRules}</Text>
             </Card>
@@ -904,7 +902,7 @@ export default function PropertyDetailScreen() {
 
         {doorPhotos.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>Door / access photos</Text>
+            <Text style={styles.sectionTitle}>{t.propertyDetail.doorPhotosTitle}</Text>
             <View style={styles.photoGrid}>
               {doorPhotos.map((p) => (
                 <Pressable key={p.id} onPress={() => setViewerUrl(resolveUploadUrl(p.url))}>
@@ -916,7 +914,7 @@ export default function PropertyDetailScreen() {
         )}
 
         <Button
-          label="Automation settings"
+          label={t.propertyDetail.automationSettings}
           onPress={() => router.push(`/host/property-settings/${property.id}`)}
           variant="outline"
           style={{ marginTop: spacing.xl }}
@@ -925,7 +923,7 @@ export default function PropertyDetailScreen() {
         <View style={styles.infoRow}>
           <Ionicons name="information-circle-outline" size={16} color={colors.inkFaint} />
           <Text style={[typography.bodyMuted, { flex: 1 }]}>
-            iCal sync and general property photos are managed from the ReadyDar web dashboard for now.
+            {t.propertyDetail.icalNotice}
           </Text>
         </View>
       </ScrollView>
