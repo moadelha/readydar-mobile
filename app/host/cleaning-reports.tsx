@@ -1,11 +1,12 @@
-import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl, Pressable } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, RefreshControl, Pressable, Alert } from 'react-native';
 import { useLocalSearchParams, useFocusEffect, useRouter, Stack } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, Property, CleaningReport } from '@/lib/api';
 import { Screen, Card, EmptyState, LoadingScreen, ErrorBanner, StatusBadge } from '@/components/ui';
 import { colors, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '@/lib/i18n/language-context';
 
 /**
  * One property's cleaning reports (proof-of-cleaning walkthroughs), newest
@@ -18,6 +19,7 @@ export default function CleaningReportsScreen() {
   const { propertyId } = useLocalSearchParams<{ propertyId: string }>();
   const { session } = useAuth();
   const router = useRouter();
+  const { t } = useLanguage();
 
   const [property, setProperty] = useState<Property | null>(null);
   const [reports, setReports] = useState<CleaningReport[]>([]);
@@ -25,6 +27,22 @@ export default function CleaningReportsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The property screen's button already blocks navigation here for plans
+  // without the feature, but this screen is also reachable by deep link —
+  // and without this the "+" would just surface CleaningReportsService's
+  // raw BadRequestException as an error banner. Fail open on a failed
+  // fetch; the server is still the real gate either way.
+  const [cleaningReportsEnabled, setCleaningReportsEnabled] = useState<boolean | undefined>(undefined);
+
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    api.billing
+      .getEntitlements(session.accessToken)
+      .then((e) => { if (!cancelled) setCleaningReportsEnabled(e.cleaningReportsEnabled); })
+      .catch(() => { if (!cancelled) setCleaningReportsEnabled(true); });
+    return () => { cancelled = true; };
+  }, [session]);
 
   const load = useCallback(async () => {
     if (!session || !propertyId) return;
@@ -42,11 +60,12 @@ export default function CleaningReportsScreen() {
       setProperty(p);
       setReports(list);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load cleaning reports.');
+      setError(err instanceof ApiError ? err.message : t.cleaningReports.loadError);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, propertyId]);
 
   useFocusEffect(
@@ -57,13 +76,17 @@ export default function CleaningReportsScreen() {
 
   async function handleStartNew() {
     if (!session || !propertyId || isCreating) return;
+    if (cleaningReportsEnabled === false) {
+      Alert.alert(t.cleaningReports.upgradeTitle, t.cleaningReports.upgradeBody);
+      return;
+    }
     setIsCreating(true);
     setError(null);
     try {
       const report = await api.cleaningReports.create(propertyId, session.accessToken);
       router.push(`/host/cleaning-report/${report.id}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not start a new report.');
+      setError(err instanceof ApiError ? err.message : t.cleaningReports.startError);
     } finally {
       setIsCreating(false);
     }
@@ -73,10 +96,12 @@ export default function CleaningReportsScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'Cleaning Reports', headerBackTitle: 'Back' }} />
+      <Stack.Screen
+        options={{ headerShown: true, title: t.cleaningReports.title, headerBackTitle: t.cleaningReports.back }}
+      />
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={typography.h1}>Cleaning Reports</Text>
+          <Text style={typography.h1}>{t.cleaningReports.title}</Text>
           {property && (
             <Text style={[typography.bodyMuted, { marginTop: 2 }]} numberOfLines={1}>
               {property.name}
@@ -110,8 +135,8 @@ export default function CleaningReportsScreen() {
         }
         ListEmptyComponent={
           <EmptyState
-            message="No cleaning reports yet."
-            actionLabel="Start a report"
+            message={t.cleaningReports.emptyMessage}
+            actionLabel={t.cleaningReports.startAction}
             onAction={handleStartNew}
             icon="camera-outline"
           />
@@ -123,15 +148,17 @@ export default function CleaningReportsScreen() {
               <Card style={{ marginBottom: spacing.md }}>
                 <View style={styles.cardRow}>
                   <StatusBadge
-                    label={item.status === 'COMPLETED' ? 'Completed' : 'In progress'}
+                    label={
+                      item.status === 'COMPLETED'
+                        ? t.cleaningReports.statusCompleted
+                        : t.cleaningReports.statusInProgress
+                    }
                     tone={item.status === 'COMPLETED' ? 'primary' : 'accent'}
                   />
-                  <Text style={typography.caption}>
-                    {photoCount} photo{photoCount === 1 ? '' : 's'}
-                  </Text>
+                  <Text style={typography.caption}>{t.cleaningReports.photoCount(photoCount)}</Text>
                 </View>
                 <Text style={[typography.bodyMuted, { marginTop: 6 }]}>
-                  Started {new Date(item.startedAt).toLocaleDateString()}
+                  {t.cleaningReports.startedOn(new Date(item.startedAt).toLocaleDateString())}
                 </Text>
               </Card>
             </Pressable>

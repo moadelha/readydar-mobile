@@ -113,9 +113,55 @@ export interface Dict {
     editProfile: string;
     logOut: string;
   };
-  cleaningReportsGate: {
+  cleaningReports: {
+    // Plan gate (shown when the host's plan doesn't include the feature)
     upgradeTitle: string;
     upgradeBody: string;
+    // List screen
+    title: string;
+    back: string;
+    loadError: string;
+    startError: string;
+    emptyMessage: string;
+    startAction: string;
+    startedOn: (date: string) => string;
+    // Capture screen
+    titleFallback: string;
+    statusInProgress: string;
+    statusCompleted: string;
+    photoCount: (n: number) => string;
+    nextGuest: string;
+    guestStay: string;
+    checkInAt: (time: string) => string;
+    areaLabel: string;
+    areaPlaceholder: string;
+    uploading: string;
+    takePhoto: string;
+    noPhotosYet: string;
+    nameAreaTitle: string;
+    nameAreaBody: string;
+    locationNeededTitle: string;
+    locationNeededBody: string;
+    clockDriftWarning: string;
+    uploadError: string;
+    removeTitle: string;
+    removeBody: string;
+    cancel: string;
+    remove: string;
+    removeError: string;
+    completing: string;
+    markComplete: string;
+    completeSuccess: string;
+    completeError: string;
+    verification: string;
+    verificationBody: string;
+    copied: string;
+    copyLink: string;
+    linkCopied: string;
+    share: string;
+    preparingPdf: string;
+    exportPdf: string;
+    pdfError: string;
   };
   profileCleaner: {
     jobsCompleted: string;
@@ -676,9 +722,54 @@ export const en: Dict = {
     editProfile: 'Edit profile',
     logOut: 'Log out',
   },
-  cleaningReportsGate: {
+  cleaningReports: {
     upgradeTitle: 'Cleaning Reports is a paid feature',
     upgradeBody: "Camera-verified cleaning proof isn't included on the Free plan. Upgrade to unlock it.",
+    title: 'Cleaning Reports',
+    back: 'Back',
+    loadError: 'Could not load cleaning reports.',
+    startError: 'Could not start a new report.',
+    emptyMessage: 'No cleaning reports yet.',
+    startAction: 'Start a report',
+    startedOn: (date: string) => `Started ${date}`,
+    titleFallback: 'Cleaning Report',
+    statusInProgress: 'In progress',
+    statusCompleted: 'Completed',
+    photoCount: (n: number) => `${n} photo${n === 1 ? '' : 's'}`,
+    nextGuest: 'Next guest',
+    guestStay: 'Guest stay',
+    checkInAt: (time: string) => `check-in ${time}`,
+    areaLabel: 'Area',
+    areaPlaceholder: 'e.g. Kitchen, Bathroom 1, Bedroom 2',
+    uploading: 'Uploading…',
+    takePhoto: 'Take photo',
+    noPhotosYet: 'No photos yet — tap “Take photo” above to start.',
+    nameAreaTitle: 'Name this area',
+    nameAreaBody: 'Enter what area this photo is of (e.g. Kitchen) before taking the photo.',
+    locationNeededTitle: 'Location needed',
+    locationNeededBody:
+      'This report needs your location to verify the photo was taken at the property. Enable location access and try again.',
+    clockDriftWarning: "This photo's device clock looks off — you may want to retake it.",
+    uploadError: 'Could not upload this photo.',
+    removeTitle: 'Remove this photo?',
+    removeBody: 'This cannot be undone.',
+    cancel: 'Cancel',
+    remove: 'Remove',
+    removeError: 'Could not remove this photo.',
+    completing: 'Completing…',
+    markComplete: 'Mark report complete',
+    completeSuccess: 'Report completed',
+    completeError: 'Could not complete this report.',
+    verification: 'Verification',
+    verificationBody:
+      'Share this link with Airbnb or the guest to independently confirm this report is authentic.',
+    copied: 'Copied',
+    copyLink: 'Copy link',
+    linkCopied: 'Verification link copied',
+    share: 'Share',
+    preparingPdf: 'Preparing PDF…',
+    exportPdf: 'Export PDF',
+    pdfError: 'Could not generate the PDF. Please try again.',
   },
   tabsHost: { home: 'Home', calendar: 'Calendar', properties: 'Properties', expenses: 'Expenses', more: 'More' },
   profileCleaner: {
@@ -1235,9 +1326,54 @@ export const fr: Dict = {
     editProfile: 'Modifier le profil',
     logOut: 'Déconnexion',
   },
-  cleaningReportsGate: {
+  cleaningReports: {
     upgradeTitle: 'Les rapports de ménage sont une fonctionnalité payante',
     upgradeBody: "La preuve de ménage vérifiée par photo n'est pas incluse dans le plan gratuit. Passez à un plan supérieur pour la débloquer.",
+    title: 'Rapports de ménage',
+    back: 'Retour',
+    loadError: 'Impossible de charger les rapports de ménage.',
+    startError: 'Impossible de démarrer un nouveau rapport.',
+    emptyMessage: 'Aucun rapport de ménage pour le moment.',
+    startAction: 'Démarrer un rapport',
+    startedOn: (date: string) => `Démarré le ${date}`,
+    titleFallback: 'Rapport de ménage',
+    statusInProgress: 'En cours',
+    statusCompleted: 'Terminé',
+    photoCount: (n: number) => `${n} photo${n === 1 ? '' : 's'}`,
+    nextGuest: 'Prochain voyageur',
+    guestStay: 'Séjour voyageur',
+    checkInAt: (time: string) => `arrivée ${time}`,
+    areaLabel: 'Zone',
+    areaPlaceholder: 'ex. Cuisine, Salle de bain 1, Chambre 2',
+    uploading: 'Envoi…',
+    takePhoto: 'Prendre une photo',
+    noPhotosYet: 'Aucune photo pour le moment — appuyez sur « Prendre une photo » ci-dessus pour commencer.',
+    nameAreaTitle: 'Nommez cette zone',
+    nameAreaBody: 'Indiquez de quelle zone il s’agit (ex. Cuisine) avant de prendre la photo.',
+    locationNeededTitle: 'Localisation requise',
+    locationNeededBody:
+      'Ce rapport a besoin de votre position pour vérifier que la photo a été prise dans le logement. Activez la localisation et réessayez.',
+    clockDriftWarning: "L'horloge de l'appareil semble décalée sur cette photo — vous devriez peut-être la reprendre.",
+    uploadError: "Impossible d'envoyer cette photo.",
+    removeTitle: 'Supprimer cette photo ?',
+    removeBody: 'Cette action est irréversible.',
+    cancel: 'Annuler',
+    remove: 'Supprimer',
+    removeError: 'Impossible de supprimer cette photo.',
+    completing: 'Finalisation…',
+    markComplete: 'Marquer le rapport comme terminé',
+    completeSuccess: 'Rapport terminé',
+    completeError: 'Impossible de finaliser ce rapport.',
+    verification: 'Vérification',
+    verificationBody:
+      "Partagez ce lien avec Airbnb ou le voyageur pour confirmer de façon indépendante l'authenticité de ce rapport.",
+    copied: 'Copié',
+    copyLink: 'Copier le lien',
+    linkCopied: 'Lien de vérification copié',
+    share: 'Partager',
+    preparingPdf: 'Préparation du PDF…',
+    exportPdf: 'Exporter en PDF',
+    pdfError: 'Impossible de générer le PDF. Veuillez réessayer.',
   },
   tabsHost: { home: 'Accueil', calendar: 'Calendrier', properties: 'Propriétés', expenses: 'Dépenses', more: 'Plus' },
   profileCleaner: {
@@ -1703,6 +1839,22 @@ export const fr: Dict = {
   },
 };
 
+/**
+ * Arabic pluralises across four bands, not the singular/plural pair English
+ * and French use: 1, 2 (a distinct dual form), 3–10 (the "plural of
+ * paucity"), and 11+ (which takes the singular noun again). The two-branch
+ * `n === 1 ? x : y` pattern the en/fr blocks use therefore produces visibly
+ * wrong Arabic for every count from 2 to 10 — which is most of the counts
+ * this app actually displays. Callers that need a prefix ("قبل…", "خلال…")
+ * spell the bands out inline instead, since the prefix has to agree too.
+ */
+function arPlural(n: number, forms: { one: string; two: string; few: string; many: string }): string {
+  if (n === 1) return forms.one;
+  if (n === 2) return forms.two;
+  if (n >= 3 && n <= 10) return `${n} ${forms.few}`;
+  return `${n} ${forms.many}`;
+}
+
 export const ar: Dict = {
   common: {
     retry: 'إعادة المحاولة',
@@ -1714,9 +1866,12 @@ export const ar: Dict = {
     error: 'خطأ',
     profile: 'الملف الشخصي',
     back: 'رجوع',
-    guestsCount: (n) => `${n} ${n === 1 ? 'ضيف' : 'ضيوف'}`,
+    guestsCount: (n) => arPlural(n, { one: 'ضيف واحد', two: 'ضيفان', few: 'ضيوف', many: 'ضيفًا' }),
   },
-  days: ['أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'],
+  // Arabic weekday names carry the definite article — bare «أحد» isn't the
+  // day at all, it's the word for "someone", and the rest read like loose
+  // nouns rather than days.
+  days: ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'],
   relativeDate: {
     overdue: 'متأخر',
     today: 'اليوم',
@@ -1724,8 +1879,10 @@ export const ar: Dict = {
     todayAt: (date) => `اليوم · ${date}`,
     tomorrowAt: (date) => `غدًا · ${date}`,
     yesterdayAt: (date) => `أمس · ${date}`,
-    daysAgoAt: (n, date) => `قبل ${n} يوم · ${date}`,
-    inDaysAt: (n, date) => `خلال ${n} يوم · ${date}`,
+    daysAgoAt: (n, date) =>
+      `${n === 1 ? 'قبل يوم' : n === 2 ? 'قبل يومين' : n <= 10 ? `قبل ${n} أيام` : `قبل ${n} يومًا`} · ${date}`,
+    inDaysAt: (n, date) =>
+      `${n === 1 ? 'خلال يوم' : n === 2 ? 'خلال يومين' : n <= 10 ? `خلال ${n} أيام` : `خلال ${n} يومًا`} · ${date}`,
     thisMonth: 'هذا الشهر',
     nextMonth: 'الشهر القادم',
     lastMonth: 'الشهر الماضي',
@@ -1733,7 +1890,7 @@ export const ar: Dict = {
   propertyStatus: {
     READY: 'جاهز للضيوف',
     NEEDS_CLEANING: 'يحتاج تنظيف',
-    IN_PROGRESS: 'التنظيف جارٍ',
+    IN_PROGRESS: 'جارٍ التنظيف',
     OCCUPIED: 'ضيف مقيم',
   },
   login: {
@@ -1795,9 +1952,53 @@ export const ar: Dict = {
     editProfile: 'تعديل الملف الشخصي',
     logOut: 'تسجيل الخروج',
   },
-  cleaningReportsGate: {
+  cleaningReports: {
     upgradeTitle: 'تقارير التنظيف ميزة مدفوعة',
     upgradeBody: 'إثبات التنظيف الموثّق بالصور غير متوفر في الخطة المجانية. قم بالترقية لتفعيله.',
+    title: 'تقارير التنظيف',
+    back: 'رجوع',
+    loadError: 'تعذّر تحميل تقارير التنظيف.',
+    startError: 'تعذّر بدء تقرير جديد.',
+    emptyMessage: 'لا توجد تقارير تنظيف بعد.',
+    startAction: 'ابدأ تقريرًا',
+    startedOn: (date: string) => `بدأ في ${date}`,
+    titleFallback: 'تقرير التنظيف',
+    statusInProgress: 'قيد التنفيذ',
+    statusCompleted: 'مكتمل',
+    photoCount: (n: number) => arPlural(n, { one: 'صورة واحدة', two: 'صورتان', few: 'صور', many: 'صورة' }),
+    nextGuest: 'الضيف القادم',
+    guestStay: 'إقامة ضيف',
+    checkInAt: (time: string) => `تسجيل الوصول ${time}`,
+    areaLabel: 'المنطقة',
+    areaPlaceholder: 'مثل: المطبخ، الحمام 1، غرفة النوم 2',
+    uploading: 'جارٍ الرفع…',
+    takePhoto: 'التقاط صورة',
+    noPhotosYet: 'لا توجد صور بعد — اضغط على «التقاط صورة» أعلاه للبدء.',
+    nameAreaTitle: 'سمِّ هذه المنطقة',
+    nameAreaBody: 'أدخل اسم المنطقة التي تصوّرها (مثل المطبخ) قبل التقاط الصورة.',
+    locationNeededTitle: 'مطلوب تحديد الموقع',
+    locationNeededBody:
+      'يحتاج هذا التقرير إلى موقعك للتأكد من أن الصورة التُقطت داخل العقار. فعّل الوصول إلى الموقع وحاول مرة أخرى.',
+    clockDriftWarning: 'يبدو أن ساعة الجهاز غير مضبوطة في هذه الصورة — قد ترغب في إعادة التقاطها.',
+    uploadError: 'تعذّر رفع هذه الصورة.',
+    removeTitle: 'حذف هذه الصورة؟',
+    removeBody: 'لا يمكن التراجع عن هذا الإجراء.',
+    cancel: 'إلغاء',
+    remove: 'حذف',
+    removeError: 'تعذّر حذف هذه الصورة.',
+    completing: 'جارٍ الإنهاء…',
+    markComplete: 'إنهاء التقرير',
+    completeSuccess: 'تم إنهاء التقرير',
+    completeError: 'تعذّر إنهاء هذا التقرير.',
+    verification: 'التحقق',
+    verificationBody: 'شارك هذا الرابط مع Airbnb أو الضيف للتأكد بشكل مستقل من صحة هذا التقرير.',
+    copied: 'تم النسخ',
+    copyLink: 'نسخ الرابط',
+    linkCopied: 'تم نسخ رابط التحقق',
+    share: 'مشاركة',
+    preparingPdf: 'جارٍ تجهيز ملف PDF…',
+    exportPdf: 'تصدير PDF',
+    pdfError: 'تعذّر إنشاء ملف PDF. يرجى المحاولة مرة أخرى.',
   },
   tabsHost: { home: 'الرئيسية', calendar: 'التقويم', properties: 'العقارات', expenses: 'المصاريف', more: 'المزيد' },
   profileCleaner: {
@@ -1989,7 +2190,7 @@ export const ar: Dict = {
   },
   bookingStatus: {
     PENDING_MATCH: 'جارٍ البحث عن عامل نظافة',
-    MATCHED: 'تم الإيجاد — أكّد العامل',
+    MATCHED: 'تمت المطابقة — أكّد العامل',
     CONFIRMED: 'مؤكد',
     CLEANER_EN_ROUTE: 'في الطريق',
     CHECKED_IN: 'تم تسجيل الوصول',
@@ -2018,8 +2219,22 @@ export const ar: Dict = {
     checkInLinkReady: 'رابط تسجيل الوصول جاهز',
     copied: 'تم النسخ',
     copyLink: 'نسخ الرابط',
-    moreArrivingSoon: (n) => `${n} ضيوف إضافيون قريبًا`,
-    hiddenCheckIns: (n) => `${n} تسجيل وصول مخفي · عرض`,
+    moreArrivingSoon: (n) =>
+      n === 1
+        ? 'ضيف إضافي قريبًا'
+        : n === 2
+          ? 'ضيفان إضافيان قريبًا'
+          : n <= 10
+            ? `${n} ضيوف إضافيون قريبًا`
+            : `${n} ضيفًا إضافيًا قريبًا`,
+    hiddenCheckIns: (n) =>
+      n === 1
+        ? 'تسجيل وصول مخفي · عرض'
+        : n === 2
+          ? 'تسجيلا وصول مخفيان · عرض'
+          : n <= 10
+            ? `${n} تسجيلات وصول مخفية · عرض`
+            : `${n} تسجيل وصول مخفي · عرض`,
     hiddenFromHome: 'تم الإخفاء من الرئيسية',
     hiddenRestored: 'تمت استعادة تسجيلات الوصول المخفية',
     tomorrowCheckouts: 'مغادرات الغد',
@@ -2027,7 +2242,14 @@ export const ar: Dict = {
     noCheckoutsTomorrow: 'لا توجد مغادرات مجدولة غدًا.',
     sameDayTurnover: 'تسليم في نفس اليوم',
     checkoutTag: 'مغادرة',
-    moreCheckingOut: (n) => `${n} مغادرات إضافية`,
+    moreCheckingOut: (n) =>
+      n === 1
+        ? 'مغادرة إضافية'
+        : n === 2
+          ? 'مغادرتان إضافيتان'
+          : n <= 10
+            ? `${n} مغادرات إضافية`
+            : `${n} مغادرة إضافية`,
     allApartments: 'جميع العقارات',
     allApartmentsSubtitle: 'حالة كل عقار',
     allStatuses: (n) => `كل الحالات · ${n}`,
@@ -2100,7 +2322,7 @@ export const ar: Dict = {
     tapForDetails: 'اضغط على حجز لعرض التفاصيل',
     noPropertiesToShow: 'لا توجد عقارات لعرضها.',
     airbnbBadge: 'Airbnb',
-    nightsCount: (n) => `${n} ${n === 1 ? 'ليلة' : 'ليالٍ'}`,
+    nightsCount: (n) => arPlural(n, { one: 'ليلة واحدة', two: 'ليلتان', few: 'ليالٍ', many: 'ليلة' }),
     errorLoad: 'تعذّر تحميل التقويم.',
     errorCreateCheckIn: 'تعذّر إنشاء رابط تسجيل وصول لهذا الحجز.',
     errorUpdateReservation: 'تعذّر تحديث هذا الحجز.',
@@ -2257,6 +2479,7 @@ export const ar: Dict = {
     minutesAgo: (n) => `قبل ${n} د`,
     hoursAgo: (n) => `قبل ${n} س`,
     yesterday: 'أمس',
-    daysAgo: (n) => `قبل ${n} أيام`,
+    daysAgo: (n) =>
+      n === 1 ? 'قبل يوم' : n === 2 ? 'قبل يومين' : n <= 10 ? `قبل ${n} أيام` : `قبل ${n} يومًا`,
   },
 };

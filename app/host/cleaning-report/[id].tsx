@@ -23,6 +23,7 @@ import { useToast } from '@/lib/toast';
 import { todayIso, addDaysIso } from '@/lib/calendar-visuals';
 import { colors, radius, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '@/lib/i18n/language-context';
 
 /** Same formatting dashboard.tsx's checkout sheet uses for a property's configured check-in time (e.g. "3:00 PM"). Airbnb/Hospitable gives a check-in *date*, not a time — the time shown is the property's own expected check-in time, same as everywhere else in the app that shows one. */
 function checkInTimeLabel(checkInTime?: string | null): string | null {
@@ -69,6 +70,7 @@ export default function CleaningReportDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const toast = useToast();
+  const { t } = useLanguage();
 
   const [report, setReport] = useState<CleaningReport | null>(null);
   const [sectionInput, setSectionInput] = useState('');
@@ -89,7 +91,7 @@ export default function CleaningReportDetailScreen() {
       const data = await api.cleaningReports.getDetail(id, session.accessToken);
       setReport(data);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load this report.');
+      setError(err instanceof ApiError ? err.message : t.cleaningReports.loadError);
     }
   }, [session, id]);
 
@@ -139,7 +141,7 @@ export default function CleaningReportDetailScreen() {
   async function handleAddPhoto() {
     if (!session || !report) return;
     if (!sectionInput.trim()) {
-      Alert.alert('Name this area', 'Enter what area this photo is of (e.g. Kitchen) before taking the photo.');
+      Alert.alert(t.cleaningReports.nameAreaTitle, t.cleaningReports.nameAreaBody);
       return;
     }
 
@@ -148,10 +150,7 @@ export default function CleaningReportDetailScreen() {
 
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert(
-        'Location needed',
-        'This report needs your location to verify the photo was taken at the property. Enable location access and try again.',
-      );
+      Alert.alert(t.cleaningReports.locationNeededTitle, t.cleaningReports.locationNeededBody);
       return;
     }
 
@@ -173,11 +172,11 @@ export default function CleaningReportDetailScreen() {
         session.accessToken,
       );
       if (uploaded.timestampSuspicious) {
-        toast.show("This photo's device clock looks off — you may want to retake it.", 'info');
+        toast.show(t.cleaningReports.clockDriftWarning, 'info');
       }
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not upload this photo.');
+      setError(err instanceof ApiError ? err.message : t.cleaningReports.uploadError);
     } finally {
       setIsUploading(false);
     }
@@ -185,10 +184,10 @@ export default function CleaningReportDetailScreen() {
 
   function handleRemovePhoto(photo: CleaningReportPhoto) {
     if (!session || !report) return;
-    Alert.alert('Remove this photo?', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t.cleaningReports.removeTitle, t.cleaningReports.removeBody, [
+      { text: t.cleaningReports.cancel, style: 'cancel' },
       {
-        text: 'Remove',
+        text: t.cleaningReports.remove,
         style: 'destructive',
         onPress: async () => {
           setRemovingId(photo.id);
@@ -197,7 +196,7 @@ export default function CleaningReportDetailScreen() {
             await api.cleaningReports.removePhoto(report.id, photo.id, session.accessToken);
             await load();
           } catch (err) {
-            setError(err instanceof ApiError ? err.message : 'Could not remove this photo.');
+            setError(err instanceof ApiError ? err.message : t.cleaningReports.removeError);
           } finally {
             setRemovingId(null);
           }
@@ -213,9 +212,9 @@ export default function CleaningReportDetailScreen() {
     try {
       await api.cleaningReports.complete(report.id, session.accessToken);
       await load();
-      toast.show('Report completed');
+      toast.show(t.cleaningReports.completeSuccess);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not complete this report.');
+      setError(err instanceof ApiError ? err.message : t.cleaningReports.completeError);
     } finally {
       setIsCompleting(false);
     }
@@ -226,7 +225,7 @@ export default function CleaningReportDetailScreen() {
     const url = resolveCleaningReportVerificationUrl(report.verificationCode);
     await Clipboard.setStringAsync(url);
     setCopied(true);
-    toast.show('Verification link copied');
+    toast.show(t.cleaningReports.linkCopied);
     setTimeout(() => setCopied(false), 2000);
   }
 
@@ -245,7 +244,7 @@ export default function CleaningReportDetailScreen() {
         Authorization: `Bearer ${session.accessToken}`,
       });
     } catch {
-      setError('Could not generate the PDF. Please try again.');
+      setError(t.cleaningReports.pdfError);
     } finally {
       setIsSharingPdf(false);
     }
@@ -274,7 +273,11 @@ export default function CleaningReportDetailScreen() {
   return (
     <Screen>
       <Stack.Screen
-        options={{ headerShown: true, title: report.property?.name ?? 'Cleaning Report', headerBackTitle: 'Back' }}
+        options={{
+          headerShown: true,
+          title: report.property?.name ?? t.cleaningReports.titleFallback,
+          headerBackTitle: t.cleaningReports.back,
+        }}
       />
       <ScrollView contentContainerStyle={styles.container}>
         {report.property && (
@@ -284,19 +287,23 @@ export default function CleaningReportDetailScreen() {
           </Text>
         )}
         <View style={styles.statusRow}>
-          <StatusBadge label={isInProgress ? 'In progress' : 'Completed'} tone={isInProgress ? 'accent' : 'primary'} />
-          <Text style={typography.caption}>
-            {photoCount} photo{photoCount === 1 ? '' : 's'}
-          </Text>
+          <StatusBadge
+            label={isInProgress ? t.cleaningReports.statusInProgress : t.cleaningReports.statusCompleted}
+            tone={isInProgress ? 'accent' : 'primary'}
+          />
+          <Text style={typography.caption}>{t.cleaningReports.photoCount(photoCount)}</Text>
         </View>
 
         {nextGuest && (
           <Card style={styles.nextGuestCard}>
             <Ionicons name="person-circle-outline" size={22} color={colors.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.nextGuestLabel}>Next guest{nextGuest.event.source === 'AIRBNB' ? ' · Airbnb' : ''}</Text>
+              <Text style={styles.nextGuestLabel}>
+                {t.cleaningReports.nextGuest}
+                {nextGuest.event.source === 'AIRBNB' ? ' · Airbnb' : ''}
+              </Text>
               <Text style={typography.h3} numberOfLines={1}>
-                {nextGuest.event.title || 'Guest stay'}
+                {nextGuest.event.title || t.cleaningReports.guestStay}
               </Text>
               <Text style={typography.bodyMuted}>
                 {new Date(nextGuest.event.date).toLocaleDateString(undefined, {
@@ -304,7 +311,7 @@ export default function CleaningReportDetailScreen() {
                   day: 'numeric',
                   month: 'short',
                 })}
-                {nextGuest.checkInTime ? ` · check-in ${nextGuest.checkInTime}` : ''}
+                {nextGuest.checkInTime ? ` · ${t.cleaningReports.checkInAt(nextGuest.checkInTime)}` : ''}
               </Text>
             </View>
           </Card>
@@ -315,13 +322,13 @@ export default function CleaningReportDetailScreen() {
         {isInProgress && (
           <Card style={{ marginTop: spacing.md }}>
             <TextField
-              label="Area"
-              placeholder="e.g. Kitchen, Bathroom 1, Bedroom 2"
+              label={t.cleaningReports.areaLabel}
+              placeholder={t.cleaningReports.areaPlaceholder}
               value={sectionInput}
               onChangeText={setSectionInput}
             />
             <Button
-              label={isUploading ? 'Uploading…' : 'Take photo'}
+              label={isUploading ? t.cleaningReports.uploading : t.cleaningReports.takePhoto}
               onPress={handleAddPhoto}
               loading={isUploading}
               variant="outline"
@@ -330,9 +337,7 @@ export default function CleaningReportDetailScreen() {
         )}
 
         {sections.length === 0 ? (
-          <Text style={[typography.bodyMuted, { marginTop: spacing.lg }]}>
-            No photos yet — tap &ldquo;Take photo&rdquo; above to start.
-          </Text>
+          <Text style={[typography.bodyMuted, { marginTop: spacing.lg }]}>{t.cleaningReports.noPhotosYet}</Text>
         ) : (
           sections.map(({ section, photos }) => (
             <View key={section} style={{ marginTop: spacing.lg }}>
@@ -369,7 +374,7 @@ export default function CleaningReportDetailScreen() {
 
         {isInProgress && (
           <Button
-            label={isCompleting ? 'Completing…' : 'Mark report complete'}
+            label={isCompleting ? t.cleaningReports.completing : t.cleaningReports.markComplete}
             onPress={handleComplete}
             loading={isCompleting}
             disabled={photoCount === 0}
@@ -380,22 +385,22 @@ export default function CleaningReportDetailScreen() {
 
         {!isInProgress && (
           <Card style={{ marginTop: spacing.lg }}>
-            <Text style={typography.h3}>Verification</Text>
-            <Text style={[typography.bodyMuted, { marginTop: 4 }]}>
-              Share this link with Airbnb or the guest to independently confirm this report is authentic.
-            </Text>
+            <Text style={typography.h3}>{t.cleaningReports.verification}</Text>
+            <Text style={[typography.bodyMuted, { marginTop: 4 }]}>{t.cleaningReports.verificationBody}</Text>
             <View style={styles.linkRow}>
               <Pressable onPress={handleCopyLink} style={styles.linkButton}>
                 <Ionicons name={copied ? 'checkmark' : 'copy-outline'} size={15} color={colors.primary} />
-                <Text style={styles.linkButtonText}>{copied ? 'Copied' : 'Copy link'}</Text>
+                <Text style={styles.linkButtonText}>
+                  {copied ? t.cleaningReports.copied : t.cleaningReports.copyLink}
+                </Text>
               </Pressable>
               <Pressable onPress={handleShareLink} style={styles.linkButton}>
                 <Ionicons name="share-outline" size={15} color={colors.primary} />
-                <Text style={styles.linkButtonText}>Share</Text>
+                <Text style={styles.linkButtonText}>{t.cleaningReports.share}</Text>
               </Pressable>
             </View>
             <Button
-              label={isSharingPdf ? 'Preparing PDF…' : 'Export PDF'}
+              label={isSharingPdf ? t.cleaningReports.preparingPdf : t.cleaningReports.exportPdf}
               onPress={handleSharePdf}
               loading={isSharingPdf}
               variant="outline"

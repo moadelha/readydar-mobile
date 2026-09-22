@@ -591,7 +591,7 @@ export default function PropertyDetailScreen() {
           label={t.propertyDetail.cleaningReports}
           onPress={() =>
             cleaningReportsEnabled === false
-              ? Alert.alert(t.cleaningReportsGate.upgradeTitle, t.cleaningReportsGate.upgradeBody)
+              ? Alert.alert(t.cleaningReports.upgradeTitle, t.cleaningReports.upgradeBody)
               : router.push({ pathname: '/host/cleaning-reports', params: { propertyId: property.id } })
           }
           variant="outline"
