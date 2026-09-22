@@ -255,10 +255,13 @@ export default function PropertyDetailScreen() {
     setSharingId(checkIn.id);
     try {
       const url = resolveCheckInUrl(checkIn.token);
+      // timeZone UTC — calendar date stored as UTC midnight; goes into the
+      // guest's WhatsApp. Same note as (host-tabs)/dashboard.tsx.
       const arriving = new Date(checkIn.expectedCheckIn).toLocaleDateString(undefined, {
         weekday: 'long',
         day: 'numeric',
         month: 'long',
+        timeZone: 'UTC',
       });
       const text = t.propertyDetail.checkInShareMessage(property ? property.name : null, arriving, url);
       // Target the guest's own number directly when known — see the
@@ -662,7 +665,9 @@ export default function PropertyDetailScreen() {
                     )}
                   </View>
                   <Text style={typography.bodyMuted}>
-                    {new Date(c.expectedCheckIn).toLocaleDateString()} → {new Date(c.expectedCheckOut).toLocaleDateString()}
+                    {/* UTC — calendar dates; see the note on `arriving` above */}
+                    {new Date(c.expectedCheckIn).toLocaleDateString(undefined, { timeZone: 'UTC' })} →{' '}
+                    {new Date(c.expectedCheckOut).toLocaleDateString(undefined, { timeZone: 'UTC' })}
                     {c.guestCount > 1 ? ` · ${t.common.guestsCount(c.guestCount)}` : ''}
                   </Text>
                 </View>

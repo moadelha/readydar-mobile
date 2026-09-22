@@ -498,10 +498,15 @@ export default function HostDashboardScreen() {
       // Naming the stay matters: a guest with more than one booking (or one
       // made months ago) otherwise has no way to tell which stay a bare link
       // belongs to.
+      // timeZone UTC: expectedCheckIn is a calendar date (the host picks it
+      // as YYYY-MM-DD) stored as UTC midnight, so formatting it in the
+      // device's own zone names the previous day for anyone west of
+      // Greenwich — and this string goes straight into the guest's WhatsApp.
       const arriving = new Date(item.expectedCheckIn).toLocaleDateString(undefined, {
         weekday: 'long',
         day: 'numeric',
         month: 'long',
+        timeZone: 'UTC',
       });
       const text = t.dashboardHost.checkInShareMessage(item.property.name, arriving, url);
       // Target the guest's own number directly when we have one (from
@@ -938,6 +943,7 @@ export default function HostDashboardScreen() {
                           weekday: 'short',
                           day: 'numeric',
                           month: 'short',
+                          timeZone: 'UTC', // calendar date — see the note on `arriving` above
                         })}
                       />
                       <SheetFact icon="moon-outline" label={t.dashboardHost.sheetLengthOfStay} value={stayLabel(openCheckIn, t)} />

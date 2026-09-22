@@ -206,10 +206,14 @@ export default function GuestsScreen() {
       const url = resolveCheckInUrl(item.token);
       // Naming the stay's date matters for a guest with more than one
       // booking, or one made months ahead.
+      // timeZone UTC — calendar date stored as UTC midnight; without this
+      // the guest's own WhatsApp message names the wrong day for anyone
+      // west of Greenwich. Same note as (host-tabs)/dashboard.tsx.
       const arriving = new Date(item.expectedCheckIn).toLocaleDateString(undefined, {
         weekday: 'long',
         day: 'numeric',
         month: 'long',
+        timeZone: 'UTC',
       });
       const text = t.propertyDetail.checkInShareMessage(item.property.name, arriving, url);
       // Target the guest's own number directly when known — see the
