@@ -8,10 +8,22 @@ import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
 import { estimatePrice, isRoomScaledService } from '@/lib/pricing';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '@/lib/i18n/language-context';
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
+
+/**
+ * Mirrors MARKETPLACE_BOOKING_ENABLED in the web app
+ * (apps/web/src/app/host/bookings/new/page.tsx) — there are no cleaners to
+ * match a request to yet, so the request wizard is replaced with a
+ * coming-soon screen rather than accepting requests nobody will pick up.
+ * Deliberately not keyed off City.cleanersEnabled: that flag opens the
+ * cleaner side (signup, job feed) for a city, and cleaners have to be
+ * onboarded there before hosts can book them. Flip both constants together.
+ */
+const MARKETPLACE_BOOKING_ENABLED = false;
 
 export default function NewBookingScreen() {
   // `date` arrives from Home's tomorrow-checkout card ("Request cleaning for
@@ -23,6 +35,7 @@ export default function NewBookingScreen() {
   }>();
   const { session } = useAuth();
   const router = useRouter();
+  const { t } = useLanguage();
 
   const [properties, setProperties] = useState<Property[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -109,6 +122,31 @@ export default function NewBookingScreen() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (!MARKETPLACE_BOOKING_ENABLED) {
+    return (
+      <Screen>
+        <Stack.Screen
+          options={{ headerShown: true, title: t.marketplaceComingSoon.title, headerBackTitle: t.marketplaceComingSoon.back }}
+        />
+        <View style={styles.comingSoon}>
+          <View style={styles.comingSoonIcon}>
+            <Ionicons name="sparkles-outline" size={28} color={colors.primary} />
+          </View>
+          <Text style={[typography.h2, { textAlign: 'center' }]}>{t.marketplaceComingSoon.title}</Text>
+          <Text style={[typography.bodyMuted, { textAlign: 'center', marginTop: spacing.sm }]}>
+            {t.marketplaceComingSoon.body}
+          </Text>
+          <Button
+            label={t.marketplaceComingSoon.back}
+            onPress={() => router.back()}
+            variant="outline"
+            style={{ marginTop: spacing.xl, alignSelf: 'stretch' }}
+          />
+        </View>
+      </Screen>
+    );
   }
 
   return (
@@ -262,6 +300,16 @@ export default function NewBookingScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
+  comingSoon: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  comingSoonIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.successBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
   sectionLabel: { ...typography.h3, marginTop: spacing.lg, marginBottom: spacing.sm },
   fieldLabel: { ...typography.bodyMuted, fontWeight: '600', marginBottom: spacing.xs },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },

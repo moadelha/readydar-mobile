@@ -113,6 +113,11 @@ export interface Dict {
     editProfile: string;
     logOut: string;
   };
+  marketplaceComingSoon: {
+    title: string;
+    body: string;
+    back: string;
+  };
   cleaningReports: {
     // Plan gate (shown when the host's plan doesn't include the feature)
     upgradeTitle: string;
@@ -722,6 +727,11 @@ export const en: Dict = {
     editProfile: 'Edit profile',
     logOut: 'Log out',
   },
+  marketplaceComingSoon: {
+    title: 'Booking a cleaner is coming soon',
+    body: "We're still building out our network of vetted cleaners. Everything else in ReadyDar works as normal — we'll let you know the moment you can book one here.",
+    back: 'Go back',
+  },
   cleaningReports: {
     upgradeTitle: 'Cleaning Reports is a paid feature',
     upgradeBody: "Camera-verified cleaning proof isn't included on the Free plan. Upgrade to unlock it.",
@@ -1325,6 +1335,11 @@ export const fr: Dict = {
     body: "La marketplace de nettoyage de ReadyDar n'est pas encore active dans votre région — nous la déployons ville par ville. Nous vous préviendrons dès son lancement près de chez vous.",
     editProfile: 'Modifier le profil',
     logOut: 'Déconnexion',
+  },
+  marketplaceComingSoon: {
+    title: 'La réservation d’un agent de nettoyage arrive bientôt',
+    body: "Nous constituons encore notre réseau d'agents de nettoyage vérifiés. Tout le reste de ReadyDar fonctionne normalement — nous vous préviendrons dès que vous pourrez en réserver un ici.",
+    back: 'Retour',
   },
   cleaningReports: {
     upgradeTitle: 'Les rapports de ménage sont une fonctionnalité payante',
@@ -1951,6 +1966,11 @@ export const ar: Dict = {
     body: 'سوق التنظيف الخاص بـ ReadyDar غير متاح بعد في منطقتك — نقوم بإطلاقه مدينة تلو الأخرى. سنعلمك فور انطلاقه بالقرب منك.',
     editProfile: 'تعديل الملف الشخصي',
     logOut: 'تسجيل الخروج',
+  },
+  marketplaceComingSoon: {
+    title: 'حجز عامل تنظيف قريبًا',
+    body: 'ما زلنا نبني شبكتنا من عمال التنظيف الموثّقين. تعمل بقية خدمات ReadyDar بشكل طبيعي — وسنعلمك فور إتاحة الحجز من هنا.',
+    back: 'رجوع',
   },
   cleaningReports: {
     upgradeTitle: 'تقارير التنظيف ميزة مدفوعة',
