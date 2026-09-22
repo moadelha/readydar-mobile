@@ -107,6 +107,16 @@ export interface Dict {
   };
   tabsCleaner: { jobFeed: string; myJobs: string; earnings: string; profile: string };
   tabsHost: { home: string; calendar: string; properties: string; expenses: string; more: string };
+  cleanerComingSoon: {
+    title: string;
+    body: string;
+    editProfile: string;
+    logOut: string;
+  };
+  cleaningReportsGate: {
+    upgradeTitle: string;
+    upgradeBody: string;
+  };
   profileCleaner: {
     jobsCompleted: string;
     verified: string;
@@ -660,6 +670,16 @@ export const en: Dict = {
     genericError: 'Could not save your profile',
   },
   tabsCleaner: { jobFeed: 'Job Feed', myJobs: 'My Jobs', earnings: 'Earnings', profile: 'Profile' },
+  cleanerComingSoon: {
+    title: "We're not in your area yet",
+    body: "ReadyDar's cleaner marketplace isn't live in your location yet — we're rolling it out city by city. We'll let you know as soon as it launches near you.",
+    editProfile: 'Edit profile',
+    logOut: 'Log out',
+  },
+  cleaningReportsGate: {
+    upgradeTitle: 'Cleaning Reports is a paid feature',
+    upgradeBody: "Camera-verified cleaning proof isn't included on the Free plan. Upgrade to unlock it.",
+  },
   tabsHost: { home: 'Home', calendar: 'Calendar', properties: 'Properties', expenses: 'Expenses', more: 'More' },
   profileCleaner: {
     jobsCompleted: 'jobs completed',
@@ -1209,6 +1229,16 @@ export const fr: Dict = {
     genericError: "Impossible d'enregistrer votre profil",
   },
   tabsCleaner: { jobFeed: 'Missions', myJobs: 'Mes missions', earnings: 'Revenus', profile: 'Profil' },
+  cleanerComingSoon: {
+    title: 'Nous ne sommes pas encore disponibles dans votre région',
+    body: "La marketplace de nettoyage de ReadyDar n'est pas encore active dans votre région — nous la déployons ville par ville. Nous vous préviendrons dès son lancement près de chez vous.",
+    editProfile: 'Modifier le profil',
+    logOut: 'Déconnexion',
+  },
+  cleaningReportsGate: {
+    upgradeTitle: 'Les rapports de ménage sont une fonctionnalité payante',
+    upgradeBody: "La preuve de ménage vérifiée par photo n'est pas incluse dans le plan gratuit. Passez à un plan supérieur pour la débloquer.",
+  },
   tabsHost: { home: 'Accueil', calendar: 'Calendrier', properties: 'Propriétés', expenses: 'Dépenses', more: 'Plus' },
   profileCleaner: {
     jobsCompleted: 'missions terminées',
@@ -1759,6 +1789,16 @@ export const ar: Dict = {
     genericError: 'تعذّر حفظ ملفك الشخصي',
   },
   tabsCleaner: { jobFeed: 'المهام', myJobs: 'مهامي', earnings: 'الأرباح', profile: 'الملف الشخصي' },
+  cleanerComingSoon: {
+    title: 'لسنا متاحين في منطقتك بعد',
+    body: 'سوق التنظيف الخاص بـ ReadyDar غير متاح بعد في منطقتك — نقوم بإطلاقه مدينة تلو الأخرى. سنعلمك فور انطلاقه بالقرب منك.',
+    editProfile: 'تعديل الملف الشخصي',
+    logOut: 'تسجيل الخروج',
+  },
+  cleaningReportsGate: {
+    upgradeTitle: 'تقارير التنظيف ميزة مدفوعة',
+    upgradeBody: 'إثبات التنظيف الموثّق بالصور غير متوفر في الخطة المجانية. قم بالترقية لتفعيله.',
+  },
   tabsHost: { home: 'الرئيسية', calendar: 'التقويم', properties: 'العقارات', expenses: 'المصاريف', more: 'المزيد' },
   profileCleaner: {
     jobsCompleted: 'مهمة منجزة',

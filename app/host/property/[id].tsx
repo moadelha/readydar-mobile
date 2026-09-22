@@ -89,6 +89,10 @@ export default function PropertyDetailScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const [property, setProperty] = useState<Property | null>(null);
   const [checkIns, setCheckIns] = useState<GuestCheckIn[]>([]);
+  // Gates the Cleaning Reports button below — undefined while loading,
+  // true on fetch failure (fail open; CleaningReportsService enforces the
+  // real check server-side on report creation regardless of this).
+  const [cleaningReportsEnabled, setCleaningReportsEnabled] = useState<boolean | undefined>(undefined);
   const [isMarkingReady, setIsMarkingReady] = useState(false);
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -178,6 +182,16 @@ export default function PropertyDetailScreen() {
       setError(err instanceof ApiError ? err.message : t.propertyDetail.errorLoad);
     }
   }, [session, id]);
+
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    api.billing
+      .getEntitlements(session.accessToken)
+      .then((e) => { if (!cancelled) setCleaningReportsEnabled(e.cleaningReportsEnabled); })
+      .catch(() => { if (!cancelled) setCleaningReportsEnabled(true); });
+    return () => { cancelled = true; };
+  }, [session]);
 
   useFocusEffect(
     useCallback(() => {
@@ -575,7 +589,11 @@ export default function PropertyDetailScreen() {
 
         <Button
           label={t.propertyDetail.cleaningReports}
-          onPress={() => router.push({ pathname: '/host/cleaning-reports', params: { propertyId: property.id } })}
+          onPress={() =>
+            cleaningReportsEnabled === false
+              ? Alert.alert(t.cleaningReportsGate.upgradeTitle, t.cleaningReportsGate.upgradeBody)
+              : router.push({ pathname: '/host/cleaning-reports', params: { propertyId: property.id } })
+          }
           variant="outline"
           style={{ marginTop: spacing.sm }}
         />

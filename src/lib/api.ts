@@ -412,6 +412,9 @@ export interface City {
   name: string;
   latitude: number;
   longitude: number;
+  isActive?: boolean;
+  /** Whether the cleaner side of the app (job feed, dashboard, earnings) is live here. */
+  cleanersEnabled?: boolean;
 }
 
 export interface PropertyPhoto {
@@ -857,6 +860,13 @@ export interface JobFeedItem extends Booking {
   distanceKm: number | null;
 }
 
+/** Mirrors apps/web/src/lib/api.ts's Entitlements — only the fields the mobile app actually reads so far. */
+export interface Entitlements {
+  planCode: string | null;
+  planName: string | null;
+  cleaningReportsEnabled: boolean;
+}
+
 export interface CleanerProfile {
   id: string;
   bio?: string | null;
@@ -868,6 +878,24 @@ export interface CleanerProfile {
   cities: { city: City }[];
   availability: { id: string; dayOfWeek: number; startTime: string; endTime: string }[];
   location?: { latitude: number; longitude: number } | null;
+}
+
+/**
+ * Whether the cleaner side of the app (job feed, my jobs, earnings) is
+ * live for this cleaner's location — mirrors CleanerLocationGuard on the
+ * backend, which enforces the same rule server-side on the job feed and
+ * job-accept endpoints, so this is UI-level convenience, not the only
+ * thing standing between a cleaner and a disabled city.
+ *
+ * A cleaner with no cities picked yet (`cities.length === 0`, hasn't been
+ * through onboarding) is deliberately NOT treated as "not enabled" here —
+ * that's the existing empty-state/"edit profile" prompt, not coming-soon.
+ * Only a cleaner who *has* picked at least one city, and none of them have
+ * cleanersEnabled, gets the coming-soon screen.
+ */
+export function isCleanerLocationEnabled(profile: { cities: { city: City }[] }): boolean {
+  if (profile.cities.length === 0) return true;
+  return profile.cities.some((c) => c.city.cleanersEnabled);
 }
 
 export interface EarningsSummary {
@@ -1221,6 +1249,10 @@ export const api = {
      */
     guestPhotoUrl: (checkInId: string, guestId: string, token: string) =>
       request<{ url: string }>(`/checkins/${checkInId}/guests/${guestId}/photo-url`, { token }),
+  },
+  billing: {
+    /** Only pulls the fields this app currently needs — see the Entitlements type. The web app's GET /billing/entitlements returns more. */
+    getEntitlements: (token: string) => request<Entitlements>('/billing/entitlements', { token }),
   },
   cleaningReports: {
     /** Starts a new in-progress report for a property; the walkthrough then uploads photos to it one at a time. */
