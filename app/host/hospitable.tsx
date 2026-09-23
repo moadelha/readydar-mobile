@@ -8,8 +8,10 @@ import { Button } from '@/components/Button';
 import { useToast } from '@/lib/toast';
 import { colors, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useHostAccess } from '@/lib/access';
+import { NoAccess } from '@/components/no-access';
 
-export default function HospitableConnectScreen() {
+function HospitableConnectInner() {
   const { session } = useAuth();
   const router = useRouter();
   const toast = useToast();
@@ -212,3 +214,13 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
 });
+
+// Owner-only: every Airbnb-connect route acts on the caller's own Hospitable
+// customer, so for any co-host it would link or query the wrong account.
+// See HospitableConnectController.
+// Wrapped rather than early-returned so the real screen's hooks and
+// API calls never run for someone without access.
+export default function HospitableConnectScreen() {
+  const { isOwner } = useHostAccess();
+  return isOwner ? <HospitableConnectInner /> : <NoAccess />;
+}

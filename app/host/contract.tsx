@@ -7,11 +7,13 @@ import { Screen, Card, ErrorBanner, LoadingScreen, TextField, Reveal } from '@/c
 import { Button } from '@/components/Button';
 import { useToast } from '@/lib/toast';
 import { colors, spacing, typography } from '@/theme';
+import { useHostAccess } from '@/lib/access';
+import { NoAccess } from '@/components/no-access';
 
 const TEMPLATE_VARIABLES =
   '{{hostName}} {{guestName}} {{propertyName}} {{propertyAddress}} {{checkInDate}} {{checkOutDate}} {{guestCount}} {{totalPrice}}';
 
-export default function ContractSettingsScreen() {
+function ContractSettingsInner() {
   const { session } = useAuth();
   const toast = useToast();
   const [loaded, setLoaded] = useState(false);
@@ -155,3 +157,11 @@ const styles = StyleSheet.create({
   },
   disclaimerText: { fontSize: 12, color: colors.inkMuted, lineHeight: 17 },
 });
+
+// Contract terms are manager-only on the API (GET and PATCH /properties/contract).
+// Wrapped rather than early-returned so the real screen's hooks and
+// API calls never run for someone without access.
+export default function ContractSettingsScreen() {
+  const { isManager } = useHostAccess();
+  return isManager ? <ContractSettingsInner /> : <NoAccess />;
+}

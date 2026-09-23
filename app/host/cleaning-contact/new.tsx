@@ -6,8 +6,10 @@ import { api } from '@/lib/api';
 import { Screen, TextField, ErrorBanner } from '@/components/ui';
 import { Button } from '@/components/Button';
 import { spacing, typography } from '@/theme';
+import { useHostAccess } from '@/lib/access';
+import { NoAccess } from '@/components/no-access';
 
-export default function NewCleaningContactScreen() {
+function NewCleaningContactInner() {
   const { session } = useAuth();
   const router = useRouter();
 
@@ -71,3 +73,11 @@ export default function NewCleaningContactScreen() {
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
 });
+
+// Cleaning contacts are @MinHostRole('MANAGER') on the API.
+// Wrapped rather than early-returned so the real screen's hooks and
+// API calls never run for someone without access.
+export default function NewCleaningContactScreen() {
+  const { isManager } = useHostAccess();
+  return isManager ? <NewCleaningContactInner /> : <NoAccess />;
+}

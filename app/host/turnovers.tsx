@@ -7,6 +7,7 @@ import { Screen, Card, EmptyState, LoadingScreen, ErrorBanner } from '@/componen
 import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useHostAccess } from '@/lib/access';
 
 type Kind = 'checkin' | 'reservation';
 interface Row {
@@ -22,6 +23,7 @@ function guestLabel(item: PendingTurnoverItem) {
 export default function TurnoversScreen() {
   const { session } = useAuth();
   const router = useRouter();
+  const { isManager } = useHostAccess();
   const [needsConfirmation, setNeedsConfirmation] = useState<Row[]>([]);
   const [readyToSend, setReadyToSend] = useState<Row[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -115,8 +117,8 @@ export default function TurnoversScreen() {
           <Card style={{ marginTop: spacing.lg }}>
             <EmptyState
               message="No turnovers pending right now. They'll show up here as checkouts approach."
-              actionLabel="Set up cleaning contacts"
-              onAction={() => router.push('/host/cleaning-contacts')}
+              actionLabel={isManager ? 'Set up cleaning contacts' : undefined}
+              onAction={isManager ? () => router.push('/host/cleaning-contacts') : undefined}
             />
           </Card>
         ) : (
@@ -175,10 +177,12 @@ export default function TurnoversScreen() {
               </>
             )}
 
+            {isManager && (
             <Pressable onPress={() => router.push('/host/cleaning-contacts')} style={styles.linkAction}>
               <Ionicons name="people-outline" size={14} color={colors.primary} />
               <Text style={styles.linkText}>Manage cleaning contacts</Text>
             </Pressable>
+            )}
           </>
         )}
       </ScrollView>

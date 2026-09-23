@@ -6,8 +6,10 @@ import { api, CleaningContact } from '@/lib/api';
 import { Screen, Card, EmptyState, LoadingScreen, ErrorBanner, StatusBadge } from '@/components/ui';
 import { colors, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useHostAccess } from '@/lib/access';
+import { NoAccess } from '@/components/no-access';
 
-export default function CleaningContactsScreen() {
+function CleaningContactsInner() {
   const { session } = useAuth();
   const router = useRouter();
   const [contacts, setContacts] = useState<CleaningContact[]>([]);
@@ -139,3 +141,11 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 });
+
+// Cleaning contacts are @MinHostRole('MANAGER') on the API.
+// Wrapped rather than early-returned so the real screen's hooks and
+// API calls never run for someone without access.
+export default function CleaningContactsScreen() {
+  const { isManager } = useHostAccess();
+  return isManager ? <CleaningContactsInner /> : <NoAccess />;
+}

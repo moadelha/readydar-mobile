@@ -46,6 +46,7 @@ import { colors, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { Dict } from '@/lib/i18n/dictionary';
+import { useHostAccess } from '@/lib/access';
 
 /**
  * How many rows each section shows before the rest go behind "View all".
@@ -159,6 +160,8 @@ export default function HostDashboardScreen() {
   // the bottom inset themselves. Without it the last button in a sheet sits
   // under Android's gesture bar (edgeToEdgeEnabled is on).
   const insets = useSafeAreaInsets();
+  const { has, isManager } = useHostAccess();
+  const canCheckins = has('CHECKINS');
 
   const [overview, setOverview] = useState<PropertyStatusItem[]>([]);
   const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
@@ -189,6 +192,20 @@ export default function HostDashboardScreen() {
     blockedNextDay: boolean;
   } | null>(null);
   const [timingBusy, setTimingBusy] = useState(false);
+  /**
+   * The cleaner reminder for the checkout sheet that's open: which stay to
+   * remind about (from GET /turnovers/tomorrow) and who it goes to. Fetched
+   * lazily when a sheet opens, like `followUp` above — one call per sheet
+   * rather than on every dashboard load. `target` is null when there's
+   * nothing remindable: no contact on the property, or already sent.
+   */
+  const [reminder, setReminder] = useState<{
+    propertyId: string;
+    loading: boolean;
+    target: { kind: 'checkin' | 'reservation'; id: string; contactName: string } | null;
+    sending: boolean;
+    sent: boolean;
+  } | null>(null);
   const [guestBusy, setGuestBusy] = useState(false);
   /** Check-in ids the host has cleared off Home — see src/lib/dismissed.ts. */
   const [dismissedIds, setDismissedIds] = useState<string[]>([]);
@@ -386,6 +403,66 @@ export default function HostDashboardScreen() {
    * around wants to know if it's about to sit empty for a while, not just
    * whether tomorrow is booked.
    */
+  useEffect(() => {
+    if (!session || !openCheckout) {
+      setReminder(null);
+      return;
+    }
+    const propertyId = openCheckout.propertyId;
+    let cancelled = false;
+    setReminder({ propertyId, loading: true, target: null, sending: false, sent: false });
+    api.turnovers
+      .tomorrow(session.accessToken)
+      .then(({ guestCheckIns, externalReservations }) => {
+        if (cancelled) return;
+        // A synced Airbnb stay can exist as both a reservation and a
+        // submitted check-in; either reminds the same cleaner about the same
+        // checkout, so the check-in is preferred only because it's the
+        // record the host is more likely to recognise.
+        const ci = guestCheckIns.find((c) => c.propertyId === propertyId && c.property.defaultCleaningContact);
+        const rv = externalReservations.find((r) => r.propertyId === propertyId && r.property.defaultCleaningContact);
+        const hit = ci ? { kind: 'checkin' as const, item: ci } : rv ? { kind: 'reservation' as const, item: rv } : null;
+        setReminder({
+          propertyId,
+          loading: false,
+          sending: false,
+          sent: false,
+          target: hit
+            ? { kind: hit.kind, id: hit.item.id, contactName: hit.item.property.defaultCleaningContact!.name }
+            : null,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setReminder({ propertyId, loading: false, target: null, sending: false, sent: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Same reasoning as the followUp effect below: openCheckout is rebuilt
+    // every render, so key on its stable id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, openCheckout?.propertyId]);
+
+  async function handleNotifyCleaner() {
+    if (!session || !reminder?.target || reminder.sending) return;
+    const { kind, id } = reminder.target;
+    setReminder({ ...reminder, sending: true });
+    try {
+      const { whatsapp } =
+        kind === 'checkin'
+          ? await api.turnovers.remindCheckIn(id, session.accessToken)
+          : await api.turnovers.remindReservation(id, session.accessToken);
+      // Without WhatsApp Cloud API credentials the backend only prepares a
+      // wa.me link — same contract as the Turnovers screen.
+      if (!whatsapp.sent && whatsapp.waLink) await Linking.openURL(whatsapp.waLink);
+      setReminder((r) => (r ? { ...r, sending: false, sent: true } : r));
+      toast.show(t.dashboardHost.cleanerNotified);
+    } catch (err) {
+      setReminder((r) => (r ? { ...r, sending: false } : r));
+      toast.show(err instanceof ApiError ? err.message : t.dashboardHost.notifyCleanerError, 'info');
+    }
+  }
+
   useEffect(() => {
     if (!session || !openCheckout || openCheckout.turnover) {
       setFollowUp(null);
@@ -616,12 +693,14 @@ export default function HostDashboardScreen() {
                   </View>
                   <Text style={styles.quickActionLabel}>{t.dashboardHost.quickRequestCleaning}</Text>
                 </Pressable>
+                {canCheckins && (
                 <Pressable style={styles.quickAction} onPress={() => router.push('/host/checkin/new')}>
                   <View style={styles.quickActionIcon}>
                     <Ionicons name="key-outline" size={18} color={colors.primary} />
                   </View>
                   <Text style={styles.quickActionLabel}>{t.dashboardHost.quickGuestCheckIn}</Text>
                 </Pressable>
+                )}
               </View>
             </Reveal>
 
@@ -633,7 +712,7 @@ export default function HostDashboardScreen() {
                 icon="calendar-outline"
                 title={t.dashboardHost.nextCheckIns}
                 subtitle={t.dashboardHost.nextCheckInsSubtitle}
-                actionLabel={pendingCheckIns.length > 0 ? t.dashboardHost.viewAll : undefined}
+                actionLabel={pendingCheckIns.length > 0 && canCheckins ? t.dashboardHost.viewAll : undefined}
                 onAction={() => router.push('/host/guests')}
               />
             </Reveal>
@@ -1196,6 +1275,28 @@ export default function HostDashboardScreen() {
                         }}
                         style={{ marginTop: spacing.lg }}
                       />
+                    )}
+
+                    {/* Notify the property's default cleaning contact about
+                        tomorrow's checkout. Only offered when the backend has
+                        a remindable stay for this property with a contact
+                        attached; otherwise managers get a pointer to where
+                        the contact is set (staff can't change settings). */}
+                    {reminder && reminder.propertyId === openCheckout.propertyId && !reminder.loading && (
+                      reminder.sent ? (
+                        <View style={{ marginTop: spacing.lg }}>
+                          <StatusTag label={t.dashboardHost.cleanerNotified} tone="success" icon="checkmark-circle-outline" />
+                        </View>
+                      ) : reminder.target ? (
+                        <Button
+                          label={t.dashboardHost.notifyCleaner(reminder.target.contactName)}
+                          onPress={handleNotifyCleaner}
+                          loading={reminder.sending}
+                          style={{ marginTop: spacing.lg }}
+                        />
+                      ) : isManager && !property?.defaultCleaningContactId ? (
+                        <Text style={[typography.caption, { marginTop: spacing.lg }]}>{t.dashboardHost.noCleaningContact}</Text>
+                      ) : null
                     )}
 
                     <Button

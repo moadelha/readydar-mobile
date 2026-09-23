@@ -62,6 +62,9 @@ export class ApiError extends Error {
 
 export type HostAccessRole = 'OWNER' | 'MANAGER' | 'STAFF';
 
+/** Mirrors the backend's HostTeamPermission enum — what a STAFF co-host has been granted. */
+export type HostTeamPermission = 'REPORTS' | 'CALENDAR' | 'CHECKINS' | 'EXPENSES' | 'CLEANING_REPORTS';
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -72,6 +75,12 @@ export interface AuthUser {
   preferredLanguage?: 'EN' | 'FR' | 'AR';
   /** Only meaningful for role === 'HOST' — null means no host-business standing at all. */
   hostRole?: HostAccessRole | null;
+  /**
+   * What a STAFF co-host was granted. Always sent by the API at login and
+   * refresh; ignored for OWNER/MANAGER, who have everything implicitly.
+   * See useHostAccess() in lib/access.ts — nothing should read this raw.
+   */
+  hostPermissions?: HostTeamPermission[];
 }
 
 export interface StoredSession {
@@ -491,6 +500,7 @@ export interface Property {
   googleMapsUrl?: string | null;
   gateCode?: string | null;
   apartmentNumber?: string | null;
+  floor?: string | null;
   doorAccessCode?: string | null;
   checkInTime?: string | null;
   checkOutTime?: string | null;
@@ -644,6 +654,18 @@ export interface PendingCheckIn {
   /** Backfilled from Hospitable/Airbnb's own reservation data as soon as a booking syncs — present even before the guest has filled in the online check-in form. See HospitableReservationSyncService. */
   guestPhone?: string | null;
   property: { id: string; name: string };
+}
+
+/** One stay from GET /turnovers/tomorrow — only the fields the app reads. */
+export interface TomorrowReminderItem {
+  id: string;
+  propertyId: string;
+  property: { defaultCleaningContact: { id: string; name: string; whatsappNumber: string } | null };
+}
+
+export interface TomorrowReminders {
+  guestCheckIns: TomorrowReminderItem[];
+  externalReservations: TomorrowReminderItem[];
 }
 
 export interface WhatsappSendResult {
@@ -1306,6 +1328,17 @@ export const api = {
       request<any>(`/guest-welcome/checkin/${checkInId}/acknowledge`, { method: 'POST', token }),
   },
   turnovers: {
+    /**
+     * Stays checking out tomorrow whose cleaner reminder hasn't gone out yet
+     * (reminderSentAt null). Each item carries its property's
+     * defaultCleaningContact — the reminder is sent to that contact, so an
+     * item whose property has none can't be reminded.
+     */
+    tomorrow: (token: string) => request<TomorrowReminders>('/turnovers/tomorrow', { token }),
+    remindCheckIn: (checkInId: string, token: string) =>
+      request<{ whatsapp: WhatsappSendResult }>(`/turnovers/checkin/${checkInId}/remind`, { method: 'POST', token }),
+    remindReservation: (reservationId: string, token: string) =>
+      request<{ whatsapp: WhatsappSendResult }>(`/turnovers/reservation/${reservationId}/remind`, { method: 'POST', token }),
     listPending: (token: string) => request<PendingTurnovers>('/turnovers/pending', { token }),
     confirmCheckIn: (checkInId: string, token: string) =>
       request<{ whatsapp: WhatsappSendResult }>(`/turnovers/checkin/${checkInId}/confirm`, { method: 'POST', token }),

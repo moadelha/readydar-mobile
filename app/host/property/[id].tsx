@@ -35,6 +35,7 @@ import { groupByMonth } from '@/lib/checkin-groups';
 import { PROPERTY_STATUS_TONE, PropertyStatus } from '@/lib/status';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { Dict } from '@/lib/i18n/dictionary';
+import { useHostAccess } from '@/lib/access';
 
 /**
  * The statuses a host can set by hand.
@@ -87,6 +88,10 @@ export default function PropertyDetailScreen() {
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
+  const { isManager, has } = useHostAccess();
+  const canCheckins = has('CHECKINS');
+  const canExpenses = has('EXPENSES');
+  const canCleaningReports = has('CLEANING_REPORTS');
   const [property, setProperty] = useState<Property | null>(null);
   const [checkIns, setCheckIns] = useState<GuestCheckIn[]>([]);
   // Gates the Cleaning Reports button below — undefined while loading,
@@ -481,7 +486,9 @@ export default function PropertyDetailScreen() {
           headerShown: true,
           title: property.name,
           headerBackTitle: t.propertyDetail.headerBack,
-          headerRight: () => (
+          // Settings (rate, welcome message, access codes, turnover alerts)
+          // are all @MinHostRole('MANAGER') on the API.
+          headerRight: !isManager ? undefined : () => (
             <Pressable onPress={() => router.push(`/host/property-settings/${property.id}`)} hitSlop={8}>
               <Ionicons name="settings-outline" size={22} color={colors.primary} />
             </Pressable>
@@ -583,13 +590,16 @@ export default function PropertyDetailScreen() {
           />
         </View>
 
+        {canExpenses && (
         <Button
           label={t.propertyDetail.logExpense}
           onPress={() => router.push({ pathname: '/host/expense/new', params: { propertyId: property.id } })}
           variant="outline"
           style={{ marginTop: spacing.sm }}
         />
+        )}
 
+        {canCleaningReports && (
         <Button
           label={t.propertyDetail.cleaningReports}
           onPress={() =>
@@ -600,7 +610,10 @@ export default function PropertyDetailScreen() {
           variant="outline"
           style={{ marginTop: spacing.sm }}
         />
+        )}
 
+        {canCheckins && (
+        <>
         <View style={styles.sectionHeaderRow}>
           <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0 }]}>{t.propertyDetail.guestCheckIns}</Text>
           <Pressable
@@ -879,6 +892,8 @@ export default function PropertyDetailScreen() {
             );
           })
         )}
+        </>
+        )}
 
         {(property.checkInTime || property.checkOutTime) && (
           <>
@@ -936,12 +951,14 @@ export default function PropertyDetailScreen() {
           </>
         )}
 
+        {isManager && (
         <Button
           label={t.propertyDetail.automationSettings}
           onPress={() => router.push(`/host/property-settings/${property.id}`)}
           variant="outline"
           style={{ marginTop: spacing.xl }}
         />
+        )}
 
         <View style={styles.infoRow}>
           <Ionicons name="information-circle-outline" size={16} color={colors.inkFaint} />

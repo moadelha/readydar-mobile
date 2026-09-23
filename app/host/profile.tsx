@@ -8,11 +8,13 @@ import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/lib/i18n/language-context';
+import { useHostAccess } from '@/lib/access';
 
 export default function HostProfileScreen() {
   const { session, logout, updateSessionUser } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
+  const { isManager } = useHostAccess();
   const [me, setMe] = useState<AuthUser | null>(null);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -97,6 +99,7 @@ export default function HostProfileScreen() {
         </Card>
 
         <Text style={styles.sectionTitle}>{t.profileHost.manage}</Text>
+        {isManager && (
         <Pressable onPress={() => router.push('/host/cleaning-contacts')}>
           <Card style={styles.menuRow}>
             <Ionicons name="people-outline" size={18} color={colors.primary} />
@@ -104,6 +107,7 @@ export default function HostProfileScreen() {
             <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
           </Card>
         </Pressable>
+        )}
         <Pressable onPress={() => router.push('/host/turnovers')}>
           <Card style={styles.menuRow}>
             <Ionicons name="swap-horizontal-outline" size={18} color={colors.primary} />

@@ -3,76 +3,55 @@ import { useRouter } from 'expo-router';
 import { Screen, Card } from '@/components/ui';
 import { colors, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { useHostAccess } from '@/lib/access';
 
-const MENU: { icon: string; label: string; description: string; path: string }[] = [
-  {
-    icon: 'people-outline',
-    label: 'Guests',
-    description: 'Send WhatsApp welcome messages to checked-in guests',
-    path: '/host/guests',
-  },
-  {
-    icon: 'clipboard-outline',
-    label: 'All bookings',
-    description: 'Every cleaning and maintenance job, across all properties',
-    path: '/host/bookings',
-  },
-  {
-    icon: 'swap-horizontal-outline',
-    label: 'Turnovers',
-    description: 'Notify your cleaning contact after guest checkout',
-    path: '/host/turnovers',
-  },
-  {
-    icon: 'call-outline',
-    label: 'Cleaning contacts',
-    description: 'Your staff and enrolled cleaning company accounts',
-    path: '/host/cleaning-contacts',
-  },
-  {
-    icon: 'link-outline',
-    label: 'Connect Airbnb',
-    description: 'Import your listings and reservations via Hospitable',
-    path: '/host/hospitable',
-  },
-  {
-    icon: 'document-text-outline',
-    label: 'Rental contract',
-    description: 'Require guests to sign a contract during online check-in',
-    path: '/host/contract',
-  },
-  {
-    icon: 'person-outline',
-    label: 'Profile',
-    description: 'Your account, phone, and log out',
-    path: '/host/profile',
-  },
-];
+type Entry = { icon: string; label: string; description: string; path: string; visible: boolean };
 
 export default function MoreScreen() {
   const router = useRouter();
+  const { t } = useLanguage();
+  const { isOwner, isManager, has } = useHostAccess();
+
+  // Every entry's visibility mirrors the backend guard on the API it opens,
+  // so a co-host is never shown a screen that would just fail with a 403:
+  //   Guests        → guest-welcome controller, @RequireHostPermission('CHECKINS')
+  //   Cleaning contacts / Rental contract → @MinHostRole('MANAGER')
+  //   Connect Airbnb → @MinHostRole('OWNER') — see HospitableConnectController
+  //     for why even a MANAGER can't use it.
+  const menu: Entry[] = [
+    { icon: 'people-outline', label: t.more.guests, description: t.more.guestsDesc, path: '/host/guests', visible: has('CHECKINS') },
+    { icon: 'clipboard-outline', label: t.more.bookings, description: t.more.bookingsDesc, path: '/host/bookings', visible: has('CALENDAR') },
+    { icon: 'swap-horizontal-outline', label: t.more.turnovers, description: t.more.turnoversDesc, path: '/host/turnovers', visible: has('CALENDAR') },
+    { icon: 'call-outline', label: t.more.cleaningContacts, description: t.more.cleaningContactsDesc, path: '/host/cleaning-contacts', visible: isManager },
+    { icon: 'link-outline', label: t.more.connectAirbnb, description: t.more.connectAirbnbDesc, path: '/host/hospitable', visible: isOwner },
+    { icon: 'document-text-outline', label: t.more.contract, description: t.more.contractDesc, path: '/host/contract', visible: isManager },
+    { icon: 'person-outline', label: t.more.profile, description: t.more.profileDesc, path: '/host/profile', visible: true },
+  ];
 
   return (
     <Screen edges={['top']}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={typography.h1}>More</Text>
-        <Text style={[typography.bodyMuted, { marginTop: 2 }]}>Everything else, in one place.</Text>
+        <Text style={typography.h1}>{t.more.title}</Text>
+        <Text style={[typography.bodyMuted, { marginTop: 2 }]}>{t.more.subtitle}</Text>
 
         <View style={{ marginTop: spacing.lg }}>
-          {MENU.map((item) => (
-            <Pressable key={item.path} onPress={() => router.push(item.path as any)}>
-              <Card style={styles.row}>
-                <View style={styles.iconCircle}>
-                  <Ionicons name={item.icon as any} size={18} color={colors.primary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={typography.h3}>{item.label}</Text>
-                  <Text style={typography.bodyMuted}>{item.description}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
-              </Card>
-            </Pressable>
-          ))}
+          {menu
+            .filter((item) => item.visible)
+            .map((item) => (
+              <Pressable key={item.path} onPress={() => router.push(item.path as any)}>
+                <Card style={styles.row}>
+                  <View style={styles.iconCircle}>
+                    <Ionicons name={item.icon as any} size={18} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={typography.h3}>{item.label}</Text>
+                    <Text style={typography.bodyMuted}>{item.description}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
+                </Card>
+              </Pressable>
+            ))}
         </View>
       </ScrollView>
     </Screen>

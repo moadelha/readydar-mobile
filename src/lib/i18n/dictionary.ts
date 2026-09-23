@@ -118,6 +118,69 @@ export interface Dict {
     body: string;
     back: string;
   };
+  more: {
+    title: string;
+    subtitle: string;
+    guests: string;
+    guestsDesc: string;
+    bookings: string;
+    bookingsDesc: string;
+    turnovers: string;
+    turnoversDesc: string;
+    cleaningContacts: string;
+    cleaningContactsDesc: string;
+    connectAirbnb: string;
+    connectAirbnbDesc: string;
+    contract: string;
+    contractDesc: string;
+    profile: string;
+    profileDesc: string;
+  };
+  noAccess: {
+    title: string;
+    body: string;
+    back: string;
+  };
+  propertySettings: {
+    headerTitle: string;
+    subtitle: string;
+    loadError: string;
+    saveError: string;
+    saved: string;
+    save: string;
+    saving: string;
+    pricingTitle: string;
+    pricingBody: string;
+    nightlyRate: string;
+    nightlyRatePlaceholder: string;
+    invalidRate: string;
+    welcomeTitle: string;
+    welcomeBody: string;
+    welcomeModeLabel: string;
+    accessTitle: string;
+    accessBody: string;
+    gateCode: string;
+    doorCode: string;
+    apartmentNumber: string;
+    floor: string;
+    mapsLink: string;
+    checkInTime: string;
+    checkOutTime: string;
+    houseRules: string;
+    templateTitle: string;
+    templateBody: string;
+    templateLabel: string;
+    resetTemplate: string;
+    variablesHint: string;
+    turnoverTitle: string;
+    turnoverBody: string;
+    defaultContact: string;
+    noContacts: string;
+    defaultService: string;
+    modeOff: string;
+    modeReview: string;
+    modeAuto: string;
+  };
   cleaningReports: {
     // Plan gate (shown when the host's plan doesn't include the feature)
     upgradeTitle: string;
@@ -417,6 +480,10 @@ export interface Dict {
     sheetPropertyStatus: string;
     sheetArrives: string;
     sheetLeaves: string;
+    notifyCleaner: (name: string) => string;
+    cleanerNotified: string;
+    noCleaningContact: string;
+    notifyCleanerError: string;
     sheetLengthOfStay: string;
     sheetGuests: string;
     timingRequestsTitle: string;
@@ -732,6 +799,69 @@ export const en: Dict = {
     body: "We're still building out our network of vetted cleaners. Everything else in ReadyDar works as normal — we'll let you know the moment you can book one here.",
     back: 'Go back',
   },
+  more: {
+    title: 'More',
+    subtitle: 'Everything else, in one place.',
+    guests: 'Guests',
+    guestsDesc: 'Send WhatsApp welcome messages to checked-in guests',
+    bookings: 'All bookings',
+    bookingsDesc: 'Every cleaning and maintenance job, across all properties',
+    turnovers: 'Turnovers',
+    turnoversDesc: 'Notify your cleaning contact after guest checkout',
+    cleaningContacts: 'Cleaning contacts',
+    cleaningContactsDesc: 'Your staff and enrolled cleaning company accounts',
+    connectAirbnb: 'Connect Airbnb',
+    connectAirbnbDesc: 'Import your listings and reservations via Hospitable',
+    contract: 'Rental contract',
+    contractDesc: 'Require guests to sign a contract during online check-in',
+    profile: 'Profile',
+    profileDesc: 'Your account, phone, and log out',
+  },
+  noAccess: {
+    title: "You don't have access to this",
+    body: 'Ask the account owner or a manager if you need it.',
+    back: 'Go back',
+  },
+  propertySettings: {
+    headerTitle: 'Property settings',
+    subtitle: "Access details, the guest welcome message, and what happens automatically around a stay.",
+    loadError: 'Could not load this property.',
+    saveError: 'Could not save these settings.',
+    saved: 'Saved.',
+    save: 'Save settings',
+    saving: 'Saving…',
+    pricingTitle: 'Pricing',
+    pricingBody: 'The default nightly rate for this property — used for future reservations and check-in links.',
+    nightlyRate: 'Nightly rate (MAD)',
+    nightlyRatePlaceholder: 'e.g. 450',
+    invalidRate: 'Enter a valid nightly rate.',
+    welcomeTitle: 'Guest welcome message',
+    welcomeBody: 'Sent to the guest on WhatsApp once they complete online check-in.',
+    welcomeModeLabel: 'Send automatically',
+    accessTitle: 'Access details',
+    accessBody: "Filled into the welcome message — and the cleaner's turnover message — wherever the matching placeholder appears. Change the gate code here and every future message uses the new one.",
+    gateCode: 'Gate code',
+    doorCode: 'Door code',
+    apartmentNumber: 'Apartment number',
+    floor: 'Floor',
+    mapsLink: 'Google Maps link',
+    checkInTime: 'Check-in time',
+    checkOutTime: 'Check-out time',
+    houseRules: 'House rules',
+    templateTitle: 'Message wording',
+    templateBody: 'Edit the text itself. Lines whose details are empty are left out automatically.',
+    templateLabel: 'Message',
+    resetTemplate: 'Reset to default wording',
+    variablesHint: 'Placeholders you can use:',
+    turnoverTitle: 'Cleaning turnover alerts',
+    turnoverBody: 'Notify a cleaning contact on WhatsApp after the guest checks out.',
+    defaultContact: 'Default cleaning contact',
+    noContacts: 'No cleaning contacts yet — add one from More › Cleaning contacts.',
+    defaultService: 'Default service (for company-account contacts)',
+    modeOff: 'Off',
+    modeReview: 'Review first',
+    modeAuto: 'Automatic',
+  },
   cleaningReports: {
     upgradeTitle: 'Cleaning Reports is a paid feature',
     upgradeBody: "Camera-verified cleaning proof isn't included on the Free plan. Upgrade to unlock it.",
@@ -1028,6 +1158,10 @@ export const en: Dict = {
     sheetPropertyStatus: 'Property status',
     sheetArrives: 'Arrives',
     sheetLeaves: 'Leaves',
+    notifyCleaner: (name) => `Notify ${name} on WhatsApp`,
+    cleanerNotified: 'Cleaner notified',
+    noCleaningContact: "No cleaning contact for this property yet — add one in the property's settings (gear icon) to notify them from here.",
+    notifyCleanerError: 'Could not notify the cleaner.',
     sheetLengthOfStay: 'Length of stay',
     sheetGuests: 'Guests',
     timingRequestsTitle: 'Timing requests',
@@ -1341,6 +1475,69 @@ export const fr: Dict = {
     body: "Nous constituons encore notre réseau d'agents de nettoyage vérifiés. Tout le reste de ReadyDar fonctionne normalement — nous vous préviendrons dès que vous pourrez en réserver un ici.",
     back: 'Retour',
   },
+  more: {
+    title: 'Plus',
+    subtitle: 'Tout le reste, au même endroit.',
+    guests: 'Voyageurs',
+    guestsDesc: 'Envoyer les messages de bienvenue WhatsApp aux voyageurs enregistrés',
+    bookings: 'Toutes les réservations',
+    bookingsDesc: 'Toutes les missions de ménage et de maintenance, pour tous les logements',
+    turnovers: 'Rotations',
+    turnoversDesc: 'Prévenir votre contact ménage après le départ du voyageur',
+    cleaningContacts: 'Contacts ménage',
+    cleaningContactsDesc: "Votre équipe et les comptes des sociétés de ménage inscrites",
+    connectAirbnb: 'Connecter Airbnb',
+    connectAirbnbDesc: 'Importer vos annonces et réservations via Hospitable',
+    contract: 'Contrat de location',
+    contractDesc: "Faire signer un contrat aux voyageurs lors de l'enregistrement en ligne",
+    profile: 'Profil',
+    profileDesc: 'Votre compte, votre téléphone et la déconnexion',
+  },
+  noAccess: {
+    title: "Vous n'avez pas accès à cette page",
+    body: "Demandez au propriétaire du compte ou à un gestionnaire si vous en avez besoin.",
+    back: 'Retour',
+  },
+  propertySettings: {
+    headerTitle: 'Paramètres du logement',
+    subtitle: "Informations d'accès, message de bienvenue et automatisations autour d'un séjour.",
+    loadError: 'Impossible de charger ce logement.',
+    saveError: "Impossible d'enregistrer ces paramètres.",
+    saved: 'Enregistré.',
+    save: 'Enregistrer',
+    saving: 'Enregistrement…',
+    pricingTitle: 'Tarif',
+    pricingBody: "Le tarif par nuit par défaut de ce logement — utilisé pour les futures réservations et les liens d'enregistrement.",
+    nightlyRate: 'Tarif par nuit (MAD)',
+    nightlyRatePlaceholder: 'ex. 450',
+    invalidRate: 'Saisissez un tarif par nuit valide.',
+    welcomeTitle: 'Message de bienvenue',
+    welcomeBody: "Envoyé au voyageur sur WhatsApp une fois son enregistrement en ligne terminé.",
+    welcomeModeLabel: 'Envoi automatique',
+    accessTitle: "Informations d'accès",
+    accessBody: "Insérées dans le message de bienvenue — et dans le message de rotation envoyé à l'agent de ménage — là où le champ correspondant apparaît. Modifiez le code du portail ici et tous les prochains messages utiliseront le nouveau.",
+    gateCode: 'Code du portail',
+    doorCode: 'Code de la porte',
+    apartmentNumber: "Numéro d'appartement",
+    floor: 'Étage',
+    mapsLink: 'Lien Google Maps',
+    checkInTime: "Heure d'arrivée",
+    checkOutTime: 'Heure de départ',
+    houseRules: 'Règlement intérieur',
+    templateTitle: 'Texte du message',
+    templateBody: 'Modifiez le texte lui-même. Les lignes dont les informations sont vides sont retirées automatiquement.',
+    templateLabel: 'Message',
+    resetTemplate: 'Revenir au texte par défaut',
+    variablesHint: 'Champs disponibles :',
+    turnoverTitle: 'Alertes de rotation',
+    turnoverBody: "Prévenir un contact ménage sur WhatsApp après le départ du voyageur.",
+    defaultContact: 'Contact ménage par défaut',
+    noContacts: 'Aucun contact ménage pour le moment — ajoutez-en un depuis Plus › Contacts ménage.',
+    defaultService: 'Service par défaut (pour les comptes société)',
+    modeOff: 'Désactivé',
+    modeReview: 'Vérifier avant',
+    modeAuto: 'Automatique',
+  },
   cleaningReports: {
     upgradeTitle: 'Les rapports de ménage sont une fonctionnalité payante',
     upgradeBody: "La preuve de ménage vérifiée par photo n'est pas incluse dans le plan gratuit. Passez à un plan supérieur pour la débloquer.",
@@ -1638,6 +1835,10 @@ export const fr: Dict = {
     sheetPropertyStatus: 'Statut du logement',
     sheetArrives: 'Arrivée',
     sheetLeaves: 'Départ',
+    notifyCleaner: (name) => `Prévenir ${name} sur WhatsApp`,
+    cleanerNotified: 'Agent de ménage prévenu',
+    noCleaningContact: "Aucun contact de ménage pour ce logement — ajoutez-en un dans les paramètres du logement (icône engrenage) pour le prévenir d'ici.",
+    notifyCleanerError: "Impossible de prévenir l'agent de ménage.",
     sheetLengthOfStay: 'Durée du séjour',
     sheetGuests: 'Voyageurs',
     timingRequestsTitle: "Demandes d'horaire",
@@ -1972,6 +2173,69 @@ export const ar: Dict = {
     body: 'ما زلنا نبني شبكتنا من عمال التنظيف الموثّقين. تعمل بقية خدمات ReadyDar بشكل طبيعي — وسنعلمك فور إتاحة الحجز من هنا.',
     back: 'رجوع',
   },
+  more: {
+    title: 'المزيد',
+    subtitle: 'كل ما تبقّى، في مكان واحد.',
+    guests: 'الضيوف',
+    guestsDesc: 'إرسال رسائل الترحيب عبر واتساب للضيوف الذين أتمّوا تسجيل الوصول',
+    bookings: 'كل الحجوزات',
+    bookingsDesc: 'جميع مهام التنظيف والصيانة في كل العقارات',
+    turnovers: 'التسليم',
+    turnoversDesc: 'إبلاغ جهة التنظيف بعد مغادرة الضيف',
+    cleaningContacts: 'جهات التنظيف',
+    cleaningContactsDesc: 'فريقك وحسابات شركات التنظيف المسجّلة',
+    connectAirbnb: 'ربط Airbnb',
+    connectAirbnbDesc: 'استيراد إعلاناتك وحجوزاتك عبر Hospitable',
+    contract: 'عقد الإيجار',
+    contractDesc: 'إلزام الضيوف بتوقيع عقد أثناء تسجيل الوصول عبر الإنترنت',
+    profile: 'الملف الشخصي',
+    profileDesc: 'حسابك ورقم هاتفك وتسجيل الخروج',
+  },
+  noAccess: {
+    title: 'ليس لديك صلاحية الوصول إلى هذه الصفحة',
+    body: 'اطلب ذلك من صاحب الحساب أو من مدير إذا كنت بحاجة إليها.',
+    back: 'رجوع',
+  },
+  propertySettings: {
+    headerTitle: 'إعدادات العقار',
+    subtitle: 'معلومات الدخول، ورسالة الترحيب، وما يحدث تلقائيًا حول كل إقامة.',
+    loadError: 'تعذّر تحميل هذا العقار.',
+    saveError: 'تعذّر حفظ هذه الإعدادات.',
+    saved: 'تم الحفظ.',
+    save: 'حفظ الإعدادات',
+    saving: 'جارٍ الحفظ…',
+    pricingTitle: 'السعر',
+    pricingBody: 'سعر الليلة الافتراضي لهذا العقار — يُستخدم للحجوزات القادمة وروابط تسجيل الوصول.',
+    nightlyRate: 'سعر الليلة (درهم)',
+    nightlyRatePlaceholder: 'مثل: 450',
+    invalidRate: 'أدخل سعر ليلة صالحًا.',
+    welcomeTitle: 'رسالة الترحيب بالضيف',
+    welcomeBody: 'تُرسل إلى الضيف عبر واتساب بعد إتمام تسجيل الوصول عبر الإنترنت.',
+    welcomeModeLabel: 'الإرسال التلقائي',
+    accessTitle: 'معلومات الدخول',
+    accessBody: 'تُدرج في رسالة الترحيب — وفي رسالة التسليم المرسلة لعامل التنظيف — أينما ظهر الحقل المقابل. غيّر رمز البوابة هنا وستستخدم كل الرسائل القادمة الرمز الجديد.',
+    gateCode: 'رمز البوابة',
+    doorCode: 'رمز الباب',
+    apartmentNumber: 'رقم الشقة',
+    floor: 'الطابق',
+    mapsLink: 'رابط خرائط Google',
+    checkInTime: 'وقت الوصول',
+    checkOutTime: 'وقت المغادرة',
+    houseRules: 'قواعد المنزل',
+    templateTitle: 'نص الرسالة',
+    templateBody: 'عدّل النص نفسه. تُحذف تلقائيًا الأسطر التي تكون معلوماتها فارغة.',
+    templateLabel: 'الرسالة',
+    resetTemplate: 'استعادة النص الافتراضي',
+    variablesHint: 'الحقول المتاحة:',
+    turnoverTitle: 'تنبيهات التسليم',
+    turnoverBody: 'إبلاغ جهة التنظيف عبر واتساب بعد مغادرة الضيف.',
+    defaultContact: 'جهة التنظيف الافتراضية',
+    noContacts: 'لا توجد جهات تنظيف بعد — أضف واحدة من المزيد › جهات التنظيف.',
+    defaultService: 'الخدمة الافتراضية (لحسابات الشركات)',
+    modeOff: 'متوقف',
+    modeReview: 'مراجعة أولًا',
+    modeAuto: 'تلقائي',
+  },
   cleaningReports: {
     upgradeTitle: 'تقارير التنظيف ميزة مدفوعة',
     upgradeBody: 'إثبات التنظيف الموثّق بالصور غير متوفر في الخطة المجانية. قم بالترقية لتفعيله.',
@@ -2287,6 +2551,10 @@ export const ar: Dict = {
     sheetPropertyStatus: 'حالة العقار',
     sheetArrives: 'الوصول',
     sheetLeaves: 'المغادرة',
+    notifyCleaner: (name) => `إبلاغ ${name} عبر واتساب`,
+    cleanerNotified: 'تم إبلاغ عامل التنظيف',
+    noCleaningContact: 'لا توجد جهة تنظيف لهذا العقار بعد — أضف واحدة من إعدادات العقار (أيقونة الترس) لإبلاغها من هنا.',
+    notifyCleanerError: 'تعذّر إبلاغ عامل التنظيف.',
     sheetLengthOfStay: 'مدة الإقامة',
     sheetGuests: 'الضيوف',
     timingRequestsTitle: 'طلبات التوقيت',

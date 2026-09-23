@@ -8,11 +8,13 @@ import { PropertyThumb } from '@/components/host-ui';
 import { colors, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/lib/i18n/language-context';
+import { useHostAccess } from '@/lib/access';
 
 export default function PropertiesScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const { t } = useLanguage();
+  const { isOwner, isManager } = useHostAccess();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,13 +49,19 @@ export default function PropertiesScreen() {
           <Text style={typography.h1}>{t.propertiesList.title}</Text>
           <Text style={[typography.bodyMuted, { marginTop: 2 }]}>{t.propertiesList.listedCount(properties.length)}</Text>
         </View>
-        <Pressable onPress={() => router.push('/host/hospitable')} style={styles.airbnbButton} hitSlop={8}>
-          <Ionicons name="link-outline" size={16} color={colors.primary} />
-          <Text style={styles.airbnbButtonText}>{t.propertiesList.airbnbButton}</Text>
-        </Pressable>
-        <Pressable onPress={() => router.push('/host/property/new')} style={styles.addButton}>
-          <Ionicons name="add" size={22} color={colors.white} />
-        </Pressable>
+        {/* Connecting Airbnb is owner-only; creating a property is
+            @MinHostRole('MANAGER') on the API. */}
+        {isOwner && (
+          <Pressable onPress={() => router.push('/host/hospitable')} style={styles.airbnbButton} hitSlop={8}>
+            <Ionicons name="link-outline" size={16} color={colors.primary} />
+            <Text style={styles.airbnbButtonText}>{t.propertiesList.airbnbButton}</Text>
+          </Pressable>
+        )}
+        {isManager && (
+          <Pressable onPress={() => router.push('/host/property/new')} style={styles.addButton}>
+            <Ionicons name="add" size={22} color={colors.white} />
+          </Pressable>
+        )}
       </View>
 
       {error && (
