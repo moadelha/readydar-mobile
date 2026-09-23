@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,9 @@ import {
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+// Installed via expo-router (its direct dependency); Expo's own docs import
+// header helpers from here the same way.
+import { HeaderShownContext } from '@react-navigation/elements';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, elevation, radius, spacing, typography } from '@/theme';
 import { useLanguage, Lang } from '@/lib/i18n/language-context';
@@ -50,8 +53,13 @@ export function Screen({
    */
   edges?: ('top' | 'bottom' | 'left' | 'right')[];
 }) {
+  // When AppHeader is showing it already sits below the status bar, so the
+  // content under it must not reserve that space a second time — that was
+  // the extra gap visible under every screen title.
+  const headerShown = useContext(HeaderShownContext);
+  const effectiveEdges = headerShown ? edges.filter((e) => e !== 'top') : edges;
   return (
-    <SafeAreaView style={styles.screen} edges={edges}>
+    <SafeAreaView style={styles.screen} edges={effectiveEdges}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         {children}
       </KeyboardAvoidingView>

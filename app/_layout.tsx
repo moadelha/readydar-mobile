@@ -5,6 +5,7 @@ import { AppMetricsRoot } from 'expo-observe';
 import { AuthProvider } from '@/lib/auth-context';
 import { LanguageProvider } from '@/lib/i18n/language-context';
 import { ToastProvider } from '@/lib/toast';
+import { AppHeader } from '@/components/app-header';
 
 // A shared, consistent push transition — was left at the native default
 // before (fine, but each platform/screen combination could feel slightly
@@ -30,7 +31,15 @@ function RootLayout() {
         <LanguageProvider>
           <ToastProvider>
             <StatusBar style="dark" />
-            <Stack screenOptions={{ headerShown: false, ...CARD_TRANSITION }}>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                // Only renders on screens that opt in with headerShown: true.
+                // See AppHeader for why the native header is replaced.
+                header: (props) => <AppHeader {...props} />,
+                ...CARD_TRANSITION,
+              }}
+            >
               <Stack.Screen name="index" options={{ animation: 'fade' }} />
               <Stack.Screen name="login" options={{ animation: 'fade' }} />
               <Stack.Screen name="register" />
