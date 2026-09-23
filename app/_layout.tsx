@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { AppMetricsRoot } from 'expo-observe';
 import { AuthProvider } from '@/lib/auth-context';
 import { LanguageProvider } from '@/lib/i18n/language-context';
@@ -20,7 +20,12 @@ const CARD_TRANSITION = {
 
 function RootLayout() {
   return (
-    <SafeAreaProvider>
+    // initialMetrics seeds the provider with insets measured natively at
+    // startup. Without it the first render reports every inset as 0 and the
+    // native-stack header lays itself out against that — on Android with
+    // edgeToEdgeEnabled that puts the title behind the status bar, level
+    // with the clock and battery, and it never re-lays-out afterwards.
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <AuthProvider>
         <LanguageProvider>
           <ToastProvider>

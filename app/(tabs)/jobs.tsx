@@ -39,7 +39,7 @@ export default function MyJobsScreen() {
   );
 
   return (
-    <Screen>
+    <Screen edges={['top']}>
       <Reveal>
         <View style={styles.header}>
           <Text style={typography.h1}>{t.myJobs.title}</Text>

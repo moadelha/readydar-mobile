@@ -68,7 +68,7 @@ export default function JobFeedScreen() {
   const isBlocked = !!commissionStatus?.isBlocked;
 
   return (
-    <Screen>
+    <Screen edges={['top']}>
       <Reveal>
         <View style={styles.header}>
           <Text style={typography.h1}>{t.jobFeed.title}</Text>

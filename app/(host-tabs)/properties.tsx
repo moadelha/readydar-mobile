@@ -41,7 +41,7 @@ export default function PropertiesScreen() {
   if (isLoading) return <LoadingScreen />;
 
   return (
-    <Screen>
+    <Screen edges={['top']}>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={typography.h1}>{t.propertiesList.title}</Text>

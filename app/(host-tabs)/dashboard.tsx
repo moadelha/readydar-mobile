@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Linking, Modal, Switch } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import {
@@ -153,6 +154,11 @@ export default function HostDashboardScreen() {
   const router = useRouter();
   const toast = useToast();
   const { t } = useLanguage();
+  // Sheets below render inside a <Modal>, which sits outside the <Screen>
+  // tree — so they don't inherit its safe-area padding and have to consume
+  // the bottom inset themselves. Without it the last button in a sheet sits
+  // under Android's gesture bar (edgeToEdgeEnabled is on).
+  const insets = useSafeAreaInsets();
 
   const [overview, setOverview] = useState<PropertyStatusItem[]>([]);
   const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
@@ -541,7 +547,7 @@ export default function HostDashboardScreen() {
 
   if (isLoading) {
     return (
-      <Screen>
+      <Screen edges={['top']}>
         <View style={styles.container}>
           <View style={{ gap: 6 }}>
             <View style={{ width: 160, height: 26, borderRadius: 6, backgroundColor: 'rgba(27,31,35,0.08)' }} />
@@ -556,7 +562,7 @@ export default function HostDashboardScreen() {
   }
 
   return (
-    <Screen>
+    <Screen edges={['top']}>
       <ScrollView
         contentContainerStyle={styles.container}
         refreshControl={
@@ -832,7 +838,7 @@ export default function HostDashboardScreen() {
       {/* ------------------------------------------------------------- */}
       <Modal visible={notifOpen} transparent animationType="fade" onRequestClose={() => setNotifOpen(false)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setNotifOpen(false)}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onPress={(e) => e.stopPropagation()}>
             <View style={styles.notifHeader}>
               <Text style={typography.h2}>{t.dashboardHost.notifications}</Text>
               {unread > 0 && (
@@ -897,7 +903,7 @@ export default function HostDashboardScreen() {
         onRequestClose={() => setOpenCheckIn(null)}
       >
         <Pressable style={styles.sheetBackdrop} onPress={() => setOpenCheckIn(null)}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onPress={(e) => e.stopPropagation()}>
             {openCheckIn &&
               (() => {
                 const property = propertyById[openCheckIn.propertyId];
@@ -1066,7 +1072,7 @@ export default function HostDashboardScreen() {
         onRequestClose={() => setOpenCheckout(null)}
       >
         <Pressable style={styles.sheetBackdrop} onPress={() => setOpenCheckout(null)}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onPress={(e) => e.stopPropagation()}>
             {openCheckout &&
               (() => {
                 const property = propertyById[openCheckout.propertyId];

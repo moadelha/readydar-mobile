@@ -30,9 +30,28 @@ import { DURATIONS, EASING, useEntrance, usePressScale } from '@/lib/motion';
  * avoidance at all. `padding` on iOS / `height` on Android is the combination
  * that plays nicely with a ScrollView-based form on both platforms.
  */
-export function Screen({ children }: { children: React.ReactNode }) {
+export function Screen({
+  children,
+  edges = ['top', 'bottom'],
+}: {
+  children: React.ReactNode;
+  /**
+   * Which safe-area edges this screen consumes. Defaults to both.
+   *
+   * `bottom` matters because app.json sets `edgeToEdgeEnabled: true`, so the
+   * app draws underneath Android's gesture/navigation bar. Without it, the
+   * last element on a screen sits behind that bar — tapping it either does
+   * nothing or triggers the system Back gesture instead, which is how the
+   * "Share via WhatsApp" button became almost unhittable.
+   *
+   * Screens inside a tab navigator pass `['top']`: the tab bar already sits
+   * in that space and pads itself, so consuming the inset again would leave
+   * a second gap above it.
+   */
+  edges?: ('top' | 'bottom' | 'left' | 'right')[];
+}) {
   return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
+    <SafeAreaView style={styles.screen} edges={edges}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         {children}
       </KeyboardAvoidingView>

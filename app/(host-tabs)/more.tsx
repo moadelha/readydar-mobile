@@ -53,7 +53,7 @@ export default function MoreScreen() {
   const router = useRouter();
 
   return (
-    <Screen>
+    <Screen edges={['top']}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={typography.h1}>More</Text>
         <Text style={[typography.bodyMuted, { marginTop: 2 }]}>Everything else, in one place.</Text>

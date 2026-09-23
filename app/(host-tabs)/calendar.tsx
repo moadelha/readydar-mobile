@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Modal, Linking } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth, ApiError } from '@/lib/auth-context';
@@ -99,6 +100,9 @@ export default function CalendarScreen() {
   const router = useRouter();
   const toast = useToast();
   const { t } = useLanguage();
+  // The sheets below live in a <Modal>, outside <Screen>, so they consume
+  // the bottom inset themselves — see the same note in dashboard.tsx.
+  const insets = useSafeAreaInsets();
   // Arriving from a property-specific entry point (Home's "tomorrow's
   // checkouts" card, the property page) rather than the Calendar tab itself
   // — pre-select that property and land straight on Month view, which is
@@ -527,7 +531,7 @@ export default function CalendarScreen() {
   if (isLoading) return <LoadingScreen />;
 
   return (
-    <Screen>
+    <Screen edges={['top']}>
       <View style={styles.header}>
         <Text style={typography.h1}>{t.calendarHost.title}</Text>
         <View style={{ marginTop: spacing.sm }}>
@@ -744,7 +748,7 @@ export default function CalendarScreen() {
       {/* Day overflow — Month view */}
       <Modal visible={!!selectedDay} animationType="fade" transparent onRequestClose={() => setSelectedDay(null)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setSelectedDay(null)}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onPress={(e) => e.stopPropagation()}>
             <Text style={typography.h3}>
               {selectedDay && parseDateOnly(selectedDay).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
             </Text>
@@ -783,7 +787,7 @@ export default function CalendarScreen() {
       {/* Event detail */}
       <Modal visible={!!selectedEvent} animationType="fade" transparent onRequestClose={() => setSelectedEvent(null)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setSelectedEvent(null)}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onPress={(e) => e.stopPropagation()}>
             {selectedEvent && (
               <>
                 <View style={styles.row}>
@@ -933,7 +937,7 @@ export default function CalendarScreen() {
       {/* Quick add */}
       <Modal visible={quickAddOpen} animationType="fade" transparent onRequestClose={() => setQuickAddOpen(false)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setQuickAddOpen(false)}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onPress={(e) => e.stopPropagation()}>
             <Text style={typography.h3}>{t.calendarHost.addSheetTitle}</Text>
             <Pressable
               style={styles.quickAddRow}

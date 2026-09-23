@@ -43,7 +43,7 @@ export default function EarningsScreen() {
 
   if (isLoading || !summary) {
     return (
-      <Screen>
+      <Screen edges={['top']}>
         <View style={styles.container}>
           <View style={{ width: 140, height: 26, borderRadius: 6, backgroundColor: 'rgba(27,31,35,0.08)' }} />
           <View style={styles.statsRow}>
@@ -58,7 +58,7 @@ export default function EarningsScreen() {
   }
 
   return (
-    <Screen>
+    <Screen edges={['top']}>
       <ScrollView
         contentContainerStyle={styles.container}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={colors.primary} />}

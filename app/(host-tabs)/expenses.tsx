@@ -159,7 +159,7 @@ export default function ExpensesScreen() {
   if (isLoading) return <LoadingScreen />;
 
   return (
-    <Screen>
+    <Screen edges={['top']}>
       <View style={styles.header}>
         <Text style={typography.h1}>{t.expenses.title}</Text>
       </View>

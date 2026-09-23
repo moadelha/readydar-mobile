@@ -50,7 +50,7 @@ export default function ProfileScreen() {
   if (!profile) return <LoadingScreen />;
 
   return (
-    <Screen>
+    <Screen edges={['top']}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={typography.h1}>
           {profile.user.firstName} {profile.user.lastName}
