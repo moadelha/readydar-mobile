@@ -38,15 +38,12 @@ import { Dict } from '@/lib/i18n/dictionary';
 import { useHostAccess } from '@/lib/access';
 
 /**
- * The statuses a host can set by hand.
- *
- * `OCCUPIED` is deliberately not offered: it means "a guest is in there
- * right now", which the backend already knows from the reservation, and
- * forcing it would stick a property in that state after the guest leaves.
- * The three here are the ones a host has real knowledge of that the system
- * doesn't — "I've cleaned it", "it needs doing", "someone's on it".
+ * The statuses a host can set by hand — the same four the web dashboard's
+ * status menu offers. `OCCUPIED` covers a stay the system doesn't know
+ * about (a direct or offline guest); like any override it sticks until
+ * "Back to automatic", which the card always offers.
  */
-const SETTABLE_STATUSES: PropertyStatus[] = ['READY', 'NEEDS_CLEANING', 'IN_PROGRESS'];
+const SETTABLE_STATUSES: PropertyStatus[] = ['OCCUPIED', 'NEEDS_CLEANING', 'IN_PROGRESS', 'READY'];
 
 /**
  * Height of the cover photo, in logical points. A constant rather than a
@@ -149,10 +146,12 @@ export default function PropertyDetailScreen() {
     setStatusBusy(next ?? 'CLEAR');
     try {
       const updated = await api.properties.setStatus(id, next, session.accessToken);
-      // The endpoint returns the updated property, so the override lands
-      // without a refetch — but the derived status behind it may have moved
-      // too, so reload to keep the badge honest once the override is cleared.
-      setProperty(updated);
+      // Only the override is taken from the response. The endpoint returns
+      // the bare property row — no `city`, no `photos` — and swapping that in
+      // whole made the render read `property.city.name` off undefined, which
+      // crashed the screen to black. The reload right after brings the full
+      // record and the derived status behind the override.
+      setProperty((prev) => (prev ? { ...prev, manualStatusOverride: updated.manualStatusOverride } : prev));
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t.propertyDetail.errorSetStatus);
