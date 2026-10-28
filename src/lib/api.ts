@@ -460,6 +460,8 @@ export interface CleaningReportPhoto {
   id: string;
   section: string;
   url?: string;
+  /** A ~600px preview copy for grid tiles (signed URL, like `url`). Null until the server has made one — fall back to `url`. */
+  thumbUrl?: string | null;
   capturedAt: string;
   receivedAt: string;
   latitude: number;

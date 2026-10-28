@@ -207,7 +207,9 @@ export interface Dict {
     areaLabel: string;
     areaPlaceholder: string;
     uploading: string;
+    uploadingCount: (n: number) => string;
     takePhoto: string;
+    burstHint: string;
     noPhotosYet: string;
     nameAreaTitle: string;
     nameAreaBody: string;
@@ -888,7 +890,9 @@ export const en: Dict = {
     areaLabel: 'Area',
     areaPlaceholder: 'e.g. Kitchen, Bathroom 1, Bedroom 2',
     uploading: 'Uploading…',
+    uploadingCount: (n: number) => `Uploading ${n} photo${n === 1 ? '' : 's'}…`,
     takePhoto: 'Take photo',
+    burstHint: 'The camera reopens after each shot so you can take several of this area. Press back when you are done.',
     noPhotosYet: 'No photos yet — tap “Take photo” above to start.',
     nameAreaTitle: 'Name this area',
     nameAreaBody: 'Enter what area this photo is of (e.g. Kitchen) before taking the photo.',
@@ -1567,7 +1571,9 @@ export const fr: Dict = {
     areaLabel: 'Zone',
     areaPlaceholder: 'ex. Cuisine, Salle de bain 1, Chambre 2',
     uploading: 'Envoi…',
+    uploadingCount: (n: number) => `Envoi de ${n} photo${n === 1 ? '' : 's'}…`,
     takePhoto: 'Prendre une photo',
+    burstHint: "L'appareil photo se rouvre après chaque photo pour en prendre plusieurs de cette zone. Appuyez sur retour quand vous avez terminé.",
     noPhotosYet: 'Aucune photo pour le moment — appuyez sur « Prendre une photo » ci-dessus pour commencer.',
     nameAreaTitle: 'Nommez cette zone',
     nameAreaBody: 'Indiquez de quelle zone il s’agit (ex. Cuisine) avant de prendre la photo.',
@@ -2268,7 +2274,9 @@ export const ar: Dict = {
     areaLabel: 'المنطقة',
     areaPlaceholder: 'مثل: المطبخ، الحمام 1، غرفة النوم 2',
     uploading: 'جارٍ الرفع…',
+    uploadingCount: (n: number) => `جارٍ رفع ${arPlural(n, { one: 'صورة واحدة', two: 'صورتين', few: 'صور', many: 'صورة' })}…`,
     takePhoto: 'التقاط صورة',
+    burstHint: 'تُفتح الكاميرا من جديد بعد كل صورة لتلتقط عدة صور لهذه المنطقة. اضغط رجوع عند الانتهاء.',
     noPhotosYet: 'لا توجد صور بعد — اضغط على «التقاط صورة» أعلاه للبدء.',
     nameAreaTitle: 'سمِّ هذه المنطقة',
     nameAreaBody: 'أدخل اسم المنطقة التي تصوّرها (مثل المطبخ) قبل التقاط الصورة.',

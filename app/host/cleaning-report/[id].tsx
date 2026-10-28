@@ -60,9 +60,10 @@ function groupBySection(photos: CleaningReportPhoto[]): { section: string; photo
 
 /**
  * The actual capture flow: name an area, tap "Take photo" (opens the
- * camera directly), which then grabs a fresh GPS fix and uploads both
- * together — never batched, so the server's received-at clock stays close
- * to the moment the shutter was pressed. Once marked complete, the report
+ * camera directly, and keeps reopening it until the host backs out). Each
+ * shot then grabs a fresh GPS fix and uploads both together — never
+ * batched, so the server's received-at clock stays close to the moment the
+ * shutter was pressed. Once marked complete, the report
  * locks (no more add/remove) and this screen switches to showing the
  * verification link and a PDF share action instead.
  */
@@ -74,7 +75,8 @@ export default function CleaningReportDetailScreen() {
 
   const [report, setReport] = useState<CleaningReport | null>(null);
   const [sectionInput, setSectionInput] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
+  /** Shots still uploading in the background — the camera doesn't wait for them, but "Mark complete" does. */
+  const [pendingUploads, setPendingUploads] = useState(0);
   const [isCompleting, setIsCompleting] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [isSharingPdf, setIsSharingPdf] = useState(false);
@@ -89,7 +91,21 @@ export default function CleaningReportDetailScreen() {
     setError(null);
     try {
       const data = await api.cleaningReports.getDetail(id, session.accessToken);
-      setReport(data);
+      // Every fetch signs fresh URLs, and a changed URL makes <Image> fetch
+      // the tile all over again — after each burst shot, every photo on the
+      // screen re-downloaded. Tiles already on screen keep the preview URL
+      // they loaded with (still cached by the image loader); only new
+      // photos, or one whose preview has just been made, take the new one.
+      setReport((prev) => {
+        const shown = new Map((prev?.photos ?? []).map((p) => [p.id, p.thumbUrl]));
+        return {
+          ...data,
+          photos: data.photos?.map((p) => {
+            const kept = shown.get(p.id);
+            return kept ? { ...p, thumbUrl: kept } : p;
+          }),
+        };
+      });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t.cleaningReports.loadError);
     }
@@ -138,32 +154,22 @@ export default function CleaningReportDetailScreen() {
     };
   }, [session, report?.propertyId]);
 
-  async function handleAddPhoto() {
-    if (!session || !report) return;
-    if (!sectionInput.trim()) {
-      Alert.alert(t.cleaningReports.nameAreaTitle, t.cleaningReports.nameAreaBody);
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-    if (result.canceled || !result.assets[0]) return;
-
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(t.cleaningReports.locationNeededTitle, t.cleaningReports.locationNeededBody);
-      return;
-    }
-
-    setError(null);
-    setIsUploading(true);
+  /**
+   * Uploads one shot with its own GPS fix. Runs in the background while the
+   * camera is already reopened for the next shot, so each photo still goes
+   * up on its own, right after it was taken (see the screen comment below).
+   */
+  async function uploadShot(reportId: string, section: string, uri: string, capturedAt: string) {
+    if (!session) return;
+    setPendingUploads((n) => n + 1);
     try {
       const pos = await Location.getCurrentPositionAsync({});
-      const file: PickedFile = { uri: result.assets[0].uri, name: 'photo.jpg', type: 'image/jpeg' };
+      const file: PickedFile = { uri, name: 'photo.jpg', type: 'image/jpeg' };
       const uploaded = await api.cleaningReports.uploadPhoto(
-        report.id,
+        reportId,
         {
-          section: sectionInput.trim(),
-          capturedAt: new Date().toISOString(),
+          section,
+          capturedAt,
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
           accuracyMeters: pos.coords.accuracy ?? undefined,
@@ -178,7 +184,37 @@ export default function CleaningReportDetailScreen() {
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t.cleaningReports.uploadError);
     } finally {
-      setIsUploading(false);
+      setPendingUploads((n) => n - 1);
+    }
+  }
+
+  /**
+   * Burst capture for one area: the camera reopens by itself after every
+   * shot, so a host can take several photos of the same room without
+   * tapping "Take photo" again each time. Backing out of the camera ends
+   * the burst — then they name the next area and go again.
+   */
+  async function handleAddPhoto() {
+    if (!session || !report) return;
+    const section = sectionInput.trim();
+    if (!section) {
+      Alert.alert(t.cleaningReports.nameAreaTitle, t.cleaningReports.nameAreaBody);
+      return;
+    }
+
+    // Asked up front (not after the first shot) so the burst isn't
+    // interrupted by a permission dialog between photos.
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(t.cleaningReports.locationNeededTitle, t.cleaningReports.locationNeededBody);
+      return;
+    }
+
+    setError(null);
+    while (true) {
+      const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+      if (result.canceled || !result.assets[0]) break;
+      void uploadShot(report.id, section, result.assets[0].uri, new Date().toISOString());
     }
   }
 
@@ -327,12 +363,10 @@ export default function CleaningReportDetailScreen() {
               value={sectionInput}
               onChangeText={setSectionInput}
             />
-            <Button
-              label={isUploading ? t.cleaningReports.uploading : t.cleaningReports.takePhoto}
-              onPress={handleAddPhoto}
-              loading={isUploading}
-              variant="outline"
-            />
+            <Button label={t.cleaningReports.takePhoto} onPress={handleAddPhoto} variant="outline" />
+            <Text style={[typography.caption, { marginTop: spacing.xs }]}>
+              {pendingUploads > 0 ? t.cleaningReports.uploadingCount(pendingUploads) : t.cleaningReports.burstHint}
+            </Text>
           </Card>
         )}
 
@@ -348,7 +382,10 @@ export default function CleaningReportDetailScreen() {
                     <Pressable onPress={() => p.url && setViewerUrl(resolveUploadUrl(p.url))}>
                       {p.url ? (
                         <Image
-                          source={{ uri: resolveThumbnailUrl(p.url, PixelRatio.getPixelSizeForLayoutSize(PHOTO_SIZE)) }}
+                          // The server's small preview copy when there is one —
+                          // the full photo is several MB and only needed in
+                          // the full-screen viewer.
+                          source={{ uri: p.thumbUrl ? p.thumbUrl : resolveThumbnailUrl(p.url, PixelRatio.getPixelSizeForLayoutSize(PHOTO_SIZE)) }}
                           style={styles.photo}
                         />
                       ) : (
@@ -377,7 +414,7 @@ export default function CleaningReportDetailScreen() {
             label={isCompleting ? t.cleaningReports.completing : t.cleaningReports.markComplete}
             onPress={handleComplete}
             loading={isCompleting}
-            disabled={photoCount === 0}
+            disabled={photoCount === 0 || pendingUploads > 0}
             variant="outline"
             style={{ marginTop: spacing.lg }}
           />
