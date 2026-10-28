@@ -8,6 +8,7 @@ import { Screen, Card, LoadingScreen, LanguagePicker } from '@/components/ui';
 import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { LegalLinks } from '@/components/legal-links';
 import { useLanguage } from '@/lib/i18n/language-context';
 
 export default function ProfileScreen() {
@@ -119,6 +120,8 @@ export default function ProfileScreen() {
           <View style={{ height: spacing.sm }} />
           <Button label={t.profileCleaner.logOut} onPress={() => logout()} variant="danger" />
         </Card>
+
+        <LegalLinks />
       </ScrollView>
     </Screen>
   );

@@ -88,6 +88,10 @@ export default function RegisterScreen() {
               {t.register.termsLink}
             </Text>
             {t.register.termsSuffix}
+            <Text style={styles.termsLink} onPress={() => Linking.openURL(`${WEB_URL}/privacy`)}>
+              {t.register.privacyLink}
+            </Text>
+            .
           </Text>
         </View>
 

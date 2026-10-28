@@ -7,6 +7,7 @@ import { Screen, Card, LoadingScreen, TextField, StatusBadge, ErrorBanner, Langu
 import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
+import { LegalLinks } from '@/components/legal-links';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { useHostAccess } from '@/lib/access';
 
@@ -130,6 +131,8 @@ export default function HostProfileScreen() {
         <Card style={{ marginTop: spacing.md }}>
           <Button label={t.common.logOut} onPress={() => logout()} variant="danger" />
         </Card>
+
+        <LegalLinks />
       </ScrollView>
     </Screen>
   );

@@ -14,6 +14,8 @@
 export interface Dict {
   common: {
     retry: string;
+    privacyPolicy: string;
+    terms: string;
     save: string;
     saving: string;
     cancel: string;
@@ -86,6 +88,7 @@ export interface Dict {
     termsPrefix: string;
     termsLink: string;
     termsSuffix: string;
+    privacyLink: string;
     termsRequired: string;
     genericError: string;
   };
@@ -704,6 +707,8 @@ export interface Dict {
 
 export const en: Dict = {
   common: {
+    privacyPolicy: 'Privacy Policy',
+    terms: 'Terms and Conditions',
     retry: 'Retry',
     save: 'Save',
     saving: 'Saving…',
@@ -767,7 +772,8 @@ export const en: Dict = {
     logIn: 'Log in',
     termsPrefix: 'I have read and agree to the ',
     termsLink: 'Terms and Conditions',
-    termsSuffix: ' and Privacy Policy.',
+    termsSuffix: ' and ',
+    privacyLink: 'Privacy Policy',
     termsRequired: 'You must accept the Terms and Conditions to create an account.',
     genericError: 'Unable to create your account.',
   },
@@ -1380,6 +1386,8 @@ export const en: Dict = {
 
 export const fr: Dict = {
   common: {
+    privacyPolicy: 'Politique de confidentialité',
+    terms: 'Conditions générales',
     retry: 'Réessayer',
     save: 'Enregistrer',
     saving: 'Enregistrement…',
@@ -1443,7 +1451,8 @@ export const fr: Dict = {
     logIn: 'Se connecter',
     termsPrefix: "J'ai lu et j'accepte les ",
     termsLink: 'Conditions générales',
-    termsSuffix: ' et la Politique de confidentialité.',
+    termsSuffix: ' et la ',
+    privacyLink: 'Politique de confidentialité',
     termsRequired: 'Vous devez accepter les conditions générales pour créer un compte.',
     genericError: 'Impossible de créer votre compte.',
   },
@@ -2073,6 +2082,8 @@ function arPlural(n: number, forms: { one: string; two: string; few: string; man
 
 export const ar: Dict = {
   common: {
+    privacyPolicy: 'سياسة الخصوصية',
+    terms: 'الشروط والأحكام',
     retry: 'إعادة المحاولة',
     save: 'حفظ',
     saving: 'جارٍ الحفظ…',
@@ -2141,7 +2152,8 @@ export const ar: Dict = {
     logIn: 'تسجيل الدخول',
     termsPrefix: 'لقد قرأت وأوافق على ',
     termsLink: 'الشروط والأحكام',
-    termsSuffix: ' وسياسة الخصوصية.',
+    termsSuffix: ' و',
+    privacyLink: 'سياسة الخصوصية',
     termsRequired: 'يجب أن توافق على الشروط والأحكام لإنشاء حساب.',
     genericError: 'تعذّر إنشاء حسابك.',
   },
