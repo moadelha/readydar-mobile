@@ -63,7 +63,7 @@ export class ApiError extends Error {
 export type HostAccessRole = 'OWNER' | 'MANAGER' | 'STAFF';
 
 /** Mirrors the backend's HostTeamPermission enum — what a STAFF co-host has been granted. */
-export type HostTeamPermission = 'REPORTS' | 'CALENDAR' | 'CHECKINS' | 'EXPENSES' | 'CLEANING_REPORTS';
+export type HostTeamPermission = 'REPORTS' | 'CALENDAR' | 'CHECKINS' | 'EXPENSES' | 'CLEANING_REPORTS' | 'MESSAGES';
 
 export interface AuthUser {
   id: string;
@@ -884,11 +884,79 @@ export interface JobFeedItem extends Booking {
   distanceKm: number | null;
 }
 
-/** Mirrors apps/web/src/lib/api.ts's Entitlements — only the fields the mobile app actually reads so far. */
+export type PlanFeature =
+  | 'cleaningReports'
+  | 'ttlock'
+  | 'inbox'
+  | 'aiReplies'
+  | 'aiReviewAnalysis'
+  | 'priceEditor'
+  | 'dynamicPricing'
+  | 'ownerPortal'
+  | 'channex'
+  | 'automation';
+
+/** Mirrors apps/web/src/lib/api.ts's Entitlements (GET /billing/entitlements). Plans v2 fields are optional for older API versions. */
 export interface Entitlements {
   planCode: string | null;
   planName: string | null;
   cleaningReportsEnabled: boolean;
+  isTrial?: boolean;
+  trialEndsAt?: string | null;
+  maxProperties?: number | null;
+  maxTeamMembers?: number | null;
+  teamMembersUsed?: number;
+  // Plans v2
+  line?: 'LIGHT' | 'PRO';
+  propertyLimit?: number | null;
+  propertiesUsed?: number;
+  extraProperties?: number;
+  addons?: ('CLEANING_REPORTS' | 'TTLOCK')[];
+  features?: Record<PlanFeature, boolean>;
+  /** Hostel/hotel accounts get their own console on the web; RENTALS is everyone else. */
+  businessType?: 'RENTALS' | 'HOSTEL';
+}
+
+/** A Booking.com/Airbnb guest conversation (through Channex) — mirrors the web app's GuestThread. */
+export interface GuestThread {
+  id: string;
+  /** BOOKING_COM | AIRBNB | EXPEDIA | other */
+  provider: string;
+  guestName: string | null;
+  isClosed: boolean;
+  /** Airbnb pre-booking question — no reservation yet. */
+  isInquiry: boolean;
+  lastMessageAt: string | null;
+  lastMessagePreview: string | null;
+  lastMessageSender: 'GUEST' | 'HOST' | 'SYSTEM' | null;
+  unreadCount: number;
+  property: { id: string; name: string };
+  reservation: { id: string; checkIn: string; checkOut: string; reservationCode: string | null } | null;
+}
+
+export interface GuestMessage {
+  id: string;
+  sender: 'GUEST' | 'HOST' | 'SYSTEM';
+  body: string | null;
+  /** Direct URLs (photos or PDFs) from the channel. */
+  attachments: string[];
+  sentAt: string;
+  /** Team member who replied from ReadyDar, when known. */
+  sentByName: string | null;
+}
+
+export interface MessageTemplate {
+  id: string;
+  title: string;
+  body: string;
+}
+
+/** A quick reply filled in for one conversation; `missing` lists placeholders with no value (e.g. no Wi-Fi saved). */
+export interface RenderedMessageTemplate {
+  id: string;
+  title: string;
+  text: string;
+  missing: string[];
 }
 
 export interface CleanerProfile {
@@ -1273,6 +1341,37 @@ export const api = {
      */
     guestPhotoUrl: (checkInId: string, guestId: string, token: string) =>
       request<{ url: string }>(`/checkins/${checkInId}/guests/${guestId}/photo-url`, { token }),
+  },
+  /**
+   * Pro guest inbox (MessagingController on the API — @RequireFeature('inbox'),
+   * @RequireHostPermission('MESSAGES')). Same endpoints the web inbox uses;
+   * opening a thread marks it read server-side.
+   */
+  messaging: {
+    listThreads: (status: 'all' | 'unread' | 'open', token: string) =>
+      request<GuestThread[]>(`/messaging/threads${status !== 'all' ? `?status=${status}` : ''}`, { token }),
+    getThread: (id: string, token: string) =>
+      request<{ thread: GuestThread; messages: GuestMessage[] }>(`/messaging/threads/${id}`, { token }),
+    send: (id: string, message: string, token: string) =>
+      request<GuestMessage>(`/messaging/threads/${id}/messages`, { method: 'POST', body: { message }, token }),
+    /** Photo (JPEG/PNG/WebP) or PDF, max 10 MB — sent through the channel like a message. */
+    sendAttachment: (id: string, file: PickedFile, token: string) =>
+      requestForm<GuestMessage>(`/messaging/threads/${id}/attachments`, {}, { file }, { token }),
+    close: (id: string, token: string) => request<{ success: boolean }>(`/messaging/threads/${id}/close`, { method: 'POST', token }),
+    /** Booking.com only: tells the channel the guest's last message needs no answer. */
+    noReplyNeeded: (id: string, token: string) =>
+      request<{ success: boolean }>(`/messaging/threads/${id}/no-reply-needed`, { method: 'POST', token }),
+    unreadCount: (token: string) => request<{ unreadMessages: number; unreadThreads: number }>('/messaging/unread-count', { token }),
+    /** Quick replies with {{placeholders}} filled for this conversation. */
+    renderedTemplates: (threadId: string, token: string) =>
+      request<RenderedMessageTemplate[]>(`/messaging/threads/${threadId}/templates`, { token }),
+    templates: (token: string) => request<MessageTemplate[]>('/messaging/templates', { token }),
+    createTemplate: (data: { title: string; body: string }, token: string) =>
+      request<MessageTemplate>('/messaging/templates', { method: 'POST', body: data, token }),
+    updateTemplate: (id: string, data: { title: string; body: string }, token: string) =>
+      request<MessageTemplate>(`/messaging/templates/${id}`, { method: 'PUT', body: data, token }),
+    deleteTemplate: (id: string, token: string) =>
+      request<{ success: boolean }>(`/messaging/templates/${id}`, { method: 'DELETE', token }),
   },
   billing: {
     /** Only pulls the fields this app currently needs — see the Entitlements type. The web app's GET /billing/entitlements returns more. */

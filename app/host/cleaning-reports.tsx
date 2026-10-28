@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, RefreshControl, Pressable, Alert, Linking } from 'react-native';
 import { useLocalSearchParams, useFocusEffect, useRouter, Stack } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
-import { api, Property, CleaningReport } from '@/lib/api';
+import { api, Property, CleaningReport, WEB_URL } from '@/lib/api';
+import { usePlanStrings } from '@/lib/i18n/plan-strings';
 import { Screen, Card, EmptyState, LoadingScreen, ErrorBanner, StatusBadge } from '@/components/ui';
 import { colors, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import { useLanguage } from '@/lib/i18n/language-context';
 export default function CleaningReportsScreen() {
   const { propertyId } = useLocalSearchParams<{ propertyId: string }>();
   const { session } = useAuth();
+  const planStrings = usePlanStrings();
   const router = useRouter();
   const { t } = useLanguage();
 
@@ -77,7 +79,11 @@ export default function CleaningReportsScreen() {
   async function handleStartNew() {
     if (!session || !propertyId || isCreating) return;
     if (cleaningReportsEnabled === false) {
-      Alert.alert(t.cleaningReports.upgradeTitle, t.cleaningReports.upgradeBody);
+      // Plans are bought on the website (no in-app purchase) — the button opens it.
+      Alert.alert(t.cleaningReports.upgradeTitle, t.cleaningReports.upgradeBody, [
+        { text: t.cleaningReports.back, style: 'cancel' },
+        { text: planStrings.seePlans, onPress: () => Linking.openURL(`${WEB_URL}/host/billing#addons`) },
+      ]);
       return;
     }
     setIsCreating(true);

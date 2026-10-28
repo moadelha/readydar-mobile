@@ -5,6 +5,9 @@ import { colors, spacing, typography } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { useHostAccess } from '@/lib/access';
+import { usePlanStrings } from '@/lib/i18n/plan-strings';
+import { usePlanConsole } from '@/lib/plan-console';
+import { useMessagesStrings } from '@/lib/i18n/messages-strings';
 
 type Entry = { icon: string; label: string; description: string; path: string; visible: boolean };
 
@@ -12,6 +15,9 @@ export default function MoreScreen() {
   const router = useRouter();
   const { t } = useLanguage();
   const { isOwner, isManager, has } = useHostAccess();
+  const planStrings = usePlanStrings();
+  const { canMessages } = usePlanConsole();
+  const ms = useMessagesStrings();
 
   // Every entry's visibility mirrors the backend guard on the API it opens,
   // so a co-host is never shown a screen that would just fail with a 403:
@@ -20,12 +26,16 @@ export default function MoreScreen() {
   //   Connect Airbnb → @MinHostRole('OWNER') — see HospitableConnectController
   //     for why even a MANAGER can't use it.
   const menu: Entry[] = [
+    // On Pro the Messages tab takes Expenses' place on the tab bar — see (host-tabs)/_layout.tsx.
+    { icon: 'receipt-outline', label: t.tabsHost.expenses, description: ms.expensesDesc, path: '/expenses', visible: canMessages && has('EXPENSES') },
+    { icon: 'flash-outline', label: ms.templates.manage, description: ms.templates.manageDesc, path: '/host/messages/templates', visible: canMessages },
     { icon: 'people-outline', label: t.more.guests, description: t.more.guestsDesc, path: '/host/guests', visible: has('CHECKINS') },
     { icon: 'clipboard-outline', label: t.more.bookings, description: t.more.bookingsDesc, path: '/host/bookings', visible: has('CALENDAR') },
     { icon: 'swap-horizontal-outline', label: t.more.turnovers, description: t.more.turnoversDesc, path: '/host/turnovers', visible: has('CALENDAR') },
     { icon: 'call-outline', label: t.more.cleaningContacts, description: t.more.cleaningContactsDesc, path: '/host/cleaning-contacts', visible: isManager },
     { icon: 'link-outline', label: t.more.connectAirbnb, description: t.more.connectAirbnbDesc, path: '/host/hospitable', visible: isOwner },
     { icon: 'document-text-outline', label: t.more.contract, description: t.more.contractDesc, path: '/host/contract', visible: isManager },
+    { icon: 'card-outline', label: planStrings.title, description: planStrings.menuDesc, path: '/host/plan', visible: isManager },
     { icon: 'person-outline', label: t.more.profile, description: t.more.profileDesc, path: '/host/profile', visible: true },
   ];
 

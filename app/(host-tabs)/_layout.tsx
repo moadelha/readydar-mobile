@@ -3,6 +3,8 @@ import { colors } from '@/theme';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { TabIcon } from '@/components/ui';
 import { useHostAccess } from '@/lib/access';
+import { usePlanConsole } from '@/lib/plan-console';
+import { useMessagesStrings } from '@/lib/i18n/messages-strings';
 
 export default function HostTabsLayout() {
   const { t } = useLanguage();
@@ -13,6 +15,11 @@ export default function HostTabsLayout() {
   // permission surfaced as a red 403 banner after tapping in.
   const canCalendar = has('CALENDAR');
   const canExpenses = has('EXPENSES');
+  // Pro hosts get the guest inbox as a tab. Five tabs is already the most
+  // that fit, so for them Expenses moves into More (see more.tsx) and
+  // Messages takes its place.
+  const { canMessages, unreadThreads } = usePlanConsole();
+  const ms = useMessagesStrings();
 
   return (
     <Tabs
@@ -50,8 +57,18 @@ export default function HostTabsLayout() {
         name="expenses"
         options={{
           title: t.tabsHost.expenses,
-          href: canExpenses ? undefined : null,
+          href: canExpenses && !canMessages ? undefined : null,
           tabBarIcon: ({ focused, size }) => <TabIcon name="receipt-outline" focused={focused} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          title: ms.tab,
+          href: canMessages ? undefined : null,
+          tabBarBadge: unreadThreads > 0 ? unreadThreads : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.primary, fontSize: 11 },
+          tabBarIcon: ({ focused, size }) => <TabIcon name="chatbubbles-outline" focused={focused} size={size} />,
         }}
       />
       <Tabs.Screen

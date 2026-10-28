@@ -5,6 +5,7 @@ import { AppMetricsRoot } from 'expo-observe';
 import { AuthProvider } from '@/lib/auth-context';
 import { LanguageProvider } from '@/lib/i18n/language-context';
 import { ToastProvider } from '@/lib/toast';
+import { PlanConsoleProvider } from '@/lib/plan-console';
 import { AppHeader } from '@/components/app-header';
 
 // A shared, consistent push transition — was left at the native default
@@ -29,6 +30,7 @@ function RootLayout() {
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <AuthProvider>
         <LanguageProvider>
+          <PlanConsoleProvider>
           <ToastProvider>
             <StatusBar style="dark" />
             <Stack
@@ -60,8 +62,11 @@ function RootLayout() {
               <Stack.Screen name="host/turnovers" options={{ presentation: 'card' }} />
               <Stack.Screen name="host/cleaning-contacts" options={{ presentation: 'card' }} />
               <Stack.Screen name="host/cleaning-contact/new" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="host/messages/[id]" options={{ presentation: 'card' }} />
+              <Stack.Screen name="host/messages/templates" options={{ presentation: 'card' }} />
             </Stack>
           </ToastProvider>
+          </PlanConsoleProvider>
         </LanguageProvider>
       </AuthProvider>
     </SafeAreaProvider>
