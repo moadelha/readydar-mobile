@@ -39,6 +39,8 @@ web-build/
 *.key
 *.mobileprovision
 credentials.json
+# Google Play service account key used by `eas submit` — secret, never commit
+google-service-account.json
 
 # ---------------------------------------------------------------
 # Scratch and editor noise
