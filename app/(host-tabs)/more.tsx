@@ -9,6 +9,7 @@ import { useHostAccess } from '@/lib/access';
 import { usePlanStrings } from '@/lib/i18n/plan-strings';
 import { usePlanConsole } from '@/lib/plan-console';
 import { useMessagesStrings } from '@/lib/i18n/messages-strings';
+import { useReviewsStrings } from '@/lib/i18n/reviews-strings';
 import { rtlFlip } from '@/lib/rtl';
 
 type Entry = { icon: string; label: string; description: string; path: string; visible: boolean };
@@ -20,6 +21,7 @@ export default function MoreScreen() {
   const planStrings = usePlanStrings();
   const { canMessages } = usePlanConsole();
   const ms = useMessagesStrings();
+  const rs = useReviewsStrings();
 
   // Every entry's visibility mirrors the backend guard on the API it opens,
   // so a co-host is never shown a screen that would just fail with a 403:
@@ -31,6 +33,8 @@ export default function MoreScreen() {
     // On Pro the Messages tab takes Expenses' place on the tab bar — see (host-tabs)/_layout.tsx.
     { icon: 'receipt-outline', label: t.tabsHost.expenses, description: ms.expensesDesc, path: '/expenses', visible: canMessages && has('EXPENSES') },
     { icon: 'flash-outline', label: ms.templates.manage, description: ms.templates.manageDesc, path: '/host/messages/templates', visible: canMessages },
+    // Reading reviews is open to every host (GuestReviewsController); replying is Pro, gated inside the screen.
+    { icon: 'star-outline', label: rs.title, description: rs.menuDesc, path: '/host/reviews', visible: true },
     { icon: 'people-outline', label: t.more.guests, description: t.more.guestsDesc, path: '/host/guests', visible: has('CHECKINS') },
     { icon: 'clipboard-outline', label: t.more.bookings, description: t.more.bookingsDesc, path: '/host/bookings', visible: has('CALENDAR') },
     { icon: 'swap-horizontal-outline', label: t.more.turnovers, description: t.more.turnoversDesc, path: '/host/turnovers', visible: has('CALENDAR') },

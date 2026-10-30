@@ -108,6 +108,7 @@ function RootLayout() {
               <Stack.Screen name="host/cleaning-contact/new" options={{ presentation: 'modal' }} />
               <Stack.Screen name="host/messages/[id]" options={{ presentation: 'card' }} />
               <Stack.Screen name="host/messages/templates" options={{ presentation: 'card' }} />
+              <Stack.Screen name="host/reviews" options={{ presentation: 'card' }} />
             </Stack>
           </ToastProvider>
           </PlanConsoleProvider>

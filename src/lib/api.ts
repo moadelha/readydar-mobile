@@ -951,6 +951,40 @@ export interface MessageTemplate {
   body: string;
 }
 
+/** A guest's review of a stay (Airbnb via Hospitable, or Airbnb/Booking.com via the channel manager) — mirrors the web app's GuestReview. */
+export interface GuestReview {
+  id: string;
+  propertyId: string;
+  platform: 'AIRBNB' | 'BOOKING_COM';
+  guestName?: string | null;
+  /** 1–5 stars. */
+  rating?: number | null;
+  /** Booking.com reviews carry `{ scale: 10, overall }` — their own 0–10 score. */
+  detailedRatings?: unknown;
+  publicText?: string | null;
+  /** Feedback only the host sees. */
+  privateText?: string | null;
+  responseText?: string | null;
+  visible: boolean;
+  submittedAt?: string | null;
+  respondedAt?: string | null;
+  createdAt: string;
+  property: { id: string; name: string; photoUrl: string | null };
+  /** Not answered yet and can be answered from ReadyDar (once). */
+  canReply?: boolean;
+  /** Airbnb: guest not reviewed yet and still inside the 14-day window. */
+  canReviewGuest?: boolean;
+  guestReviewSubmittedAt?: string | null;
+}
+
+export interface GuestReviewPropertyOverview {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  reviewCount: number;
+  averageRating: number | null;
+}
+
 /** A quick reply filled in for one conversation; `missing` lists placeholders with no value (e.g. no Wi-Fi saved). */
 export interface RenderedMessageTemplate {
   id: string;
@@ -1372,6 +1406,30 @@ export const api = {
       request<MessageTemplate>(`/messaging/templates/${id}`, { method: 'PUT', body: data, token }),
     deleteTemplate: (id: string, token: string) =>
       request<{ success: boolean }>(`/messaging/templates/${id}`, { method: 'DELETE', token }),
+  },
+  /**
+   * Guest reviews. Reading is open to every host (GuestReviewsController);
+   * replying and reviewing the guest are Pro (ReviewReplyController —
+   * @RequireFeature('channex'), @RequireHostPermission('MESSAGES')).
+   */
+  guestReviews: {
+    /** Per-property average rating + review count. */
+    overview: (token: string) => request<GuestReviewPropertyOverview[]>('/guest-reviews/overview', { token }),
+    /** Newest first, every property. */
+    listAll: (token: string) => request<GuestReview[]>('/guest-reviews', { token }),
+    /** Public reply on the channel — once, can't be edited afterwards. */
+    reply: (id: string, reply: string, token: string) =>
+      request<{ id: string; responseText: string | null; respondedAt: string | null }>(`/guest-reviews/${id}/reply`, {
+        method: 'POST',
+        body: { reply },
+        token,
+      }),
+    /** Airbnb only: the host's review of the guest — once, within 14 days of checkout. */
+    reviewGuest: (
+      id: string,
+      data: { cleanliness: number; communication: number; houseRules: number; publicReview: string; privateReview?: string; recommend: boolean },
+      token: string,
+    ) => request<{ id: string; guestReviewSubmittedAt: string }>(`/guest-reviews/${id}/guest-review`, { method: 'POST', body: data, token }),
   },
   billing: {
     /** Only pulls the fields this app currently needs — see the Entitlements type. The web app's GET /billing/entitlements returns more. */
