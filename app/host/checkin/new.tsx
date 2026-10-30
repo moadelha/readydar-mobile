@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Linking, Share } from 'react-native';
+import { View, StyleSheet, ScrollView, Linking, Share } from 'react-native';
+import { Text } from '@/components/text';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, Property, GuestCheckIn, CheckInLanguage, resolveCheckInUrl } from '@/lib/api';

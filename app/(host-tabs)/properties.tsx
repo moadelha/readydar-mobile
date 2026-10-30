@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl, Pressable } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, Pressable } from 'react-native';
+import { Text } from '@/components/text';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, Property, propertyCoverUrl } from '@/lib/api';
 import { Screen, Card, EmptyState, LoadingScreen, ErrorBanner } from '@/components/ui';
 import { PropertyThumb } from '@/components/host-ui';
-import { colors, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, typography, radius } from '@/theme';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { useHostAccess } from '@/lib/access';
 
@@ -59,7 +60,7 @@ export default function PropertiesScreen() {
         )}
         {isManager && (
           <Pressable onPress={() => router.push('/host/property/new')} style={styles.addButton}>
-            <Ionicons name="add" size={22} color={colors.white} />
+            <Ionicons name="add" size={22} color={colors.onPrimary} />
           </Pressable>
         )}
       </View>
@@ -145,7 +146,7 @@ const styles = StyleSheet.create({
     gap: 4,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 20,
+    borderRadius: radius.lg,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
   },

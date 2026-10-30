@@ -1,13 +1,14 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { Text } from '@/components/text';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { useAuth } from '@/lib/auth-context';
 import { api, CleanerProfile } from '@/lib/api';
-import { Screen, Card, LoadingScreen, LanguagePicker } from '@/components/ui';
+import { Screen, Card, LoadingScreen, LanguagePicker, AppearancePicker } from '@/components/ui';
 import { Button } from '@/components/Button';
-import { colors, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, typography, radius } from '@/theme';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { LegalLinks } from '@/components/legal-links';
 import { useLanguage } from '@/lib/i18n/language-context';
 
@@ -67,9 +68,9 @@ export default function ProfileScreen() {
           <Ionicons
             name={profile.isVerified ? 'shield-checkmark' : 'alert-circle-outline'}
             size={14}
-            color={profile.isVerified ? colors.primary : '#B45309'}
+            color={profile.isVerified ? colors.primary : colors.warning}
           />
-          <Text style={[styles.verifiedText, { color: profile.isVerified ? colors.primary : '#B45309' }]}>
+          <Text style={[styles.verifiedText, { color: profile.isVerified ? colors.primary : colors.warning }]}>
             {profile.isVerified ? t.profileCleaner.verified : t.profileCleaner.verificationPending}
           </Text>
         </View>
@@ -113,6 +114,7 @@ export default function ProfileScreen() {
 
         <Card style={{ marginTop: spacing.xl }}>
           <LanguagePicker />
+          <AppearancePicker />
         </Card>
 
         <Card style={{ marginTop: spacing.md }}>
@@ -141,7 +143,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.successBg,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 999,
+    borderRadius: radius.sm,
   },
   chipText: { fontSize: 12, color: colors.primary, fontWeight: '600' },
 });

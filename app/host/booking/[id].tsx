@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Pressable } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, Pressable } from 'react-native';
+import { Text } from '@/components/text';
 import { useLocalSearchParams, useFocusEffect, useRouter, Stack } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, Booking, resolveUploadUrl, resolveThumbnailUrl } from '@/lib/api';
@@ -7,7 +8,7 @@ import { Screen, Card, LoadingScreen, StatusBadge, TextField, PhotoViewerModal }
 import { Button } from '@/components/Button';
 import { STATUS_LABELS, STATUS_TONE } from '@/lib/status';
 import { colors, radius, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 export default function HostBookingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

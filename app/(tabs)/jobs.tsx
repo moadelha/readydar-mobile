@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { Text } from '@/components/text';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, Booking } from '@/lib/api';
@@ -7,7 +8,7 @@ import { Screen, Card, EmptyState, StatusBadge, ErrorBanner, Reveal, SkeletonLis
 import { STATUS_TONE } from '@/lib/status';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { colors, radius, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 export default function MyJobsScreen() {
   const { session } = useAuth();
@@ -74,7 +75,7 @@ export default function MyJobsScreen() {
                       <Text style={typography.h3}>{item.service.name}</Text>
                       {item.urgency === 'URGENT' && (
                         <View style={styles.urgentBadge}>
-                          <Ionicons name="alert-circle" size={11} color={colors.white} />
+                          <Ionicons name="alert-circle" size={11} color={colors.onPrimary} />
                           <Text style={styles.urgentBadgeText}>{t.jobDetail.urgentBadge}</Text>
                         </View>
                       )}
@@ -111,7 +112,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.danger,
     paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
   },
-  urgentBadgeText: { fontSize: 9, fontWeight: '700', color: colors.white },
+  urgentBadgeText: { fontSize: 9, fontWeight: '700', color: colors.onPrimary },
 });

@@ -67,12 +67,12 @@ export function sourceShortLabel(event: CalendarEvent, t: Dict): string {
  * glance that today's entry is part of a longer stay they've already seen,
  * rather than a new arrival.
  */
-export function staySpanLabel(event: CalendarEvent, t: Dict): string {
+export function staySpanLabel(event: CalendarEvent, t: Dict, locale?: string): string {
   const start = parseDateOnly(event.date);
   const end = parseDateOnly(event.endDate || event.date);
   const nights = Math.max(0, Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)));
-  const startLabel = start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  const endLabel = end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const startLabel = start.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+  const endLabel = end.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
   if (nights <= 0) return startLabel;
   return `${startLabel} – ${endLabel} · ${t.calendarHost.nightsCount(nights)}`;
 }
@@ -99,8 +99,24 @@ export const GUEST_STAY_STATUS_LABEL: Record<string, string> = {
   EXPIRED: 'Check-in link expired',
 };
 
+/**
+ * Today's date on the phone, as YYYY-MM-DD. Local, not UTC: `toISOString`
+ * gives the UTC date, which is yesterday in Morocco just after midnight and
+ * already tomorrow by the evening for a host in the Americas.
+ */
 export function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return ymd(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/** The locale dates are written in, following the app's language rather than the phone's. */
+export function dateLocale(lang: 'EN' | 'FR' | 'AR') {
+  return lang === 'FR' ? 'fr-FR' : lang === 'AR' ? 'ar-MA' : 'en-GB';
+}
+
+/** Text colour that reads on a calendar bar of the given colour (dark on the light saffron/yellow bars). */
+export function barTextColor(background: string) {
+  return background === colors.accent || background === colors.channel.expedia ? colors.green950 : colors.onPrimary;
 }
 export function pad(n: number) {
   return String(n).padStart(2, '0');
@@ -145,10 +161,13 @@ export function eventStatusTone(event: CalendarEvent): 'neutral' | 'primary' | '
  * sourceShortLabel).
  */
 const SOURCE_ACCENT_COLOR: Record<string, string> = {
-  AIRBNB: '#FF385C', // Airbnb's own brand pink/rose
-  BOOKING_COM: '#003580', // Booking.com's own brand navy blue
+  AIRBNB: colors.channel.airbnb,
+  BOOKING_COM: colors.channel.booking,
 };
-const OFFLINE_ACCENT_COLOR = '#EAB308'; // host-entered booking — offline (MANUAL, not blocked) or a standalone check-in link (DIRECT)
+// Host-entered booking — offline (MANUAL, not blocked) or a standalone
+// check-in link (DIRECT): booked in ReadyDar itself, so the brand green.
+// (Saffron is taken by cleanings.)
+const OFFLINE_ACCENT_COLOR = colors.green500;
 
 export function eventAccentColor(event: CalendarEvent): string {
   if (event.kind === 'CLEANING') return colors.accent;

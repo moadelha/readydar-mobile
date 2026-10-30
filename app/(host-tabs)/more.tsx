@@ -1,13 +1,15 @@
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { Text } from '@/components/text';
 import { useRouter } from 'expo-router';
 import { Screen, Card } from '@/components/ui';
 import { colors, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { useHostAccess } from '@/lib/access';
 import { usePlanStrings } from '@/lib/i18n/plan-strings';
 import { usePlanConsole } from '@/lib/plan-console';
 import { useMessagesStrings } from '@/lib/i18n/messages-strings';
+import { rtlFlip } from '@/lib/rtl';
 
 type Entry = { icon: string; label: string; description: string; path: string; visible: boolean };
 
@@ -58,7 +60,7 @@ export default function MoreScreen() {
                     <Text style={typography.h3}>{item.label}</Text>
                     <Text style={typography.bodyMuted}>{item.description}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
+                  <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} style={rtlFlip} />
                 </Card>
               </Pressable>
             ))}

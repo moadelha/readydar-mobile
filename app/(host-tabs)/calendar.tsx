@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Modal, Linking } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Modal, Linking } from 'react-native';
+import { Text } from '@/components/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
@@ -38,16 +39,29 @@ import {
   eventStatusTone,
   eventAccentColor,
   eventIcon,
+  barTextColor,
+  dateLocale,
 } from '@/lib/calendar-visuals';
+import { ChannelMark } from '@/components/channel-mark';
 import { useToast } from '@/lib/toast';
-import { colors, radius, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import { colors, elevation, radius, spacing, typography } from '@/theme';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { Dict } from '@/lib/i18n/dictionary';
+import { rtlFlip } from '@/lib/rtl';
 
 type CalendarView = 'LIST' | 'MONTH';
 
-const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+/**
+ * Weeks start on Monday, like the web calendar and the calendars hosts use
+ * in Europe and Morocco. The letters come from the app's language.
+ */
+function weekdayLetters(locale: string) {
+  // 1 January 2024 was a Monday.
+  return Array.from({ length: 7 }, (_, i) =>
+    new Date(2024, 0, 1 + i).toLocaleDateString(locale, { weekday: 'narrow' }),
+  );
+}
 /** How many upcoming days the Listings view's per-property dot grid covers — 2 rows of 7 in a compact 14-day preview. */
 const LIST_WINDOW_DAYS = 14;
 const LIST_GRID_COLS = 7;
@@ -73,7 +87,7 @@ const MONTH_DAY_HEADER_HEIGHT = 26;
 /** One booking drawn on one week row — the slice of it that falls inside that week. */
 type MonthSegment = {
   event: CalendarEvent;
-  /** Column (0 = Sunday) this slice starts on within its week row. */
+  /** Column (0 = Monday) this slice starts on within its week row. */
   startCol: number;
   /** How many columns the bar covers. */
   span: number;
@@ -99,7 +113,9 @@ export default function CalendarScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const toast = useToast();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const locale = dateLocale(lang);
+  const weekdayLabels = useMemo(() => weekdayLetters(locale), [locale]);
   // The sheets below live in a <Modal>, outside <Screen>, so they consume
   // the bottom inset themselves — see the same note in dashboard.tsx.
   const insets = useSafeAreaInsets();
@@ -137,9 +153,11 @@ export default function CalendarScreen() {
   const year = monthCursor.getFullYear();
   const month = monthCursor.getMonth();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const monthLabel = monthCursor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-  const now = new Date();
-  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth();
+  const monthLabel = monthCursor.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+  const today = todayIso();
+  const isCurrentMonth = today.slice(0, 7) === ymd(year, month, 1).slice(0, 7);
+  /** Day of the month that is today, when the displayed month is this one. */
+  const todayDay = isCurrentMonth ? Number(today.slice(8, 10)) : -1;
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -187,10 +205,10 @@ export default function CalendarScreen() {
     [properties, propertyFilter],
   );
 
-  const listDays = useMemo(() => {
-    const start = todayIso();
-    return Array.from({ length: LIST_WINDOW_DAYS }, (_, i) => addDaysIso(start, i));
-  }, []);
+  const listDays = useMemo(
+    () => Array.from({ length: LIST_WINDOW_DAYS }, (_, i) => addDaysIso(today, i)),
+    [today],
+  );
   const listEventsByProperty = useMemo(() => {
     const map: Record<string, CalendarEvent[]> = {};
     for (const e of listEvents) (map[e.propertyId] ??= []).push(e);
@@ -266,7 +284,8 @@ export default function CalendarScreen() {
    * best), each dropped into the lowest lane it doesn't collide in.
    */
   const monthWeeks = useMemo<MonthWeek[]>(() => {
-    const firstWeekday = new Date(year, month, 1).getDay();
+    // Monday-first column of the 1st (getDay() counts from Sunday).
+    const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
     const totalCells = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
     const weekCount = totalCells / 7;
 
@@ -311,7 +330,7 @@ export default function CalendarScreen() {
         return {
           iso: ymd(year, month, dayNum),
           day: dayNum,
-          isToday: isCurrentMonth && dayNum === now.getDate(),
+          isToday: dayNum === todayDay,
         };
       });
 
@@ -363,7 +382,7 @@ export default function CalendarScreen() {
     }
 
     return weeks;
-  }, [filteredEvents, year, month, daysInMonth, isCurrentMonth, now]);
+  }, [filteredEvents, year, month, daysInMonth, todayDay]);
 
   function openBookingOrProperty(event: CalendarEvent) {
     setSelectedEvent(null);
@@ -530,6 +549,25 @@ export default function CalendarScreen() {
 
   if (isLoading) return <LoadingScreen />;
 
+  // What each colour means, in both views. Stays are coloured by where they
+  // were booked (see eventAccentColor), so that's what the legend lists.
+  const legend = (
+    <View style={styles.legendRow}>
+      {[
+        { color: colors.channel.airbnb, label: t.sourceLabel.AIRBNB },
+        { color: colors.channel.booking, label: t.sourceLabel.BOOKING_COM },
+        { color: colors.green500, label: t.sourceLabel.DIRECT },
+        { color: colors.accent, label: t.calendarHost.legendCleaning },
+        { color: colors.inkFaint, label: t.calendarHost.legendBlocked },
+      ].map((item) => (
+        <View key={item.label} style={styles.legendItem}>
+          <View style={[styles.legendSwatch, { backgroundColor: item.color }]} />
+          <Text style={styles.legendText}>{item.label}</Text>
+        </View>
+      ))}
+    </View>
+  );
+
   return (
     <Screen edges={['top']}>
       <View style={styles.header}>
@@ -558,11 +596,11 @@ export default function CalendarScreen() {
       {view === 'MONTH' && (
         <View style={styles.monthNav}>
           <Pressable hitSlop={10} onPress={() => setMonthCursor(new Date(year, month - 1, 1))}>
-            <Ionicons name="chevron-back" size={20} color={colors.ink} />
+            <Ionicons name="chevron-back" size={20} color={colors.ink} style={rtlFlip} />
           </Pressable>
           <Text style={typography.h3}>{monthLabel}</Text>
           <Pressable hitSlop={10} onPress={() => setMonthCursor(new Date(year, month + 1, 1))}>
-            <Ionicons name="chevron-forward" size={20} color={colors.ink} />
+            <Ionicons name="chevron-forward" size={20} color={colors.ink} style={rtlFlip} />
           </Pressable>
         </View>
       )}
@@ -574,7 +612,7 @@ export default function CalendarScreen() {
         {view === 'MONTH' && (
           <View>
             <View style={styles.weekdayRow}>
-              {WEEKDAY_LABELS.map((w, i) => (
+              {weekdayLabels.map((w, i) => (
                 <Text key={i} style={styles.weekdayLabel}>{w}</Text>
               ))}
             </View>
@@ -626,8 +664,8 @@ export default function CalendarScreen() {
                           seg.clippedEnd && styles.monthBarClippedEnd,
                         ]}
                       >
-                        <Ionicons name={eventIcon(seg.event) as any} size={10} color={colors.white} />
-                        <Text style={styles.monthBarText} numberOfLines={1}>
+                        <Ionicons name={eventIcon(seg.event) as any} size={10} color={barTextColor(eventAccentColor(seg.event))} />
+                        <Text style={[styles.monthBarText, { color: barTextColor(eventAccentColor(seg.event)) }]} numberOfLines={1}>
                           {label}
                         </Text>
                       </Pressable>
@@ -655,27 +693,7 @@ export default function CalendarScreen() {
               );
             })}
 
-            <View style={styles.legendRow}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendSwatch, { backgroundColor: colors.accent }]}>
-                  <Ionicons name="sparkles-outline" size={9} color={colors.white} />
-                </View>
-                <Text style={styles.legendText}>{t.calendarHost.legendCleaning}</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendSwatch, { backgroundColor: colors.primary }]}>
-                  <Ionicons name="bed-outline" size={9} color={colors.white} />
-                </View>
-                <Text style={styles.legendText}>{t.calendarHost.legendGuestStay}</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendSwatch, { backgroundColor: colors.inkFaint }]}>
-                  <Ionicons name="lock-closed-outline" size={9} color={colors.white} />
-                </View>
-                <Text style={styles.legendText}>{t.calendarHost.legendBlocked}</Text>
-              </View>
-              <Text style={styles.legendHint}>{t.calendarHost.tapForDetails}</Text>
-            </View>
+            {legend}
           </View>
         )}
 
@@ -687,7 +705,6 @@ export default function CalendarScreen() {
               visibleProperties.map((p) => {
                 const photoUrl = propertyCoverUrl(p, 130);
                 const status = statusByProperty[p.id];
-                const today = todayIso();
                 return (
                   <Card
                     key={p.id}
@@ -701,13 +718,8 @@ export default function CalendarScreen() {
                       <PropertyThumb photoUrl={photoUrl} size={52} />
                       <View style={{ flex: 1 }}>
                         <View style={styles.titleRow}>
-                          <Text style={typography.h3} numberOfLines={1}>{p.name}</Text>
-                          {p.hospitableListingId && (
-                            <View style={styles.syncBadge}>
-                              <Ionicons name="link-outline" size={10} color={colors.primary} />
-                              <Text style={styles.syncBadgeText}>{t.calendarHost.airbnbBadge}</Text>
-                            </View>
-                          )}
+                          <Text style={[typography.h3, { flexShrink: 1 }]} numberOfLines={1}>{p.name}</Text>
+                          {p.hospitableListingId && <ChannelMark provider="AIRBNB" size={16} />}
                         </View>
                         {status && (
                           <View style={{ marginTop: 4, alignSelf: 'flex-start' }}>
@@ -736,13 +748,14 @@ export default function CalendarScreen() {
                 );
               })
             )}
+            {visibleProperties.length > 0 && legend}
           </View>
         )}
 
       </ScrollView>
 
       <Pressable style={styles.fab} onPress={() => setQuickAddOpen(true)}>
-        <Ionicons name="add" size={24} color={colors.white} />
+        <Ionicons name="add" size={24} color={colors.onPrimary} />
       </Pressable>
 
       {/* Day overflow — Month view */}
@@ -750,33 +763,32 @@ export default function CalendarScreen() {
         <Pressable style={styles.sheetBackdrop} onPress={() => setSelectedDay(null)}>
           <Pressable style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onPress={(e) => e.stopPropagation()}>
             <Text style={typography.h3}>
-              {selectedDay && parseDateOnly(selectedDay).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+              {selectedDay && parseDateOnly(selectedDay).toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' })}
             </Text>
+            {selectedDay && (eventsByDay[selectedDay] ?? []).length === 0 && (
+              <Text style={[typography.bodyMuted, { marginTop: spacing.sm }]}>{t.calendarHost.dayEmpty}</Text>
+            )}
             <ScrollView style={{ maxHeight: 360, marginTop: spacing.sm }}>
-              {(selectedDay ? eventsByDay[selectedDay] ?? [] : []).map((ev) => (
+              {(selectedDay ? eventsByDay[selectedDay] ?? [] : []).map((ev, i) => (
                 <Pressable
                   key={ev.id}
                   onPress={() => {
                     setSelectedDay(null);
                     openEventSheet(ev);
                   }}
+                  style={({ pressed }) => [styles.dayItem, i > 0 && styles.dayItemDivider, pressed && { opacity: 0.6 }]}
                 >
-                  <Card style={{ marginBottom: spacing.sm }}>
-                    <View style={styles.row}>
-                      <View style={[styles.iconCircle, { backgroundColor: `${eventAccentColor(ev)}22` }]}>
-                        <Ionicons name={eventIcon(ev) as any} size={16} color={eventAccentColor(ev)} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={typography.h3} numberOfLines={1}>{ev.title}</Text>
-                        <Text style={typography.bodyMuted}>{ev.propertyName}</Text>
-                        {/* The full span, so a day that's the middle of an
-                            existing stay is obviously not a new arrival. */}
-                        {ev.kind === 'GUEST_STAY' && (
-                          <Text style={typography.caption}>{staySpanLabel(ev, t)}</Text>
-                        )}
-                      </View>
-                    </View>
-                  </Card>
+                  <View style={[styles.dayItemBar, { backgroundColor: eventAccentColor(ev) }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.dayItemTitle} numberOfLines={1}>{ev.title}</Text>
+                    <Text style={styles.dayItemMeta} numberOfLines={1}>
+                      {ev.propertyName}
+                      {/* The full span, so a day that's the middle of an
+                          existing stay is obviously not a new arrival. */}
+                      {ev.kind === 'GUEST_STAY' ? ` · ${staySpanLabel(ev, t, locale)}` : ''}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} style={rtlFlip} />
                 </Pressable>
               ))}
             </ScrollView>
@@ -790,14 +802,20 @@ export default function CalendarScreen() {
           <Pressable style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onPress={(e) => e.stopPropagation()}>
             {selectedEvent && (
               <>
-                <View style={styles.row}>
-                  <View style={[styles.iconCircle, { backgroundColor: `${eventAccentColor(selectedEvent)}22` }]}>
-                    <Ionicons name={eventIcon(selectedEvent) as any} size={18} color={eventAccentColor(selectedEvent)} />
-                  </View>
+                <View style={styles.sheetHeader}>
+                  <View style={[styles.dayItemBar, { backgroundColor: eventAccentColor(selectedEvent), alignSelf: 'stretch' }]} />
                   <View style={{ flex: 1 }}>
                     <Text style={typography.h2}>{selectedEvent.title}</Text>
                     <Text style={typography.bodyMuted}>{selectedEvent.propertyName}</Text>
                   </View>
+                  <Pressable
+                    onPress={() => setSelectedEvent(null)}
+                    hitSlop={10}
+                    accessibilityRole="button"
+                    accessibilityLabel={t.calendarHost.close}
+                  >
+                    <Ionicons name="close" size={20} color={colors.inkMuted} />
+                  </Pressable>
                 </View>
 
                 <View style={{ marginTop: spacing.md, gap: spacing.xs }}>
@@ -806,7 +824,7 @@ export default function CalendarScreen() {
                       <Text style={typography.bodyMuted}>
                         {selectedEvent.isBlocked ? t.calendarHost.blockedOnPrefix : t.calendarHost.platformPrefix} {t.sourceLabel[(selectedEvent.source ?? 'DIRECT') as keyof Dict['sourceLabel']]}
                       </Text>
-                      <Text style={typography.bodyMuted}>{staySpanLabel(selectedEvent, t)}</Text>
+                      <Text style={typography.bodyMuted}>{staySpanLabel(selectedEvent, t, locale)}</Text>
                       {selectedEvent.guestCount != null && selectedEvent.guestCount > 0 && (
                         <Text style={typography.bodyMuted}>
                           {t.common.guestsCount(selectedEvent.guestCount)}
@@ -816,7 +834,7 @@ export default function CalendarScreen() {
                   )}
                   {selectedEvent.kind === 'CLEANING' && (
                     <Text style={typography.bodyMuted}>
-                      {parseDateOnly(selectedEvent.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                      {parseDateOnly(selectedEvent.date).toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' })}
                     </Text>
                   )}
                   <StatusBadge label={eventStatusLabel(selectedEvent, t)} tone={eventStatusTone(selectedEvent)} />
@@ -919,6 +937,7 @@ export default function CalendarScreen() {
                 <Button
                   label={selectedEvent.bookingId ? t.calendarHost.viewBooking : t.calendarHost.viewProperty}
                   onPress={() => openBookingOrProperty(selectedEvent)}
+                  variant="secondary"
                   style={{
                     marginTop:
                       (selectedEvent.checkInToken && selectedEvent.checkInStatus === 'PENDING') ||
@@ -927,7 +946,6 @@ export default function CalendarScreen() {
                         : spacing.lg,
                   }}
                 />
-                <Button label={t.calendarHost.close} variant="outline" onPress={() => setSelectedEvent(null)} style={{ marginTop: spacing.sm }} />
               </>
             )}
           </Pressable>
@@ -946,9 +964,7 @@ export default function CalendarScreen() {
                 router.push({ pathname: '/host/booking/new', params: propertyFilter ? { propertyId: propertyFilter } : {} });
               }}
             >
-              <View style={styles.iconCircle}>
-                <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
-              </View>
+              <Ionicons name="sparkles-outline" size={20} color={colors.green700} />
               <View style={{ flex: 1 }}>
                 <Text style={typography.h3}>{t.calendarHost.addCleaning}</Text>
                 <Text style={typography.bodyMuted}>{t.calendarHost.addCleaningSubtitle}</Text>
@@ -961,9 +977,7 @@ export default function CalendarScreen() {
                 router.push({ pathname: '/host/checkin/new', params: propertyFilter ? { propertyId: propertyFilter } : {} });
               }}
             >
-              <View style={styles.iconCircle}>
-                <Ionicons name="key-outline" size={18} color={colors.primary} />
-              </View>
+              <Ionicons name="key-outline" size={20} color={colors.green700} />
               <View style={{ flex: 1 }}>
                 <Text style={typography.h3}>{t.calendarHost.guestOnlineCheckIn}</Text>
                 <Text style={typography.bodyMuted}>{t.calendarHost.guestOnlineCheckInSubtitle}</Text>
@@ -987,7 +1001,7 @@ const styles = StyleSheet.create({
   },
   body: { paddingHorizontal: spacing.lg, paddingBottom: 100 },
   weekdayRow: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border, paddingBottom: spacing.xs },
-  weekdayLabel: { width: `${100 / 7}%`, textAlign: 'center', fontSize: 12, fontWeight: '700', color: colors.inkFaint },
+  weekdayLabel: { width: `${100 / 7}%`, textAlign: 'center', fontSize: 12, fontWeight: '500', color: colors.inkFaint },
   weekRow: {
     position: 'relative',
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -1002,7 +1016,13 @@ const styles = StyleSheet.create({
     borderLeftWidth: StyleSheet.hairlineWidth,
     borderLeftColor: colors.border,
   },
-  dayCellToday: { backgroundColor: 'rgba(0,109,119,0.06)' },
+  dayCellToday: { backgroundColor: colors.successBg },
+  dayItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  dayItemDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  dayItemBar: { width: 4, height: 34, borderRadius: 2 },
+  dayItemTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600', color: colors.ink },
+  dayItemMeta: { fontSize: 13, lineHeight: 18, color: colors.inkMuted, marginTop: 1 },
+  sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   dayNumberWrap: {
     width: 22,
     height: 22,
@@ -1011,8 +1031,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayNumberWrapToday: { backgroundColor: colors.primary },
-  dayNumber: { fontSize: 13, color: colors.ink, fontWeight: '500' },
-  dayNumberToday: { color: colors.white, fontWeight: '700' },
+  dayNumber: { fontSize: 13, color: colors.ink, fontWeight: '500', ...typography.number },
+  dayNumberToday: { color: colors.onPrimary, fontWeight: '600' },
   monthBar: {
     position: 'absolute',
     height: MONTH_LANE_HEIGHT,
@@ -1029,39 +1049,29 @@ const styles = StyleSheet.create({
   // it reads as carrying on rather than starting/ending on that day.
   monthBarClippedStart: { borderTopLeftRadius: 0, borderBottomLeftRadius: 0 },
   monthBarClippedEnd: { borderTopRightRadius: 0, borderBottomRightRadius: 0 },
-  monthBarText: { flex: 1, fontSize: 10, fontWeight: '700', color: colors.white },
+  monthBarText: { flex: 1, fontSize: 10, fontWeight: '600', color: colors.onPrimary },
   monthOverflow: {
     position: 'absolute',
     width: `${100 / 7}%`,
     alignItems: 'center',
   },
-  monthOverflowText: { fontSize: 10, fontWeight: '700', color: colors.inkMuted },
+  monthOverflowText: { fontSize: 10, fontWeight: '600', color: colors.inkMuted },
   legendRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: spacing.md,
+    columnGap: spacing.md,
+    rowGap: 6,
     marginTop: spacing.md,
-    paddingTop: spacing.sm,
+    paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  legendSwatch: { width: 16, height: 16, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
-  legendText: { fontSize: 11, color: colors.inkMuted, fontWeight: '500' },
-  legendHint: { fontSize: 11, color: colors.inkFaint, marginLeft: 'auto' },
+  legendSwatch: { width: 10, height: 10, borderRadius: 3 },
+  legendText: { fontSize: 12, color: colors.inkMuted, fontWeight: '500' },
   listRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  syncBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: colors.successBg,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  syncBadgeText: { fontSize: 10, fontWeight: '700', color: colors.primary },
   listDotGrid: {
     width: LIST_GRID_COLS * 10,
     flexDirection: 'row',
@@ -1069,16 +1079,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   listDot: { width: 8, height: 8, borderRadius: 4 },
-  listDotToday: { borderWidth: 1.5, borderColor: colors.danger },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  iconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.successBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  listDotToday: { borderWidth: 1.5, borderColor: colors.ink },
   fab: {
     position: 'absolute',
     right: spacing.lg,
@@ -1089,15 +1090,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    ...elevation.high,
   },
   sheetBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   sheet: {

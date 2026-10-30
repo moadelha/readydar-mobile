@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Linking } from 'react-native';
+import { View, StyleSheet, Linking } from 'react-native';
+import { Text } from '@/components/text';
 import { Link } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
-import { TextField, Screen, SegmentedControl, Checkbox } from '@/components/ui';
+import { TextField, SegmentedControl, Checkbox } from '@/components/ui';
+import { AuthShell, authStyles } from '@/components/auth-shell';
 import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
 import { useLanguage } from '@/lib/i18n/language-context';
@@ -41,11 +43,9 @@ export default function RegisterScreen() {
   }
 
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.brand}>ReadyDar</Text>
-        <Text style={styles.title}>{t.register.title}</Text>
-        <Text style={styles.subtitle}>
+    <AuthShell>
+        <Text style={authStyles.title}>{t.register.title}</Text>
+        <Text style={authStyles.subtitle}>
           {role === 'HOST' ? t.register.subtitleHost : t.register.subtitleCleaner}
         </Text>
 
@@ -96,8 +96,8 @@ export default function RegisterScreen() {
         </View>
 
         {error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={authStyles.errorBox}>
+            <Text style={authStyles.errorText}>{error}</Text>
           </View>
         )}
 
@@ -107,33 +107,24 @@ export default function RegisterScreen() {
           loading={isSubmitting}
         />
 
-        <View style={styles.footer}>
+        <View style={authStyles.switchRow}>
           <Text style={typography.bodyMuted}>{t.register.haveAccount}</Text>
           <Link href="/login">
-            <Text style={styles.link}>{t.register.logIn}</Text>
+            <Text style={[typography.bodyMuted, authStyles.link]}>{t.register.logIn}</Text>
           </Link>
         </View>
-      </ScrollView>
-    </Screen>
+    </AuthShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.xl },
-  brand: { fontSize: 24, fontWeight: '700', color: colors.primary, marginBottom: spacing.xl },
-  title: { ...typography.h1 },
-  subtitle: { ...typography.bodyMuted, marginTop: spacing.xs },
-  errorBox: { backgroundColor: colors.dangerBg, borderRadius: 10, padding: spacing.sm, marginBottom: spacing.md },
-  errorText: { color: colors.danger, fontSize: 13 },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.lg },
-  link: { color: colors.primary, fontWeight: '600' },
   termsRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: spacing.sm,
-    marginTop: spacing.md,
+    gap: 10,
+    marginTop: spacing.xs,
     marginBottom: spacing.md,
   },
-  termsText: { ...typography.bodyMuted, flex: 1, lineHeight: 19 },
-  termsLink: { color: colors.primary, fontWeight: '600' },
+  termsText: { ...typography.bodyMuted, flex: 1, lineHeight: 20 },
+  termsLink: { color: colors.green700, fontWeight: '500' },
 });

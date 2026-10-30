@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, Image, Pressable, Modal } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, spacing, typography } from '@/theme';
+import { View, StyleSheet, Image, Pressable, Modal } from 'react-native';
+import { Text } from '@/components/text';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { colors, elevation, radius, spacing, typography } from '@/theme';
 import { AnimatedPressable } from './ui';
+import { rtlFlip } from '@/lib/rtl';
 
 /**
  * Shared host-side building blocks — the section headers, rows, tags and
@@ -22,15 +24,15 @@ export type Tone = 'neutral' | 'primary' | 'accent' | 'success' | 'danger';
 const TONE_COLOR: Record<Tone, string> = {
   neutral: colors.inkMuted,
   primary: colors.primary,
-  accent: '#B45309',
-  success: colors.primary,
+  accent: colors.warning,
+  success: colors.success,
   danger: colors.danger,
 };
 
 const TONE_BG: Record<Tone, string> = {
-  neutral: 'rgba(27,31,35,0.06)',
-  primary: colors.successBg,
-  accent: colors.accentBg,
+  neutral: colors.surface2,
+  primary: colors.green100,
+  accent: colors.warningBg,
   success: colors.successBg,
   danger: colors.dangerBg,
 };
@@ -53,7 +55,7 @@ export function PropertyThumb({
   size?: number;
   icon?: keyof typeof Ionicons.glyphMap;
 }) {
-  const shape = { width: size, height: size, borderRadius: Math.round(size * 0.26) };
+  const shape = { width: size, height: size, borderRadius: size >= 48 ? 8 : 6 };
   if (photoUrl) return <Image source={{ uri: photoUrl }} style={shape} />;
   return (
     <View style={[shape, styles.thumbPlaceholder]}>
@@ -63,14 +65,15 @@ export function PropertyThumb({
 }
 
 /**
- * The heading above each of Home's sections: an icon, a title, a line
- * explaining what the section is for, and an optional "View all" pill.
+ * The heading above each of Home's sections: a title, a line explaining what
+ * the section is for, and an optional "View all →" text link. `icon` is
+ * still accepted but no longer drawn — DESIGN.md keeps icons for labels,
+ * not as a tinted square decorating every heading.
  *
  * The subtitle earns its place — a host shouldn't have to infer that
  * "Apartments not ready" means "before the next guest arrives".
  */
 export function SectionHeader({
-  icon,
   title,
   subtitle,
   actionLabel,
@@ -84,17 +87,15 @@ export function SectionHeader({
 }) {
   return (
     <View style={styles.sectionHeader}>
-      <View style={styles.sectionIcon}>
-        <Ionicons name={icon} size={17} color={colors.primary} />
-      </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.sectionTitle}>{title}</Text>
         {subtitle && <Text style={styles.sectionSubtitle}>{subtitle}</Text>}
       </View>
       {actionLabel && onAction && (
-        <AnimatedPressable onPress={onAction} scaleTo={0.94} style={styles.sectionAction}>
+        <Pressable onPress={onAction} hitSlop={10} style={({ pressed }) => [styles.sectionAction, pressed && { opacity: 0.6 }]}>
           <Text style={styles.sectionActionText}>{actionLabel}</Text>
-        </AnimatedPressable>
+          <Ionicons name="arrow-forward" size={13} color={colors.green700} style={rtlFlip} />
+        </Pressable>
       )}
     </View>
   );
@@ -248,7 +249,7 @@ export function PropertyRow({
       </View>
 
       {right}
-      {showChevron && <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />}
+      {showChevron && <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} style={rtlFlip} />}
       {onDismiss && (
         // Generous hitSlop: a deliberately small mark sitting on a row that
         // is itself tappable.
@@ -286,7 +287,7 @@ export function ToneIcon({
       style={{
         width: size,
         height: size,
-        borderRadius: Math.round(size * 0.26),
+        borderRadius: size >= 48 ? 8 : 6,
         backgroundColor: TONE_BG[tone],
         alignItems: 'center',
         justifyContent: 'center',
@@ -324,71 +325,60 @@ export function NotificationBell({ count, onPress }: { count: number; onPress: (
 
 const styles = StyleSheet.create({
   thumbPlaceholder: {
-    backgroundColor: 'rgba(27,31,35,0.06)',
+    backgroundColor: colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   sectionHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: spacing.sm,
     marginTop: spacing.xl,
-    marginBottom: spacing.sm,
+    marginBottom: 12,
   },
-  sectionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: colors.successBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionTitle: { ...typography.h2, fontSize: 18 },
-  sectionSubtitle: { ...typography.bodyMuted, fontSize: 12, marginTop: 1 },
-  sectionAction: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sectionActionText: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  sectionTitle: { ...typography.h2, fontSize: 18, lineHeight: 24 },
+  sectionSubtitle: { ...typography.bodyMuted, fontSize: 13, lineHeight: 18, marginTop: 2 },
+  sectionAction: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingBottom: 2 },
+  sectionActionText: { fontSize: 13, fontWeight: '500', color: colors.green700 },
 
   tag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.full,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: radius.sm,
   },
-  tagText: { fontSize: 11, fontWeight: '700' },
+  tagText: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
 
   dropdown: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 7,
-    borderRadius: radius.full,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.lineStrong,
     backgroundColor: colors.white,
     maxWidth: 170,
   },
-  dropdownText: { fontSize: 12, fontWeight: '600', color: colors.ink, flexShrink: 1 },
+  dropdownText: { fontSize: 13, fontWeight: '500', color: colors.ink, flexShrink: 1 },
   dropdownBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     padding: spacing.xl,
   },
   dropdownSheet: {
     backgroundColor: colors.white,
     borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
     paddingVertical: spacing.xs,
+    ...elevation.high,
   },
   dropdownRow: {
     flexDirection: 'row',
@@ -398,59 +388,59 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   dropdownRowText: { ...typography.body },
-  dropdownRowTextActive: { color: colors.primary, fontWeight: '700' },
+  dropdownRowTextActive: { color: colors.primary, fontWeight: '600' },
 
   rowCard: {
     backgroundColor: colors.white,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.md,
+    padding: 12,
     marginBottom: spacing.sm,
   },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   rowText: { flex: 1, gap: 2 },
-  rowTitle: { ...typography.h3, fontSize: 15 },
-  rowSubtitle: { ...typography.bodyMuted, fontSize: 12 },
+  rowTitle: { ...typography.h3, fontSize: 15, lineHeight: 20 },
+  rowSubtitle: { ...typography.bodyMuted, fontSize: 13, lineHeight: 18 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm, marginTop: 3 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: 11, fontWeight: '600', color: colors.inkMuted },
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 5 },
+  metaText: { fontSize: 12, fontWeight: '500', color: colors.inkMuted, ...typography.number },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
   topBadge: {
     position: 'absolute',
     top: -6,
     left: -4,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: radius.full,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
     borderWidth: 2,
     borderColor: colors.white,
   },
-  topBadgeText: { fontSize: 9, fontWeight: '800', color: colors.white },
+  topBadgeText: { fontSize: 10, fontWeight: '600', color: colors.onPrimary },
   dismiss: { padding: 2, alignSelf: 'flex-start' },
   bell: {
     width: 40,
     height: 40,
     borderRadius: radius.full,
     backgroundColor: colors.white,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   bellBadge: {
     position: 'absolute',
-    top: 4,
-    right: 4,
+    top: 3,
+    right: 3,
     minWidth: 16,
     height: 16,
     paddingHorizontal: 3,
     borderRadius: radius.full,
-    backgroundColor: colors.danger,
+    backgroundColor: colors.accent,
     borderWidth: 2,
     borderColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bellBadgeText: { fontSize: 9, fontWeight: '800', color: colors.white },
+  bellBadgeText: { fontSize: 9, fontWeight: '600', color: colors.green950 },
 });

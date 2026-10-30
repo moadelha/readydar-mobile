@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { colors } from '@/theme';
+import { colors, fonts } from '@/theme';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { TabIcon } from '@/components/ui';
 import { useHostAccess } from '@/lib/access';
@@ -7,7 +7,7 @@ import { usePlanConsole } from '@/lib/plan-console';
 import { useMessagesStrings } from '@/lib/i18n/messages-strings';
 
 export default function HostTabsLayout() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { has } = useHostAccess();
   // `href: null` is expo-router's way of keeping a route registered but
   // off the tab bar. A STAFF co-host only gets the tabs their permissions
@@ -26,8 +26,9 @@ export default function HostTabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.inkFaint,
-        tabBarStyle: { borderTopColor: colors.border },
+        tabBarInactiveTintColor: colors.inkMuted,
+        tabBarStyle: { backgroundColor: colors.white, borderTopColor: colors.border, elevation: 0, shadowOpacity: 0 },
+        tabBarLabelStyle: { fontFamily: fonts[lang === 'AR' ? 'arabic' : 'latin'][500], fontSize: 11 },
       }}
     >
       <Tabs.Screen
@@ -67,7 +68,7 @@ export default function HostTabsLayout() {
           title: ms.tab,
           href: canMessages ? undefined : null,
           tabBarBadge: unreadThreads > 0 ? unreadThreads : undefined,
-          tabBarBadgeStyle: { backgroundColor: colors.primary, fontSize: 11 },
+          tabBarBadgeStyle: { backgroundColor: colors.accent, color: colors.green950, fontSize: 10, fontFamily: fonts.latin[600] },
           tabBarIcon: ({ focused, size }) => <TabIcon name="chatbubbles-outline" focused={focused} size={size} />,
         }}
       />

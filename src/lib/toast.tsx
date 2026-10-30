@@ -8,9 +8,10 @@
  * `src/lib/motion.ts`, no new dependency.
  */
 import { createContext, useCallback, useContext, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text } from 'react-native';
+import { Animated, Pressable, StyleSheet } from 'react-native';
+import { Text } from '@/components/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, elevation, radius, spacing } from '@/theme';
 import { DURATIONS, EASING } from './motion';
 
@@ -41,9 +42,9 @@ const ICONS: Record<ToastKind, keyof typeof Ionicons.glyphMap> = {
 };
 
 const TONE: Record<ToastKind, string> = {
-  success: colors.primary,
-  error: colors.danger,
-  info: colors.ink,
+  success: colors.primaryLight,
+  error: colors.dangerOnDark,
+  info: colors.lineStrong,
 };
 
 let nextToastId = 1;
@@ -115,7 +116,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           ]}
         >
           <Pressable
-            style={[styles.toast, elevation.high, { borderLeftColor: TONE[toast.kind] }]}
+            style={[styles.toast, elevation.high]}
             onPress={dismiss}
           >
             <Ionicons name={ICONS[toast.kind]} size={19} color={TONE[toast.kind]} />
@@ -140,16 +141,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.white,
-    borderRadius: radius.sm,
-    borderLeftWidth: 3,
+    // Dark ink bar, like the web console's toasts: reads above any screen
+    // without a coloured stripe; the icon carries the tone.
+    backgroundColor: colors.toastBg,
+    borderRadius: radius.md,
     paddingVertical: 13,
     paddingHorizontal: spacing.md,
   },
   toastText: {
     flex: 1,
-    fontSize: 13.5,
-    color: colors.ink,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.onPrimary,
     fontWeight: '500',
   },
 });

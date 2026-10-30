@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { Text, TextInput } from '@/components/text';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, Property, ExpenseCategory, propertyCoverUrl } from '@/lib/api';
@@ -10,18 +11,16 @@ import { EXPENSE_CATEGORY_LABELS } from '@/lib/status';
 import { propertyColor } from '@/lib/property-colors';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { colors, radius, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { addDaysIso, todayIso } from '@/lib/calendar-visuals';
 
 const CATEGORY_OPTIONS = Object.keys(EXPENSE_CATEGORY_LABELS) as ExpenseCategory[];
 
 type ScopeMode = 'SINGLE' | 'MULTIPLE' | 'BUSINESS';
 type SplitMode = 'EQUAL' | 'CUSTOM';
 
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
 function yesterdayIso() {
-  return new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  return addDaysIso(todayIso(), -1);
 }
 
 /** Split a whole-MAD total evenly across `ids`, distributing the leftover
@@ -167,7 +166,7 @@ export default function NewExpenseScreen() {
               return (
                 <Pressable key={p.id} style={styles.optionRow} onPress={() => toggleMultiProperty(p.id)}>
                   <View style={[styles.checkbox, selected && styles.checkboxActive]}>
-                    {selected && <Ionicons name="checkmark" size={13} color={colors.white} />}
+                    {selected && <Ionicons name="checkmark" size={13} color={colors.onPrimary} />}
                   </View>
                   <View>
                     <PropertyThumb photoUrl={propertyCoverUrl(p, 120)} size={38} />
@@ -337,7 +336,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: 'rgba(27,31,35,0.03)',
+    backgroundColor: colors.sand,
   },
   splitRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   splitInputWrap: { flexDirection: 'row', alignItems: 'center', gap: 4, width: 90 },
@@ -360,7 +359,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     padding: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: 'rgba(27,31,35,0.03)',
+    backgroundColor: colors.sand,
   },
   errorBox: { backgroundColor: colors.dangerBg, borderRadius: 10, padding: spacing.sm, marginTop: spacing.md },
   errorText: { color: colors.danger, fontSize: 13 },

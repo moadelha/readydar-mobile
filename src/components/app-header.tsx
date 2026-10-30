@@ -1,8 +1,10 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Pressable, StyleSheet } from 'react-native';
+import { Text } from '@/components/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import type { NativeStackHeaderProps } from '@react-navigation/native-stack';
 import { colors, typography } from '@/theme';
+import { rtlFlip } from '@/lib/rtl';
 
 /**
  * The header for every pushed/modal screen, registered once as the root
@@ -37,7 +39,7 @@ export function AppHeader({ navigation, options, route, back }: NativeStackHeade
             accessibilityRole="button"
             accessibilityLabel={options.headerBackTitle ?? 'Back'}
           >
-            <Ionicons name="arrow-back" size={24} color={colors.ink} />
+            <Ionicons name="arrow-back" size={24} color={colors.ink} style={rtlFlip} />
           </Pressable>
         ) : (
           <View style={styles.sideEmpty} />
@@ -53,13 +55,13 @@ export function AppHeader({ navigation, options, route, back }: NativeStackHeade
 
 const styles = StyleSheet.create({
   wrap: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.sand,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
   bar: { height: 56, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, gap: 4 },
   side: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   sideEmpty: { width: 8 },
-  title: { ...typography.h3, flex: 1, color: colors.ink },
+  title: { ...typography.h3, fontSize: 17, flex: 1, color: colors.ink },
   right: { minWidth: 44, alignItems: 'center', justifyContent: 'center', paddingRight: 8 },
 });

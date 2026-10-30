@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl, Pressable, Alert, Linking } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, Pressable, Alert, Linking } from 'react-native';
+import { Text } from '@/components/text';
 import { useLocalSearchParams, useFocusEffect, useRouter, Stack } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, Property, CleaningReport, WEB_URL } from '@/lib/api';
 import { usePlanStrings } from '@/lib/i18n/plan-strings';
 import { Screen, Card, EmptyState, LoadingScreen, ErrorBanner, StatusBadge } from '@/components/ui';
 import { colors, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 
 /**
@@ -115,7 +116,7 @@ export default function CleaningReportsScreen() {
           )}
         </View>
         <Pressable onPress={handleStartNew} style={styles.addButton} disabled={isCreating} hitSlop={8}>
-          <Ionicons name="add" size={22} color={colors.white} />
+          <Ionicons name="add" size={22} color={colors.onPrimary} />
         </Pressable>
       </View>
 

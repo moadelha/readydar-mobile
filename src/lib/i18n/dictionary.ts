@@ -20,6 +20,10 @@ export interface Dict {
     saving: string;
     cancel: string;
     language: string;
+    appearance: string;
+    appearanceSystem: string;
+    appearanceLight: string;
+    appearanceDark: string;
     logOut: string;
     error: string;
     profile: string;
@@ -544,6 +548,7 @@ export interface Dict {
     legendGuestStay: string;
     legendBlocked: string;
     tapForDetails: string;
+    dayEmpty: string;
     noPropertiesToShow: string;
     airbnbBadge: string;
     nightsCount: (n: number) => string;
@@ -643,6 +648,13 @@ export interface Dict {
     shareViaWhatsApp: string;
     deletingEllipsis: string;
     deleteThisLink: string;
+    /** Short labels for the compact check-in rows; the long ones are in guestStayStatus. */
+    checkInStatusShort: { PENDING: string; SUBMITTED: string; EXPIRED: string };
+    newCheckInLink: string;
+    shareLink: string;
+    whatsappGuest: string;
+    contractPdf: string;
+    checkInPdf: string;
     deleteCheckInTitle: string;
     deleteCheckInMessage: (label: string) => string;
     checkInOutTitle: string;
@@ -716,6 +728,10 @@ export const en: Dict = {
     saving: 'Saving…',
     cancel: 'Cancel',
     language: 'Language',
+    appearance: 'Appearance',
+    appearanceSystem: 'System',
+    appearanceLight: 'Light',
+    appearanceDark: 'Dark',
     logOut: 'Log out',
     error: 'Error',
     profile: 'Profile',
@@ -1225,6 +1241,7 @@ export const en: Dict = {
     legendGuestStay: 'Guest stay',
     legendBlocked: 'Blocked',
     tapForDetails: 'Tap a booking for details',
+    dayEmpty: 'Nothing booked or planned on this day.',
     noPropertiesToShow: 'No properties to show.',
     airbnbBadge: 'Airbnb',
     nightsCount: (n) => `${n} night${n === 1 ? '' : 's'}`,
@@ -1324,6 +1341,12 @@ export const en: Dict = {
     shareViaWhatsApp: 'Share via WhatsApp',
     deletingEllipsis: 'Deleting…',
     deleteThisLink: 'Delete this link',
+    checkInStatusShort: { PENDING: 'Waiting', SUBMITTED: 'Checked in', EXPIRED: 'Expired' },
+    newCheckInLink: 'New link',
+    shareLink: 'Share link',
+    whatsappGuest: 'WhatsApp guest',
+    contractPdf: 'Signed contract',
+    checkInPdf: 'Check-in PDF',
     deleteCheckInTitle: 'Delete check-in link?',
     deleteCheckInMessage: (label) => `The link for ${label} will stop working and can't be recovered. The guest hasn't submitted anything yet, so no guest details are lost.`,
     checkInOutTitle: 'Check-in / check-out',
@@ -1397,6 +1420,10 @@ export const fr: Dict = {
     saving: 'Enregistrement…',
     cancel: 'Annuler',
     language: 'Langue',
+    appearance: 'Apparence',
+    appearanceSystem: 'Système',
+    appearanceLight: 'Clair',
+    appearanceDark: 'Sombre',
     logOut: 'Se déconnecter',
     error: 'Erreur',
     profile: 'Profil',
@@ -1907,6 +1934,7 @@ export const fr: Dict = {
     legendGuestStay: 'Séjour',
     legendBlocked: 'Bloqué',
     tapForDetails: 'Touchez une réservation pour les détails',
+    dayEmpty: 'Aucune réservation ni intervention ce jour-là.',
     noPropertiesToShow: 'Aucun logement à afficher.',
     airbnbBadge: 'Airbnb',
     nightsCount: (n) => `${n} nuit${n === 1 ? '' : 's'}`,
@@ -2006,6 +2034,12 @@ export const fr: Dict = {
     shareViaWhatsApp: 'Partager via WhatsApp',
     deletingEllipsis: 'Suppression…',
     deleteThisLink: 'Supprimer ce lien',
+    checkInStatusShort: { PENDING: 'En attente', SUBMITTED: 'Enregistré', EXPIRED: 'Expiré' },
+    newCheckInLink: 'Nouveau lien',
+    shareLink: 'Partager le lien',
+    whatsappGuest: 'WhatsApp au voyageur',
+    contractPdf: 'Contrat signé',
+    checkInPdf: 'PDF du check-in',
     deleteCheckInTitle: 'Supprimer le lien de check-in ?',
     deleteCheckInMessage: (label) => `Le lien de ${label} cessera de fonctionner et ne pourra pas être récupéré. Le voyageur n'a encore rien soumis, aucune donnée n'est donc perdue.`,
     checkInOutTitle: 'Arrivée / départ',
@@ -2095,6 +2129,10 @@ export const ar: Dict = {
     saving: 'جارٍ الحفظ…',
     cancel: 'إلغاء',
     language: 'اللغة',
+    appearance: 'المظهر',
+    appearanceSystem: 'النظام',
+    appearanceLight: 'فاتح',
+    appearanceDark: 'داكن',
     logOut: 'تسجيل الخروج',
     error: 'خطأ',
     profile: 'الملف الشخصي',
@@ -2628,6 +2666,7 @@ export const ar: Dict = {
     legendGuestStay: 'إقامة ضيف',
     legendBlocked: 'محجوز',
     tapForDetails: 'اضغط على حجز لعرض التفاصيل',
+    dayEmpty: 'لا حجوزات ولا مهام في هذا اليوم.',
     noPropertiesToShow: 'لا توجد عقارات لعرضها.',
     airbnbBadge: 'Airbnb',
     nightsCount: (n) => arPlural(n, { one: 'ليلة واحدة', two: 'ليلتان', few: 'ليالٍ', many: 'ليلة' }),
@@ -2727,6 +2766,12 @@ export const ar: Dict = {
     shareViaWhatsApp: 'مشاركة عبر واتساب',
     deletingEllipsis: 'جارٍ الحذف…',
     deleteThisLink: 'حذف هذا الرابط',
+    checkInStatusShort: { PENDING: 'بانتظار الضيف', SUBMITTED: 'مكتمل', EXPIRED: 'منتهي' },
+    newCheckInLink: 'رابط جديد',
+    shareLink: 'مشاركة الرابط',
+    whatsappGuest: 'واتساب الضيف',
+    contractPdf: 'العقد الموقّع',
+    checkInPdf: 'ملف تسجيل الوصول PDF',
     deleteCheckInTitle: 'حذف رابط تسجيل الوصول؟',
     deleteCheckInMessage: (label) => `سيتوقف رابط ${label} عن العمل ولا يمكن استعادته. لم يقدّم الضيف أي شيء بعد، لذا لن تُفقد أي بيانات.`,
     checkInOutTitle: 'تسجيل الوصول / المغادرة',

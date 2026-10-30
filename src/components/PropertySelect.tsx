@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Modal, TextInput, FlatList, SafeAreaView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet, Pressable, Modal, FlatList, SafeAreaView } from 'react-native';
+import { Text, TextInput } from '@/components/text';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, radius, spacing, typography } from '@/theme';
 import { Chip } from './ui';
 import { propertyCoverUrl, type Property } from '@/lib/api';

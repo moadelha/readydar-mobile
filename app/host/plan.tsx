@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Linking } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Linking } from 'react-native';
+import { Text } from '@/components/text';
 import { Stack, useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Screen, Card, LoadingScreen, ErrorBanner, StatusBadge } from '@/components/ui';
-import { colors, spacing, typography } from '@/theme';
+import { colors, spacing, typography, radius } from '@/theme';
 import { useAuth } from '@/lib/auth-context';
 import { api, ApiError, Entitlements, PlanFeature, WEB_URL } from '@/lib/api';
 import { usePlanStrings } from '@/lib/i18n/plan-strings';
@@ -93,7 +94,7 @@ export default function PlanScreen() {
         )}
 
         <Pressable onPress={openBilling} style={styles.button} accessibilityRole="link">
-          <Ionicons name="open-outline" size={16} color={colors.white} />
+          <Ionicons name="open-outline" size={16} color={colors.onPrimary} />
           <Text style={styles.buttonText}>{s.manageOnWeb}</Text>
         </Pressable>
         <Text style={[typography.bodyMuted, { marginTop: spacing.sm, textAlign: 'center' }]}>{s.webNote}</Text>
@@ -134,8 +135,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     backgroundColor: colors.primary,
-    borderRadius: 999,
+    borderRadius: radius.sm,
     paddingVertical: 14,
   },
-  buttonText: { color: colors.white, fontWeight: '600', fontSize: 15 },
+  buttonText: { color: colors.onPrimary, fontWeight: '600', fontSize: 15 },
 });

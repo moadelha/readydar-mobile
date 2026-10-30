@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Switch } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Switch } from 'react-native';
+import { Text } from '@/components/text';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth, ApiError } from '@/lib/auth-context';
@@ -7,7 +8,7 @@ import { api, City, PickedFile } from '@/lib/api';
 import { Screen, TextField } from '@/components/ui';
 import { Button } from '@/components/Button';
 import { colors, radius, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 
 export default function OnboardingScreen() {
@@ -105,7 +106,7 @@ export default function OnboardingScreen() {
               value={!!activeDays[i]}
               onValueChange={(v) => setActiveDays((prev) => ({ ...prev, [i]: v }))}
               trackColor={{ true: colors.primaryLight, false: colors.border }}
-              thumbColor={activeDays[i] ? colors.primary : '#fff'}
+              thumbColor={activeDays[i] ? colors.primary : colors.onPrimary}
             />
           </View>
         ))}
@@ -146,7 +147,7 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },

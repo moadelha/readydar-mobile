@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Pressable, Alert, Share, PixelRatio } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, Pressable, Alert, Share, PixelRatio } from 'react-native';
+import { Text } from '@/components/text';
 import { useLocalSearchParams, useFocusEffect, Stack } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -22,7 +23,7 @@ import { downloadAndShare } from '@/lib/files';
 import { useToast } from '@/lib/toast';
 import { todayIso, addDaysIso } from '@/lib/calendar-visuals';
 import { colors, radius, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 
 /** Same formatting dashboard.tsx's checkout sheet uses for a property's configured check-in time (e.g. "3:00 PM"). Airbnb/Hospitable gives a check-in *date*, not a time — the time shown is the property's own expected check-in time, same as everywhere else in the app that shows one. */
@@ -399,7 +400,7 @@ export default function CleaningReportDetailScreen() {
                         style={styles.removeBadge}
                         hitSlop={8}
                       >
-                        <Ionicons name="close" size={13} color={colors.white} />
+                        <Ionicons name="close" size={13} color={colors.onPrimary} />
                       </Pressable>
                     )}
                   </View>
@@ -483,7 +484,7 @@ const styles = StyleSheet.create({
     gap: 6,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },

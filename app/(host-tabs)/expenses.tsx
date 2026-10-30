@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl, Pressable, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, Pressable, Alert } from 'react-native';
+import { Text } from '@/components/text';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, Expense, Property, propertyCoverUrl } from '@/lib/api';
@@ -15,7 +16,7 @@ import { propertyColor } from '@/lib/property-colors';
 import { PropertyThumb } from '@/components/host-ui';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { colors, radius, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 type Range = 'MONTH' | 'LAST_MONTH' | 'ALL';
 type CategoryFilter = 'ALL' | ExpenseCategoryGroup;
@@ -196,9 +197,9 @@ export default function ExpensesScreen() {
                 <Ionicons
                   name={delta.down ? 'arrow-down' : 'arrow-up'}
                   size={11}
-                  color={delta.down ? colors.primary : '#B45309'}
+                  color={delta.down ? colors.primary : colors.warning}
                 />
-                <Text style={[styles.deltaText, { color: delta.down ? colors.primary : '#B45309' }]}>
+                <Text style={[styles.deltaText, { color: delta.down ? colors.primary : colors.warning }]}>
                   {t.expenses.deltaVsLastMonth(delta.pct)}
                 </Text>
               </View>
@@ -290,7 +291,7 @@ export default function ExpensesScreen() {
       />
 
       <Pressable style={styles.fab} onPress={() => router.push('/host/expense/new')}>
-        <Ionicons name="add" size={20} color={colors.white} />
+        <Ionicons name="add" size={20} color={colors.onPrimary} />
         <Text style={styles.fabLabel}>{t.expenses.addExpense}</Text>
       </Pressable>
     </Screen>
@@ -311,7 +312,7 @@ const styles = StyleSheet.create({
     gap: 3,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
   },
   deltaPillGood: { backgroundColor: colors.successBg },
   deltaPillBad: { backgroundColor: colors.accentBg },
@@ -351,5 +352,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
-  fabLabel: { color: colors.white, fontWeight: '700', fontSize: 14 },
+  fabLabel: { color: colors.onPrimary, fontWeight: '700', fontSize: 14 },
 });

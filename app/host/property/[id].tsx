@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   Image,
@@ -11,6 +10,7 @@ import {
   PixelRatio,
   useWindowDimensions,
 } from 'react-native';
+import { Text } from '@/components/text';
 import { useLocalSearchParams, useFocusEffect, useRouter, Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth, ApiError } from '@/lib/auth-context';
@@ -29,13 +29,14 @@ import {
 import { Screen, Card, LoadingScreen, StatusBadge, TextField, ErrorBanner, PhotoViewerModal } from '@/components/ui';
 import { Button } from '@/components/Button';
 import { colors, radius, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { downloadAndShare } from '@/lib/files';
 import { groupByMonth } from '@/lib/checkin-groups';
 import { PROPERTY_STATUS_TONE, PropertyStatus } from '@/lib/status';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { Dict } from '@/lib/i18n/dictionary';
 import { useHostAccess } from '@/lib/access';
+import { ChannelMark } from '@/components/channel-mark';
 
 /**
  * The statuses a host can set by hand — the same four the web dashboard's
@@ -53,10 +54,11 @@ const SETTABLE_STATUSES: PropertyStatus[] = ['OCCUPIED', 'NEEDS_CLEANING', 'IN_P
  */
 const COVER_HEIGHT = 170;
 
-const CHECKIN_STATUS_TONE: Record<string, 'neutral' | 'primary' | 'accent' | 'success'> = {
-  PENDING: 'accent',
-  SUBMITTED: 'success',
-  EXPIRED: 'neutral',
+/** Dot and label colour for each check-in's status in the compact rows. */
+const STAY_TONE: Record<string, string> = {
+  PENDING: colors.warning,
+  SUBMITTED: colors.success,
+  EXPIRED: colors.inkFaint,
 };
 
 /**
@@ -82,7 +84,8 @@ export default function PropertyDetailScreen() {
   const { id, checkin: focusCheckInId } = useLocalSearchParams<{ id: string; checkin?: string }>();
   const { session } = useAuth();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const dateLocale = lang === 'FR' ? 'fr-FR' : lang === 'AR' ? 'ar-MA' : 'en-GB';
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const { isManager, has } = useHostAccess();
@@ -123,6 +126,10 @@ export default function PropertyDetailScreen() {
    */
   const groupTops = useRef<Record<string, number>>({});
   const cardTops = useRef<Record<string, number>>({});
+  /** Each open month's row list, relative to its month group. */
+  const listTops = useRef<Record<string, number>>({});
+  /** The check-in row whose details are open (one at a time). */
+  const [openRowId, setOpenRowId] = useState<string | null>(null);
   /** The linked-to check-in, tinted briefly so it's obvious which row was meant. */
   const [highlightId, setHighlightId] = useState<string | null>(null);
   /** Guards the scroll so it happens once per arrival, not on every re-render. */
@@ -223,14 +230,16 @@ export default function PropertyDetailScreen() {
     didFocusScroll.current = true;
     setOpenCheckInMonths((prev) => ({ ...prev, [group.key]: true }));
     setHighlightId(focusCheckInId);
+    setOpenRowId(focusCheckInId);
     const scroll = setTimeout(() => {
       const groupY = groupTops.current[group.key];
+      const listY = listTops.current[group.key] ?? 0;
       const cardY = cardTops.current[focusCheckInId];
       // Nothing measured yet (the group never rendered) — leave the page
       // where it is rather than scrolling somewhere arbitrary. The month is
       // open and the card is tinted either way.
       if (groupY == null || cardY == null) return;
-      scrollRef.current?.scrollTo({ y: Math.max(0, groupY + cardY - 90), animated: true });
+      scrollRef.current?.scrollTo({ y: Math.max(0, groupY + listY + cardY - 90), animated: true });
     }, 350);
     // The tint is a "here it is", not a persistent state — it fades out on
     // its own so the card doesn't stay visually flagged forever.
@@ -614,12 +623,15 @@ export default function PropertyDetailScreen() {
         {canCheckins && (
         <>
         <View style={styles.sectionHeaderRow}>
-          <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0 }]}>{t.propertyDetail.guestCheckIns}</Text>
+          <Text style={styles.sectionHeading}>{t.propertyDetail.guestCheckIns}</Text>
           <Pressable
             onPress={() => router.push({ pathname: '/host/checkin/new', params: { propertyId: property.id } })}
-            style={styles.addButton}
+            hitSlop={8}
+            style={({ pressed }) => [styles.newLink, pressed && { opacity: 0.6 }]}
+            accessibilityRole="button"
           >
-            <Ionicons name="add" size={18} color={colors.white} />
+            <Ionicons name="add" size={16} color={colors.green700} />
+            <Text style={styles.newLinkText}>{t.propertyDetail.newCheckInLink}</Text>
           </Pressable>
         </View>
 
@@ -635,6 +647,10 @@ export default function PropertyDetailScreen() {
           // per reservation, and the ones a host wants are nearly always in
           // the current month. Nearest month opens by default; the rest are
           // one tap away. Same grouping helper the Guests screen uses.
+          //
+          // Each stay is one compact row (date, guest, stay length, status);
+          // its details and actions open in place on tap, so a month of
+          // bookings reads as a list rather than a wall of buttons.
           checkInMonths.map((group, groupIndex) => {
             const open = openCheckInMonths[group.key] ?? groupIndex === 0;
             return (
@@ -647,246 +663,284 @@ export default function PropertyDetailScreen() {
                 <Pressable
                   style={styles.monthHeader}
                   onPress={() => setOpenCheckInMonths((prev) => ({ ...prev, [group.key]: !open }))}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: open }}
                 >
-                  <Ionicons name={open ? 'chevron-down' : 'chevron-forward'} size={15} color={colors.primary} />
-                  <Text style={styles.monthLabel}>{group.label}</Text>
-                  <Text style={styles.monthCount}>{group.items.length}</Text>
-                </Pressable>
-                {open &&
-                  group.items.map((c) => (
-          <View
-            key={c.id}
-            onLayout={(e) => {
-              // Relative to this month group; the group's own offset is
-              // recorded above and the two are summed when scrolling.
-              cardTops.current[c.id] = e.nativeEvent.layout.y;
-            }}
-          >
-            <Card style={[{ marginBottom: spacing.sm }, highlightId === c.id && styles.highlightedCheckIn]}>
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}>
-                  <View style={styles.checkinTitleRow}>
-                    <Text style={typography.h3}>
-                      {c.guestFirstName ? `${c.guestFirstName} ${c.guestLastName ?? ''}`.trim() : c.guestNameHint || t.propertyDetail.guestFallback}
-                    </Text>
-                    {c.externalReservationId && (
-                      <View style={styles.syncBadge}>
-                        <Ionicons name="link-outline" size={11} color={colors.primary} />
-                        <Text style={styles.syncBadgeText}>{t.propertiesList.airbnbBadge}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={typography.bodyMuted}>
-                    {/* UTC — calendar dates; see the note on `arriving` above */}
-                    {new Date(c.expectedCheckIn).toLocaleDateString(undefined, { timeZone: 'UTC' })} →{' '}
-                    {new Date(c.expectedCheckOut).toLocaleDateString(undefined, { timeZone: 'UTC' })}
-                    {c.guestCount > 1 ? ` · ${t.common.guestsCount(c.guestCount)}` : ''}
+                  <Text style={styles.monthLabel}>
+                    {group.label}
+                    <Text style={styles.monthCount}>{`  ${group.items.length}`}</Text>
                   </Text>
-                </View>
-                <StatusBadge label={t.guestStayStatus[c.status as keyof Dict['guestStayStatus']] ?? c.status} tone={CHECKIN_STATUS_TONE[c.status] ?? 'neutral'} />
-              </View>
+                  <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={15} color={colors.inkFaint} />
+                </Pressable>
+                {open && (
+                  <View
+                    style={styles.stayList}
+                    onLayout={(e) => {
+                      listTops.current[group.key] = e.nativeEvent.layout.y;
+                    }}
+                  >
+                    {group.items.map((c, i) => {
+                      const name = c.guestFirstName
+                        ? `${c.guestFirstName} ${c.guestLastName ?? ''}`.trim()
+                        : c.guestNameHint || t.propertyDetail.guestFallback;
+                      // UTC — these are calendar dates; see the note on `arriving` above.
+                      const start = new Date(c.expectedCheckIn);
+                      const end = new Date(c.expectedCheckOut);
+                      const nights = Math.max(0, Math.round((end.getTime() - start.getTime()) / 86_400_000));
+                      const short = (d: Date) => d.toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', timeZone: 'UTC' });
+                      const meta = [
+                        `${short(start)} → ${short(end)}`,
+                        nights > 0 ? t.calendarHost.nightsCount(nights) : null,
+                        c.guestCount > 1 ? t.common.guestsCount(c.guestCount) : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ');
+                      const expandable = c.status === 'PENDING' || c.status === 'SUBMITTED';
+                      const expanded = expandable && openRowId === c.id;
+                      const tone = STAY_TONE[c.status] ?? STAY_TONE.EXPIRED;
+                      return (
+                        <View
+                          key={c.id}
+                          style={[i > 0 && styles.stayDivider, highlightId === c.id && styles.highlightedCheckIn]}
+                          onLayout={(e) => {
+                            // Relative to this month's list; the list's and
+                            // the group's own offsets are added when scrolling.
+                            cardTops.current[c.id] = e.nativeEvent.layout.y;
+                          }}
+                        >
+                          <Pressable
+                            disabled={!expandable}
+                            onPress={() => setOpenRowId(expanded ? null : c.id)}
+                            style={({ pressed }) => [styles.stayRow, pressed && { backgroundColor: colors.surface2 }]}
+                            accessibilityRole="button"
+                            accessibilityState={{ expanded }}
+                          >
+                            <View style={styles.dateBlock}>
+                              <Text style={styles.dateDay}>{start.getUTCDate()}</Text>
+                              <Text style={styles.dateWeekday}>
+                                {start.toLocaleDateString(dateLocale, { weekday: 'short', timeZone: 'UTC' })}
+                              </Text>
+                            </View>
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                              <View style={styles.stayNameRow}>
+                                {c.externalReservationId && <ChannelMark provider="AIRBNB" size={16} />}
+                                <Text style={styles.stayName} numberOfLines={1}>
+                                  {name}
+                                </Text>
+                              </View>
+                              <Text style={styles.stayMeta} numberOfLines={1}>
+                                {meta}
+                              </Text>
+                              <View style={styles.stayStatus}>
+                                <View style={[styles.statusDot, { backgroundColor: tone }]} />
+                                <Text style={[styles.statusText, { color: tone }]}>
+                                  {t.propertyDetail.checkInStatusShort[c.status as keyof Dict['propertyDetail']['checkInStatusShort']] ?? c.status}
+                                </Text>
+                              </View>
+                            </View>
+                            {expandable && (
+                              <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.inkFaint} />
+                            )}
+                          </Pressable>
 
-              {c.externalReservationId && c.status === 'PENDING' && (
-                <Text style={[typography.caption, { marginTop: 4 }]}>
-                  {t.propertyDetail.createdFromAirbnb}
-                </Text>
-              )}
-
-              {c.status === 'SUBMITTED' && (
-                <View style={{ marginTop: spacing.sm }}>
-                  {c.guestPhone && <Text style={styles.detailLine}>{t.propertyDetail.phoneLabel(c.guestPhone)}</Text>}
-                  {c.nationality && (
-                    <Text style={styles.detailLine}>
-                      {t.propertyDetail.nationalityIdLine(c.nationality, c.idType === 'passport' ? t.propertyDetail.passport : t.propertyDetail.nationalId, c.idNumber ?? '')}
-                    </Text>
-                  )}
-
-                  {(() => {
-                    // Newer submissions carry one entry per guest in
-                    // `guests` (each with its own ID photo). Older
-                    // submissions only ever populated the legacy
-                    // single-guest `idPhotoUrl` field — fall back to that
-                    // as a synthetic one-entry list so their photo still
-                    // shows up here too. `guestId` is what the signed-URL
-                    // endpoint wants, and it takes the literal string
-                    // 'legacy' for exactly that fallback case.
-                    const idPhotos: { key: string; guestId: string; idPhotoUrl: string }[] =
-                      c.guests && c.guests.length > 0
-                        ? c.guests.map((g) => ({ key: g.id, guestId: g.id, idPhotoUrl: g.idPhotoUrl }))
-                        : c.idPhotoUrl
-                          ? [{ key: c.id, guestId: 'legacy', idPhotoUrl: c.idPhotoUrl }]
-                          : [];
-                    if (idPhotos.length === 0) return null;
-                    return (
-                      <View style={{ marginTop: spacing.sm }}>
-                        <Text style={styles.idPhotoLabel}>{idPhotos.length > 1 ? t.propertyDetail.idPhotos : t.propertyDetail.idPhoto}</Text>
-                        <View style={styles.photoGrid}>
-                          {idPhotos.map((g) => {
-                            // Two storage eras live side by side here. Photos
-                            // taken before ID documents moved to Cloudinary's
-                            // authenticated delivery still hold a full,
-                            // directly-loadable URL. Newer ones hold an opaque
-                            // public_id that resolves to nothing on its own —
-                            // those need a short-lived signed URL fetched at
-                            // view time, so they render as a tap-to-open tile
-                            // rather than a thumbnail.
-                            if (isAbsolutePhotoUrl(g.idPhotoUrl)) {
-                              return (
-                                <Pressable key={g.key} onPress={() => setViewerUrl(resolveUploadUrl(g.idPhotoUrl))}>
-                                  <Image
-                                    source={{ uri: resolveThumbnailUrl(g.idPhotoUrl, 130) }}
-                                    style={styles.idPhotoThumb}
+                          {expanded && c.status === 'PENDING' && (
+                            <View style={styles.stayPanel}>
+                              {c.externalReservationId && <Text style={styles.panelNote}>{t.propertyDetail.createdFromAirbnb}</Text>}
+                              {c.guestPhone && <Text style={styles.detailLine}>{t.propertyDetail.phoneLabel(c.guestPhone)}</Text>}
+                              <View style={styles.panelActions}>
+                                <Button
+                                  label={sharingId === c.id ? t.propertyDetail.openingEllipsis : t.propertyDetail.shareLink}
+                                  onPress={() => handleShareCheckIn(c)}
+                                  loading={sharingId === c.id}
+                                  style={{ flex: 1 }}
+                                />
+                                {c.guestPhone && (
+                                  <Button
+                                    label={t.propertyDetail.whatsappGuest}
+                                    onPress={() => handleMessageGuestWhatsApp(c)}
+                                    variant="secondary"
+                                    style={{ flex: 1 }}
                                   />
-                                </Pressable>
-                              );
-                            }
-                            const busy = photoBusyKey === `${c.id}:${g.guestId}`;
-                            return (
+                                )}
+                              </View>
+                              {/* Only ever on a PENDING link — see handleDeleteCheckIn. */}
                               <Pressable
-                                key={g.key}
-                                style={[styles.idPhotoThumb, styles.idPhotoLocked]}
-                                disabled={busy}
-                                onPress={() => handleViewIdPhoto(c.id, g.guestId)}
+                                style={styles.panelLink}
+                                onPress={() => handleDeleteCheckIn(c)}
+                                disabled={deleteBusyId === c.id}
+                                hitSlop={6}
                               >
                                 <Ionicons
-                                  name={busy ? 'hourglass-outline' : 'eye-outline'}
-                                  size={20}
-                                  color={colors.primary}
+                                  name={deleteBusyId === c.id ? 'hourglass-outline' : 'trash-outline'}
+                                  size={15}
+                                  color={colors.danger}
                                 />
-                                <Text style={styles.idPhotoLockedText}>{busy ? t.propertyDetail.openingEllipsis : t.propertyDetail.viewId}</Text>
+                                <Text style={[styles.panelLinkText, { color: colors.danger }]}>
+                                  {deleteBusyId === c.id ? t.propertyDetail.deletingEllipsis : t.propertyDetail.deleteThisLink}
+                                </Text>
                               </Pressable>
-                            );
-                          })}
-                        </View>
-                      </View>
-                    );
-                  })()}
+                            </View>
+                          )}
 
-                  <Pressable
-                    onPress={() => handleDownloadPdf(c)}
-                    style={styles.pdfRow}
-                    disabled={pdfBusyId === c.id}
-                  >
-                    <Ionicons
-                      name={pdfBusyId === c.id ? 'hourglass-outline' : 'document-text-outline'}
-                      size={15}
-                      color={colors.primary}
-                    />
-                    <Text style={[typography.caption, { color: colors.primary, fontWeight: '600' }]}>
-                      {pdfBusyId === c.id ? t.propertyDetail.preparingPdf : t.propertyDetail.downloadCheckInPdf}
-                    </Text>
-                  </Pressable>
+                          {expanded && c.status === 'SUBMITTED' && (
+                            <View style={styles.stayPanel}>
+                              {c.guestPhone && <Text style={styles.detailLine}>{t.propertyDetail.phoneLabel(c.guestPhone)}</Text>}
+                              {c.nationality && (
+                                <Text style={styles.detailLine}>
+                                  {t.propertyDetail.nationalityIdLine(c.nationality, c.idType === 'passport' ? t.propertyDetail.passport : t.propertyDetail.nationalId, c.idNumber ?? '')}
+                                </Text>
+                              )}
 
-                  {c.contract && (
-                    <Pressable
-                      onPress={() => handleDownloadContract(c)}
-                      style={styles.pdfRow}
-                      disabled={contractPdfBusyId === c.id}
-                    >
-                      <Ionicons
-                        name={contractPdfBusyId === c.id ? 'hourglass-outline' : 'document-lock-outline'}
-                        size={15}
-                        color={colors.primary}
-                      />
-                      <Text style={[typography.caption, { color: colors.primary, fontWeight: '600' }]}>
-                        {contractPdfBusyId === c.id ? t.propertyDetail.preparingContract : t.propertyDetail.downloadContract}
-                      </Text>
-                    </Pressable>
-                  )}
+                              {(() => {
+                                // Newer submissions carry one entry per guest in
+                                // `guests` (each with its own ID photo). Older
+                                // submissions only ever populated the legacy
+                                // single-guest `idPhotoUrl` field — fall back to that
+                                // as a synthetic one-entry list so their photo still
+                                // shows up here too. `guestId` is what the signed-URL
+                                // endpoint wants, and it takes the literal string
+                                // 'legacy' for exactly that fallback case.
+                                const idPhotos: { key: string; guestId: string; idPhotoUrl: string }[] =
+                                  c.guests && c.guests.length > 0
+                                    ? c.guests.map((g) => ({ key: g.id, guestId: g.id, idPhotoUrl: g.idPhotoUrl }))
+                                    : c.idPhotoUrl
+                                      ? [{ key: c.id, guestId: 'legacy', idPhotoUrl: c.idPhotoUrl }]
+                                      : [];
+                                if (idPhotos.length === 0) return null;
+                                return (
+                                  <View style={{ marginTop: spacing.sm }}>
+                                    <Text style={styles.idPhotoLabel}>{idPhotos.length > 1 ? t.propertyDetail.idPhotos : t.propertyDetail.idPhoto}</Text>
+                                    <View style={styles.photoGrid}>
+                                      {idPhotos.map((g) => {
+                                        // Two storage eras live side by side here. Photos
+                                        // taken before ID documents moved to Cloudinary's
+                                        // authenticated delivery still hold a full,
+                                        // directly-loadable URL. Newer ones hold an opaque
+                                        // public_id that resolves to nothing on its own —
+                                        // those need a short-lived signed URL fetched at
+                                        // view time, so they render as a tap-to-open tile
+                                        // rather than a thumbnail.
+                                        if (isAbsolutePhotoUrl(g.idPhotoUrl)) {
+                                          return (
+                                            <Pressable key={g.key} onPress={() => setViewerUrl(resolveUploadUrl(g.idPhotoUrl))}>
+                                              <Image
+                                                source={{ uri: resolveThumbnailUrl(g.idPhotoUrl, 130) }}
+                                                style={styles.idPhotoThumb}
+                                              />
+                                            </Pressable>
+                                          );
+                                        }
+                                        const busy = photoBusyKey === `${c.id}:${g.guestId}`;
+                                        return (
+                                          <Pressable
+                                            key={g.key}
+                                            style={[styles.idPhotoThumb, styles.idPhotoLocked]}
+                                            disabled={busy}
+                                            onPress={() => handleViewIdPhoto(c.id, g.guestId)}
+                                          >
+                                            <Ionicons
+                                              name={busy ? 'hourglass-outline' : 'eye-outline'}
+                                              size={18}
+                                              color={colors.inkMuted}
+                                            />
+                                            <Text style={styles.idPhotoLockedText}>{busy ? t.propertyDetail.openingEllipsis : t.propertyDetail.viewId}</Text>
+                                          </Pressable>
+                                        );
+                                      })}
+                                    </View>
+                                  </View>
+                                );
+                              })()}
 
-                  {c.welcomeWhatsappSent ? (
-                    <View style={styles.welcomeStatusRow}>
-                      <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
-                      <Text style={typography.caption}>{t.propertyDetail.welcomeMessageSent}</Text>
-                    </View>
-                  ) : c.welcomeNotifiedAt && c.welcomeWaLink ? (
-                    <Button
-                      label={welcomeBusyId === c.id ? t.propertyDetail.openingEllipsis : t.propertyDetail.openWhatsAppWelcomeReady}
-                      onPress={() => handleOpenReadyWelcome(c)}
-                      loading={welcomeBusyId === c.id}
-                      variant="secondary"
-                      style={{ marginTop: spacing.sm }}
-                    />
-                  ) : (
-                    <>
-                      <Pressable onPress={() => handleExpandWelcome(c)} style={styles.welcomeStatusRow}>
-                        <Ionicons
-                          name={expandedCheckInId === c.id ? 'chevron-up' : 'chatbubble-ellipses-outline'}
-                          size={14}
-                          color={colors.primary}
-                        />
-                        <Text style={[typography.caption, { color: colors.primary, fontWeight: '600' }]}>
-                          {expandedCheckInId === c.id ? t.propertyDetail.hideWelcomeMessage : t.propertyDetail.sendWelcomeMessage}
-                        </Text>
-                      </Pressable>
+                              <View style={styles.docRow}>
+                                <Pressable
+                                  onPress={() => handleDownloadPdf(c)}
+                                  style={({ pressed }) => [styles.docChip, pressed && { backgroundColor: colors.surface2 }]}
+                                  disabled={pdfBusyId === c.id}
+                                >
+                                  <Ionicons
+                                    name={pdfBusyId === c.id ? 'hourglass-outline' : 'document-text-outline'}
+                                    size={15}
+                                    color={colors.inkMuted}
+                                  />
+                                  <Text style={styles.docChipText}>
+                                    {pdfBusyId === c.id ? t.propertyDetail.preparingPdf : t.propertyDetail.checkInPdf}
+                                  </Text>
+                                </Pressable>
+                                {c.contract && (
+                                  <Pressable
+                                    onPress={() => handleDownloadContract(c)}
+                                    style={({ pressed }) => [styles.docChip, pressed && { backgroundColor: colors.surface2 }]}
+                                    disabled={contractPdfBusyId === c.id}
+                                  >
+                                    <Ionicons
+                                      name={contractPdfBusyId === c.id ? 'hourglass-outline' : 'document-lock-outline'}
+                                      size={15}
+                                      color={colors.inkMuted}
+                                    />
+                                    <Text style={styles.docChipText}>
+                                      {contractPdfBusyId === c.id ? t.propertyDetail.preparingContract : t.propertyDetail.contractPdf}
+                                    </Text>
+                                  </Pressable>
+                                )}
+                              </View>
 
-                      {expandedCheckInId === c.id && (
-                        <View style={{ marginTop: spacing.sm }}>
-                          {isPreviewLoading ? (
-                            <Text style={typography.bodyMuted}>{t.propertyDetail.loadingPreview}</Text>
-                          ) : (
-                            <>
-                              <TextField
-                                label={t.propertyDetail.messageEditLabel}
-                                value={previewText}
-                                onChangeText={setPreviewText}
-                                multiline
-                                numberOfLines={6}
-                              />
-                              <Button
-                                label={welcomeBusyId === c.id ? t.propertyDetail.sendingEllipsis : t.propertyDetail.sendViaWhatsApp}
-                                onPress={() => handleSendWelcome(c)}
-                                loading={welcomeBusyId === c.id}
-                              />
-                            </>
+                              {c.welcomeWhatsappSent ? (
+                                <View style={styles.panelLink}>
+                                  <Ionicons name="checkmark-circle" size={15} color={colors.success} />
+                                  <Text style={[styles.panelLinkText, { color: colors.success }]}>{t.propertyDetail.welcomeMessageSent}</Text>
+                                </View>
+                              ) : c.welcomeNotifiedAt && c.welcomeWaLink ? (
+                                <Button
+                                  label={welcomeBusyId === c.id ? t.propertyDetail.openingEllipsis : t.propertyDetail.openWhatsAppWelcomeReady}
+                                  onPress={() => handleOpenReadyWelcome(c)}
+                                  loading={welcomeBusyId === c.id}
+                                  style={{ marginTop: 12 }}
+                                />
+                              ) : (
+                                <>
+                                  <Pressable onPress={() => handleExpandWelcome(c)} style={styles.panelLink} hitSlop={6}>
+                                    <Ionicons
+                                      name={expandedCheckInId === c.id ? 'chevron-up' : 'chatbubble-ellipses-outline'}
+                                      size={15}
+                                      color={colors.green700}
+                                    />
+                                    <Text style={styles.panelLinkText}>
+                                      {expandedCheckInId === c.id ? t.propertyDetail.hideWelcomeMessage : t.propertyDetail.sendWelcomeMessage}
+                                    </Text>
+                                  </Pressable>
+
+                                  {expandedCheckInId === c.id && (
+                                    <View style={{ marginTop: spacing.sm }}>
+                                      {isPreviewLoading ? (
+                                        <Text style={typography.bodyMuted}>{t.propertyDetail.loadingPreview}</Text>
+                                      ) : (
+                                        <>
+                                          <TextField
+                                            label={t.propertyDetail.messageEditLabel}
+                                            value={previewText}
+                                            onChangeText={setPreviewText}
+                                            multiline
+                                            numberOfLines={6}
+                                          />
+                                          <Button
+                                            label={welcomeBusyId === c.id ? t.propertyDetail.sendingEllipsis : t.propertyDetail.sendViaWhatsApp}
+                                            onPress={() => handleSendWelcome(c)}
+                                            loading={welcomeBusyId === c.id}
+                                          />
+                                        </>
+                                      )}
+                                    </View>
+                                  )}
+                                </>
+                              )}
+                            </View>
                           )}
                         </View>
-                      )}
-                    </>
-                  )}
-                </View>
-              )}
-
-              {c.status === 'PENDING' && (
-                <>
-                  {c.guestPhone && (
-                    <>
-                      <Text style={[styles.detailLine, { marginTop: spacing.sm }]}>{t.propertyDetail.phoneLabel(c.guestPhone)}</Text>
-                      <Button
-                        label={t.propertyDetail.messageGuestWhatsApp}
-                        onPress={() => handleMessageGuestWhatsApp(c)}
-                        variant="secondary"
-                        style={{ marginTop: spacing.xs }}
-                      />
-                    </>
-                  )}
-                  <Button
-                    label={sharingId === c.id ? t.propertyDetail.openingEllipsis : t.propertyDetail.shareViaWhatsApp}
-                    onPress={() => handleShareCheckIn(c)}
-                    loading={sharingId === c.id}
-                    variant="outline"
-                    style={{ marginTop: spacing.sm }}
-                  />
-                  {/* Only ever on a PENDING link — see handleDeleteCheckIn. */}
-                  <Pressable
-                    style={styles.deleteRow}
-                    onPress={() => handleDeleteCheckIn(c)}
-                    disabled={deleteBusyId === c.id}
-                  >
-                    <Ionicons
-                      name={deleteBusyId === c.id ? 'hourglass-outline' : 'trash-outline'}
-                      size={14}
-                      color={colors.danger}
-                    />
-                    <Text style={styles.deleteText}>
-                      {deleteBusyId === c.id ? t.propertyDetail.deletingEllipsis : t.propertyDetail.deleteThisLink}
-                    </Text>
-                  </Pressable>
-                </>
-              )}
-            </Card>
-          </View>
-                  ))}
+                      );
+                    })}
+                  </View>
+                )}
               </View>
             );
           })
@@ -986,17 +1040,6 @@ const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingTop: spacing.xl },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: spacing.xs },
   rate: { marginTop: spacing.xs, color: colors.primary, fontWeight: '600', fontSize: 13 },
-  checkinTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  syncBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: colors.successBg,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  syncBadgeText: { fontSize: 10, fontWeight: '700', color: colors.primary },
   syncNotice: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1015,65 +1058,81 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
-  addButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  row: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm },
-  detailLine: { ...typography.body, marginBottom: 2 },
-  welcomeStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: spacing.xs },
-  pdfRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: spacing.sm },
+  detailLine: { fontSize: 14, lineHeight: 20, color: colors.ink, marginBottom: 2 },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   photo: { width: 84, height: 84, borderRadius: radius.sm },
   idPhotoLabel: { ...typography.caption, fontWeight: '600', marginBottom: spacing.xs },
+  sectionHeading: { ...typography.h2, fontSize: 18, lineHeight: 24 },
+  newLink: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  newLinkText: { fontSize: 14, fontWeight: '500', color: colors.green700 },
   monthHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
-  monthLabel: { flex: 1, fontSize: 13, fontWeight: '700', color: colors.ink },
-  monthCount: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.inkMuted,
-    backgroundColor: 'rgba(27,31,35,0.06)',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 999,
+  monthLabel: { ...typography.label, flex: 1, color: colors.inkMuted },
+  monthCount: { color: colors.inkFaint, ...typography.number },
+  stayList: {
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
     overflow: 'hidden',
   },
+  stayDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  stayRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 14 },
+  dateBlock: {
+    width: 44,
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface2,
+    alignItems: 'center',
+  },
+  dateDay: { fontSize: 18, lineHeight: 22, fontWeight: '600', color: colors.ink, ...typography.number },
+  dateWeekday: { fontSize: 11, lineHeight: 14, fontWeight: '500', color: colors.inkMuted },
+  stayNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  stayName: { flexShrink: 1, fontSize: 15, lineHeight: 20, fontWeight: '600', color: colors.ink },
+  stayMeta: { fontSize: 13, lineHeight: 18, color: colors.inkMuted, marginTop: 1, ...typography.number },
+  stayStatus: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
+  // Lines up under the guest's name, past the date block (44 + 12 gap + 14 padding).
+  stayPanel: { paddingLeft: 70, paddingRight: 14, paddingBottom: 14 },
+  panelNote: { ...typography.caption, color: colors.inkMuted, marginBottom: spacing.sm },
+  panelActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  panelLink: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, alignSelf: 'flex-start' },
+  panelLinkText: { fontSize: 13, fontWeight: '500', color: colors.green700 },
+  docRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: 12 },
+  docChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  docChipText: { fontSize: 13, fontWeight: '500', color: colors.ink },
   cover: {
     width: '100%',
     height: COVER_HEIGHT,
     borderRadius: radius.md,
     marginBottom: spacing.md,
-    backgroundColor: 'rgba(27,31,35,0.06)',
+    backgroundColor: colors.surface2,
   },
   idPhotoThumb: { width: 64, height: 64, borderRadius: radius.sm },
   idPhotoLocked: {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
-    backgroundColor: 'rgba(0,109,119,0.08)',
-    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
     borderColor: colors.border,
   },
-  idPhotoLockedText: { fontSize: 10, fontWeight: '600', color: colors.primary },
-  deleteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  deleteText: { fontSize: 13, fontWeight: '600', color: colors.danger },
+  idPhotoLockedText: { fontSize: 10, fontWeight: '500', color: colors.inkMuted },
   infoRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start', marginTop: spacing.xl },
   statusCard: {
     marginTop: spacing.md,
@@ -1090,19 +1149,17 @@ const styles = StyleSheet.create({
   statusChip: {
     paddingVertical: 7,
     paddingHorizontal: spacing.md,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     backgroundColor: colors.sand,
   },
   statusChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   statusChipText: { fontSize: 12, fontWeight: '600', color: colors.ink },
-  statusChipTextActive: { color: colors.white },
+  statusChipTextActive: { color: colors.onPrimary },
   statusAuto: { ...typography.caption, color: colors.primary, fontWeight: '600' },
   /** Brief tint on the check-in a notification linked to — see the ?checkin= effect. */
   highlightedCheckIn: {
-    borderColor: colors.primary,
-    borderWidth: 1.5,
     backgroundColor: colors.successBg,
   },
 });

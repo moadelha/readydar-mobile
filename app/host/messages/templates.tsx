@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
+import { Text, TextInput } from '@/components/text';
 import { Stack, useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen, Card, LoadingScreen, ErrorBanner, TextField } from '@/components/ui';
 import { Button } from '@/components/Button';
@@ -219,7 +220,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
-  chip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.full, backgroundColor: colors.successBg },
+  chip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.sm, backgroundColor: colors.successBg },
   chipText: { fontSize: 12, fontWeight: '600', color: colors.primary },
   editorActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   addButton: {

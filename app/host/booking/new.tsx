@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { Text } from '@/components/text';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, Property, Service } from '@/lib/api';
@@ -7,12 +8,10 @@ import { Screen, TextField, Chip, SegmentedControl, Checkbox } from '@/component
 import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
 import { estimatePrice, isRoomScaledService } from '@/lib/pricing';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
+import { todayIso } from '@/lib/calendar-visuals';
 
 /**
  * Mirrors MARKETPLACE_BOOKING_ENABLED in the web app

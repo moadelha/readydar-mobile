@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch } from 'react-native';
+import { View, StyleSheet, ScrollView, Switch } from 'react-native';
+import { Text } from '@/components/text';
 import { Stack, useFocusEffect } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api } from '@/lib/api';
@@ -94,7 +95,7 @@ function ContractSettingsInner() {
                 value={required}
                 onValueChange={setRequired}
                 trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={colors.white}
+                thumbColor={colors.onPrimary}
               />
             </View>
           </Card>
@@ -150,7 +151,7 @@ const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
   toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   disclaimerBox: {
-    backgroundColor: 'rgba(27,31,35,0.05)',
+    backgroundColor: colors.surface2,
     borderRadius: 10,
     padding: spacing.sm,
     marginTop: spacing.md,

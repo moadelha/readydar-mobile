@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Linking, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, Linking, Alert } from 'react-native';
+import { Text } from '@/components/text';
 import { useLocalSearchParams, useFocusEffect, useRouter, Stack } from 'expo-router';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,7 +21,7 @@ import { useToast } from '@/lib/toast';
 import { STATUS_TONE } from '@/lib/status';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { colors, radius, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -158,7 +159,7 @@ export default function JobDetailScreen() {
               <StatusBadge label={t.bookingStatus[booking.status]} tone={STATUS_TONE[booking.status]} />
               {booking.urgency === 'URGENT' && (
                 <View style={styles.urgentBadge}>
-                  <Ionicons name="alert-circle" size={12} color={colors.white} />
+                  <Ionicons name="alert-circle" size={12} color={colors.onPrimary} />
                   <Text style={styles.urgentBadgeText}>{t.jobDetail.urgentBadge}</Text>
                 </View>
               )}
@@ -314,9 +315,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.danger,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
   },
-  urgentBadgeText: { fontSize: 10, fontWeight: '700', color: colors.white },
+  urgentBadgeText: { fontSize: 10, fontWeight: '700', color: colors.onPrimary },
   navigateButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -325,7 +326,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
@@ -337,7 +338,7 @@ const styles = StyleSheet.create({
     gap: 6,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },

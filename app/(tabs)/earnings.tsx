@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { Text } from '@/components/text';
 import { useFocusEffect } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, EarningsSummary, CommissionStatus } from '@/lib/api';
 import { Screen, Card, EmptyState, ErrorBanner, Reveal, AnimatedNumber, SkeletonStat, SkeletonListItem } from '@/components/ui';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { colors, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 export default function EarningsScreen() {
   const { session } = useAuth();
@@ -45,7 +46,7 @@ export default function EarningsScreen() {
     return (
       <Screen edges={['top']}>
         <View style={styles.container}>
-          <View style={{ width: 140, height: 26, borderRadius: 6, backgroundColor: 'rgba(27,31,35,0.08)' }} />
+          <View style={{ width: 140, height: 26, borderRadius: 6, backgroundColor: colors.surface2 }} />
           <View style={styles.statsRow}>
             <SkeletonStat style={styles.statCard} />
             <SkeletonStat style={styles.statCard} />
@@ -99,7 +100,7 @@ export default function EarningsScreen() {
                 <Ionicons
                   name={commission.isBlocked ? 'lock-closed' : 'information-circle-outline'}
                   size={16}
-                  color={commission.isBlocked ? '#B91C1C' : '#B45309'}
+                  color={commission.isBlocked ? colors.danger : colors.warning}
                 />
                 <Text style={[styles.commissionTitle, commission.isBlocked && styles.commissionTitleBlocked]}>
                   {t.earnings.commissionOwed}
@@ -154,11 +155,11 @@ const styles = StyleSheet.create({
   sectionTitle: { ...typography.h2, marginTop: spacing.lg, marginBottom: spacing.sm },
   entryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   entryAmount: { color: colors.primary, fontWeight: '700' },
-  commissionCard: { marginTop: spacing.md, backgroundColor: '#FEF3C7' },
-  commissionCardBlocked: { backgroundColor: '#FEE2E2' },
+  commissionCard: { marginTop: spacing.md, backgroundColor: colors.warningBg },
+  commissionCardBlocked: { backgroundColor: colors.dangerBg },
   commissionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  commissionTitle: { fontSize: 13, fontWeight: '700', color: '#B45309' },
-  commissionTitleBlocked: { color: '#B91C1C' },
+  commissionTitle: { fontSize: 13, fontWeight: '700', color: colors.warning },
+  commissionTitleBlocked: { color: colors.danger },
   commissionAmount: { fontSize: 20, fontWeight: '700', color: colors.ink, marginTop: 4 },
   commissionNote: { fontSize: 12.5, color: colors.inkMuted, marginTop: 4, lineHeight: 17 },
 });

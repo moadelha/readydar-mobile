@@ -1,19 +1,18 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   Pressable,
-  TextInput,
   Image,
   Alert,
   Linking,
   ActivityIndicator,
 } from 'react-native';
+import { Text, TextInput } from '@/components/text';
 import { useLocalSearchParams, useFocusEffect, Stack } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Screen, LoadingScreen, ErrorBanner, PhotoViewerModal } from '@/components/ui';
 import { ChannelMark } from '@/components/channel-mark';
 import { useAuth, ApiError } from '@/lib/auth-context';
@@ -300,7 +299,7 @@ export default function ConversationScreen() {
             style={[styles.sendButton, (!draft.trim() || isSending) && { opacity: 0.4 }]}
             accessibilityLabel={m.send}
           >
-            {isSending ? <ActivityIndicator size="small" color={colors.white} /> : <Ionicons name="send" size={17} color={colors.white} />}
+            {isSending ? <ActivityIndicator size="small" color={colors.onPrimary} /> : <Ionicons name="send" size={17} color={colors.onPrimary} />}
           </Pressable>
         </View>
       </View>
@@ -319,7 +318,7 @@ function Bubble({ msg, onOpenImage }: { msg: GuestMessage; onOpenImage: (url: st
   return (
     <View style={[styles.bubbleRow, mine ? { justifyContent: 'flex-end' } : { justifyContent: 'flex-start' }]}>
       <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
-        {!!msg.body && <Text style={[styles.bubbleText, mine && { color: colors.white }]}>{msg.body}</Text>}
+        {!!msg.body && <Text style={[styles.bubbleText, mine && { color: colors.onPrimary }]}>{msg.body}</Text>}
         {msg.attachments.map((url) =>
           /\.(png|jpe?g|gif|webp)(\?|$)/i.test(url) ? (
             <Pressable key={url} onPress={() => onOpenImage(url)}>
@@ -327,8 +326,8 @@ function Bubble({ msg, onOpenImage }: { msg: GuestMessage; onOpenImage: (url: st
             </Pressable>
           ) : (
             <Pressable key={url} onPress={() => Linking.openURL(url)} style={styles.attachmentLink}>
-              <Ionicons name="attach" size={13} color={mine ? colors.white : colors.primary} />
-              <Text style={[styles.attachmentText, mine && { color: colors.white }]}>{m.attachment}</Text>
+              <Ionicons name="attach" size={13} color={mine ? colors.onPrimary : colors.primary} />
+              <Text style={[styles.attachmentText, mine && { color: colors.onPrimary }]}>{m.attachment}</Text>
             </Pressable>
           ),
         )}
@@ -375,11 +374,11 @@ const styles = StyleSheet.create({
   inquiryTag: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#92400E',
+    color: colors.warning,
     backgroundColor: colors.accentBg,
     paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     overflow: 'hidden',
   },
   messages: { padding: spacing.md, gap: spacing.md },
@@ -390,14 +389,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     color: colors.inkMuted,
-    backgroundColor: 'rgba(27,31,35,0.05)',
+    backgroundColor: colors.surface2,
     borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 6,
     overflow: 'hidden',
   },
   bubbleRow: { flexDirection: 'row' },
-  bubble: { maxWidth: '82%', borderRadius: 18, paddingHorizontal: 13, paddingVertical: 8, gap: 6 },
+  bubble: { maxWidth: '82%', borderRadius: radius.md, paddingHorizontal: 13, paddingVertical: 8, gap: 6 },
   bubbleMine: { backgroundColor: colors.primary, borderBottomRightRadius: 6 },
   bubbleTheirs: { backgroundColor: colors.white, borderBottomLeftRadius: 6, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
   bubbleText: { fontSize: 15, lineHeight: 20, color: colors.ink },
@@ -424,7 +423,7 @@ const styles = StyleSheet.create({
   },
   quickItem: { paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, borderRadius: radius.sm },
   quickTitle: { fontSize: 13, fontWeight: '600', color: colors.ink, marginBottom: 2 },
-  quickMissing: { fontSize: 11, fontWeight: '500', color: '#B45309' },
+  quickMissing: { fontSize: 11, fontWeight: '500', color: colors.warning },
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 6 },
   roundButton: {
     width: 40,
@@ -440,7 +439,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
     maxHeight: 140,
-    borderRadius: 20,
+    borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     backgroundColor: colors.sand,

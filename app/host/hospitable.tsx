@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Linking, Pressable } from 'react-native';
+import { View, StyleSheet, ScrollView, Image, Linking, Pressable } from 'react-native';
+import { Text } from '@/components/text';
 import { Stack, useRouter } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, HospitableListing, resolveThumbnailUrl } from '@/lib/api';
 import { Screen, Card, ErrorBanner, Reveal, AnimatedPressable } from '@/components/ui';
 import { Button } from '@/components/Button';
 import { useToast } from '@/lib/toast';
-import { colors, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, typography, radius } from '@/theme';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useHostAccess } from '@/lib/access';
 import { NoAccess } from '@/components/no-access';
 
@@ -201,7 +202,7 @@ const styles = StyleSheet.create({
   dismissText: { color: colors.inkFaint, fontSize: 13, fontWeight: '600' },
   listingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   listingThumb: { width: 44, height: 44, borderRadius: 10 },
-  listingThumbPlaceholder: { backgroundColor: 'rgba(27,31,35,0.06)', alignItems: 'center', justifyContent: 'center' },
+  listingThumbPlaceholder: { backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center' },
   infoRow: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -209,7 +210,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     padding: spacing.md,
     backgroundColor: colors.white,
-    borderRadius: 12,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
   },

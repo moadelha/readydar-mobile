@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { Text } from '@/components/text';
 import { Stack, useRouter } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, City, PropertyType } from '@/lib/api';

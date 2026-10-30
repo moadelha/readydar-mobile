@@ -1,4 +1,6 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { Text } from '@/components/text';
+import { colors } from '@/theme';
 
 /**
  * A small round badge for the channel a conversation or booking came from —
@@ -6,16 +8,16 @@ import { View, Text, StyleSheet } from 'react-native';
  * rather than the real logos, so no trademark artwork ships in the app.
  */
 const CHANNELS: Record<string, { bg: string; letter: string }> = {
-  AIRBNB: { bg: '#FF5A5F', letter: 'A' },
-  BOOKING_COM: { bg: '#003580', letter: 'B' },
-  EXPEDIA: { bg: '#FFC72C', letter: 'E' },
+  AIRBNB: { bg: colors.channel.airbnb, letter: 'A' },
+  BOOKING_COM: { bg: colors.channel.booking, letter: 'B' },
+  EXPEDIA: { bg: colors.channel.expedia, letter: 'E' },
 };
 
 export function ChannelMark({ provider, size = 40 }: { provider: string; size?: number }) {
-  const channel = CHANNELS[provider] ?? { bg: '#6B7280', letter: provider.charAt(0).toUpperCase() || '?' };
+  const channel = CHANNELS[provider] ?? { bg: colors.inkFaint, letter: provider.charAt(0).toUpperCase() || '?' };
   return (
     <View style={[styles.mark, { width: size, height: size, borderRadius: size / 2, backgroundColor: channel.bg }]}>
-      <Text style={[styles.letter, { fontSize: size * 0.42, color: provider === 'EXPEDIA' ? '#1B1F23' : '#FFFFFF' }]}>
+      <Text style={[styles.letter, { fontSize: size * 0.42, color: provider === 'EXPEDIA' ? colors.green950 : colors.onPrimary }]}>
         {channel.letter}
       </Text>
     </View>
@@ -24,5 +26,5 @@ export function ChannelMark({ provider, size = 40 }: { provider: string; size?: 
 
 const styles = StyleSheet.create({
   mark: { alignItems: 'center', justifyContent: 'center' },
-  letter: { fontWeight: '800' },
+  letter: { fontWeight: '600' },
 });

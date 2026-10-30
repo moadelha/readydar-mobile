@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
-import { colors } from '@/theme';
+import { colors, fonts } from '@/theme';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { useAuth } from '@/lib/auth-context';
 import { api, isCleanerLocationEnabled } from '@/lib/api';
@@ -19,7 +19,7 @@ import { CleanerComingSoon } from '@/components/cleaner-coming-soon';
  * earnings/commission endpoints, so this is a UX nicety, not the only gate.
  */
 export default function TabsLayout() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { session } = useAuth();
   const [locationEnabled, setLocationEnabled] = useState<boolean | null>(null);
 
@@ -49,8 +49,9 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.inkFaint,
-        tabBarStyle: { borderTopColor: colors.border },
+        tabBarInactiveTintColor: colors.inkMuted,
+        tabBarStyle: { backgroundColor: colors.white, borderTopColor: colors.border, elevation: 0, shadowOpacity: 0 },
+        tabBarLabelStyle: { fontFamily: fonts[lang === 'AR' ? 'arabic' : 'latin'][500], fontSize: 11 },
       }}
     >
       <Tabs.Screen

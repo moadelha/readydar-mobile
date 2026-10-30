@@ -1,8 +1,6 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import {
   View,
-  Text,
-  TextInput,
   StyleSheet,
   ActivityIndicator,
   TextInputProps,
@@ -15,12 +13,14 @@ import {
   Alert,
   Animated,
 } from 'react-native';
+import { Text, TextInput } from '@/components/text';
 import { SafeAreaView } from 'react-native-safe-area-context';
 // Installed via expo-router (its direct dependency); Expo's own docs import
 // header helpers from here the same way.
 import { HeaderShownContext } from '@react-navigation/elements';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, elevation, radius, spacing, typography } from '@/theme';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { appearancePref, colors, elevation, radius, spacing, typography } from '@/theme';
+import { AppearancePref, setAppearancePref } from '@/lib/appearance';
 import { useLanguage, Lang } from '@/lib/i18n/language-context';
 import { downloadAndShare } from '@/lib/files';
 import { DURATIONS, EASING, useEntrance, usePressScale } from '@/lib/motion';
@@ -182,11 +182,11 @@ export function Skeleton({
     return () => loop.stop();
   }, [shimmer]);
 
-  const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.85] });
+  const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] });
 
   return (
     <Animated.View
-      style={[{ width, height, borderRadius: cornerRadius, backgroundColor: 'rgba(27,31,35,0.08)' }, { opacity }, style]}
+      style={[{ width, height, borderRadius: cornerRadius, backgroundColor: colors.surface2 }, { opacity }, style]}
     />
   );
 }
@@ -232,9 +232,7 @@ export function EmptyState({
   const entrance = useEntrance(0, 6);
   return (
     <Animated.View style={[styles.emptyState, entrance]}>
-      <View style={styles.emptyStateIcon}>
-        <Ionicons name={icon} size={20} color={colors.inkFaint} />
-      </View>
+      <Ionicons name={icon} size={22} color={colors.inkFaint} style={{ marginBottom: spacing.sm }} />
       <Text style={styles.emptyStateText}>{message}</Text>
       {actionLabel && onAction && (
         <AnimatedPressable onPress={onAction} scaleTo={0.95} style={styles.emptyStateAction}>
@@ -316,7 +314,7 @@ export function TabIcon({
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
-      <Ionicons name={name} size={size} color={focused ? colors.primary : colors.inkFaint} />
+      <Ionicons name={name} size={size} color={focused ? colors.primary : colors.inkMuted} />
     </Animated.View>
   );
 }
@@ -334,6 +332,34 @@ export function LanguagePicker() {
     <View>
       <Text style={styles.fieldLabel}>{t.common.language}</Text>
       <SegmentedControl value={lang} onChange={setLang} options={LANGUAGE_OPTIONS} />
+    </View>
+  );
+}
+
+/**
+ * System / Light / Dark. The palette is fixed for each run of the app (see
+ * src/lib/appearance.ts), so picking a different one restarts the app.
+ */
+export function AppearancePicker() {
+  const { t } = useLanguage();
+  const [value, setValue] = useState<AppearancePref>(appearancePref);
+  return (
+    <View style={{ marginTop: spacing.md }}>
+      <Text style={styles.fieldLabel}>{t.common.appearance}</Text>
+      <SegmentedControl
+        value={value}
+        onChange={(next) => {
+          if (next === value) return;
+          setValue(next);
+          // Let the selection settle visibly before the restart.
+          setTimeout(() => setAppearancePref(next), DURATIONS.base);
+        }}
+        options={[
+          { value: 'system', label: t.common.appearanceSystem },
+          { value: 'light', label: t.common.appearanceLight },
+          { value: 'dark', label: t.common.appearanceDark },
+        ]}
+      />
     </View>
   );
 }
@@ -461,11 +487,11 @@ export function Checkbox({ checked, onChange }: { checked: boolean; onChange: (v
   return (
     <AnimatedPressable
       onPress={() => onChange(!checked)}
-      scaleTo={0.88}
+      scaleTo={0.94}
       hitSlop={8}
       style={[styles.checkbox, checked && styles.checkboxChecked]}
     >
-      {checked && <Text style={styles.checkboxMark}>✓</Text>}
+      {checked && <Ionicons name="checkmark" size={15} color={colors.onPrimary} />}
     </AnimatedPressable>
   );
 }
@@ -509,13 +535,13 @@ export function PhotoViewerModal({
         <View style={styles.viewerActions}>
           <Pressable onPress={handleDownload} hitSlop={12} style={styles.viewerActionButton} disabled={isDownloading}>
             {isDownloading ? (
-              <ActivityIndicator color={colors.white} size="small" />
+              <ActivityIndicator color={colors.onPrimary} size="small" />
             ) : (
-              <Ionicons name="share-outline" size={22} color={colors.white} />
+              <Ionicons name="share-outline" size={22} color={colors.onPrimary} />
             )}
           </Pressable>
           <Pressable onPress={onClose} hitSlop={12} style={styles.viewerActionButton}>
-            <Ionicons name="close" size={26} color={colors.white} />
+            <Ionicons name="close" size={26} color={colors.onPrimary} />
           </Pressable>
         </View>
       </Pressable>
@@ -534,11 +560,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    ...elevation.low,
   },
   cardElevated: {
     ...elevation.medium,
-    borderColor: 'transparent',
   },
   centered: {
     flex: 1,
@@ -548,20 +572,12 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     borderWidth: 1,
-    borderStyle: 'dashed',
     borderColor: colors.border,
+    backgroundColor: colors.white,
     borderRadius: radius.md,
-    padding: spacing.lg,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
     alignItems: 'center',
-  },
-  emptyStateIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(27,31,35,0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
   },
   emptyStateText: {
     ...typography.bodyMuted,
@@ -571,14 +587,17 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   emptyStateActionText: {
-    color: colors.primary,
-    fontWeight: '600',
-    fontSize: 13,
+    color: colors.green700,
+    fontWeight: '500',
+    fontSize: 14,
   },
   errorBanner: {
     backgroundColor: colors.dangerBg,
     borderRadius: radius.sm,
-    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.dangerLine,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     marginTop: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
@@ -588,50 +607,55 @@ const styles = StyleSheet.create({
   errorBannerText: {
     color: colors.danger,
     fontSize: 13,
+    lineHeight: 18,
     flex: 1,
   },
   errorBannerRetry: {
     color: colors.danger,
     fontSize: 13,
-    fontWeight: '700',
-    textDecorationLine: 'underline',
+    fontWeight: '600',
   },
   successBanner: {
     backgroundColor: colors.successBg,
     borderRadius: radius.sm,
-    padding: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.green100,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     marginTop: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
   },
   successBannerText: {
-    color: colors.primary,
+    color: colors.success,
     fontSize: 13,
+    lineHeight: 18,
     flex: 1,
     fontWeight: '500',
   },
   fieldLabel: {
-    ...typography.bodyMuted,
-    marginBottom: spacing.xs,
-    fontWeight: '600',
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '500',
+    color: colors.inkMuted,
+    marginBottom: 6,
   },
   input: {
-    borderWidth: 1,
-    borderColor: 'transparent',
+    minHeight: 48,
     borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
     color: colors.ink,
-    backgroundColor: colors.white,
   },
   inputWrap: {
     position: 'relative',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.lineStrong,
     borderRadius: radius.sm,
+    backgroundColor: colors.white,
   },
   inputWrapFocused: {
     borderColor: colors.primary,
@@ -649,61 +673,65 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: radius.full,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.sm,
     alignSelf: 'flex-start',
   },
   badgeText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '500',
   },
   segmentRow: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(27,31,35,0.05)',
-    borderRadius: radius.full,
-    padding: 4,
+    backgroundColor: colors.surface2,
+    borderRadius: 8,
+    padding: 3,
     position: 'relative',
   },
   segmentIndicator: {
     position: 'absolute',
-    top: 4,
-    bottom: 4,
-    left: 4,
+    top: 3,
+    bottom: 3,
+    left: 3,
     backgroundColor: colors.white,
-    borderRadius: radius.full,
-    ...elevation.low,
+    borderRadius: radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.lineStrong,
+    ...elevation.medium,
   },
   segment: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: radius.full,
+    paddingVertical: 8,
+    borderRadius: radius.sm,
     alignItems: 'center',
   },
-  segmentText: { fontSize: 13, fontWeight: '600', color: colors.inkMuted },
-  segmentTextActive: { color: colors.primary },
+  segmentText: { fontSize: 13, fontWeight: '500', color: colors.inkMuted },
+  segmentTextActive: { color: colors.ink },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.full,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
+    backgroundColor: colors.white,
   },
   // Left padding tightens when a thumbnail leads the chip, so the image sits
-  // just inside the pill rather than floating in a wide gutter.
-  chipImage: { width: 22, height: 22, borderRadius: 7, marginLeft: -4 },
-  chipActive: { backgroundColor: colors.successBg, borderColor: colors.primary },
+  // just inside the chip rather than floating in a wide gutter.
+  chipImage: { width: 22, height: 22, borderRadius: 4, marginLeft: -4 },
+  chipActive: { backgroundColor: colors.green100, borderColor: colors.primary },
   chipText: { color: colors.inkMuted, fontWeight: '500', fontSize: 13 },
   chipTextActive: { color: colors.primary },
   checkbox: {
     width: 22,
     height: 22,
-    borderRadius: 5,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.white,
@@ -712,15 +740,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
-  checkboxMark: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 16,
-  },
   viewerBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.92)',
+    backgroundColor: 'rgba(10,16,14,0.94)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -739,22 +761,22 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
 });
 
 const badgeTones: Record<string, any> = {
-  neutral: { backgroundColor: 'rgba(27,31,35,0.06)' },
-  primary: { backgroundColor: colors.successBg },
-  accent: { backgroundColor: colors.accentBg },
+  neutral: { backgroundColor: colors.surface2 },
+  primary: { backgroundColor: colors.green100 },
+  accent: { backgroundColor: colors.warningBg },
   success: { backgroundColor: colors.successBg },
 };
 
 const badgeTextTones: Record<string, any> = {
   neutral: { color: colors.inkMuted },
   primary: { color: colors.primary },
-  accent: { color: '#B45309' },
-  success: { color: colors.primary },
+  accent: { color: colors.warning },
+  success: { color: colors.success },
 };

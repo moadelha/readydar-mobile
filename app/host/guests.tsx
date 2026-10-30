@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Linking, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Linking, Alert } from 'react-native';
+import { Text } from '@/components/text';
 import { useFocusEffect, useRouter, Stack } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth, ApiError } from '@/lib/auth-context';
@@ -10,9 +11,10 @@ import { PropertyThumb } from '@/components/host-ui';
 import { useToast } from '@/lib/toast';
 import { bucketOf, groupByMonth, stayLabel, CheckInBucket, MonthGroup } from '@/lib/checkin-groups';
 import { colors, spacing, typography, radius } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { Dict } from '@/lib/i18n/dictionary';
+import { rtlFlip } from '@/lib/rtl';
 
 /**
  * The three sections this screen is built around.
@@ -51,7 +53,7 @@ function getSections(t: Dict): {
       title: t.guestsList.sectionExpiredTitle,
       subtitle: t.guestsList.sectionExpiredSubtitle,
       icon: 'time-outline',
-      tint: 'rgba(27,31,35,0.06)',
+      tint: colors.surface2,
     },
   ];
 }
@@ -347,8 +349,7 @@ export default function GuestsScreen() {
                             <Ionicons
                               name={monthOpen ? 'chevron-down' : 'chevron-forward'}
                               size={15}
-                              color={colors.primary}
-                            />
+                              color={colors.primary} style={rtlFlip} />
                             <Text style={styles.monthLabel}>{monthGroup.label}</Text>
                             <Text style={styles.monthCount}>{monthGroup.items.length}</Text>
                           </Pressable>
@@ -524,17 +525,17 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: 'rgba(27,31,35,0.02)',
+    backgroundColor: colors.sand,
   },
   monthLabel: { flex: 1, fontSize: 13, fontWeight: '700', color: colors.ink },
   monthCount: {
     fontSize: 11,
     fontWeight: '700',
     color: colors.inkMuted,
-    backgroundColor: 'rgba(27,31,35,0.06)',
+    backgroundColor: colors.surface2,
     paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     overflow: 'hidden',
   },
   checkinRow: {

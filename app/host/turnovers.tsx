@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Linking } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Linking } from 'react-native';
+import { Text } from '@/components/text';
 import { Stack, useRouter, useFocusEffect } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, PendingTurnoverItem } from '@/lib/api';
 import { Screen, Card, EmptyState, LoadingScreen, ErrorBanner } from '@/components/ui';
 import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useHostAccess } from '@/lib/access';
 
 type Kind = 'checkin' | 'reservation';

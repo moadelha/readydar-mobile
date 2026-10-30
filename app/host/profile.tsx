@@ -1,15 +1,17 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { Text } from '@/components/text';
 import { useFocusEffect, useRouter, Stack } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, AuthUser } from '@/lib/api';
-import { Screen, Card, LoadingScreen, TextField, StatusBadge, ErrorBanner, LanguagePicker } from '@/components/ui';
+import { Screen, Card, LoadingScreen, TextField, StatusBadge, ErrorBanner, LanguagePicker, AppearancePicker } from '@/components/ui';
 import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { LegalLinks } from '@/components/legal-links';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { useHostAccess } from '@/lib/access';
+import { rtlFlip } from '@/lib/rtl';
 
 export default function HostProfileScreen() {
   const { session, logout, updateSessionUser } = useAuth();
@@ -105,7 +107,7 @@ export default function HostProfileScreen() {
           <Card style={styles.menuRow}>
             <Ionicons name="people-outline" size={18} color={colors.primary} />
             <Text style={[typography.body, { flex: 1 }]}>{t.profileHost.cleaningContacts}</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
+            <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} style={rtlFlip} />
           </Card>
         </Pressable>
         )}
@@ -113,12 +115,13 @@ export default function HostProfileScreen() {
           <Card style={styles.menuRow}>
             <Ionicons name="swap-horizontal-outline" size={18} color={colors.primary} />
             <Text style={[typography.body, { flex: 1 }]}>{t.profileHost.turnoverAlerts}</Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} />
+            <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} style={rtlFlip} />
           </Card>
         </Pressable>
 
         <Card style={{ marginTop: spacing.md }}>
           <LanguagePicker />
+          <AppearancePicker />
         </Card>
 
         <Card style={{ marginTop: spacing.md }}>

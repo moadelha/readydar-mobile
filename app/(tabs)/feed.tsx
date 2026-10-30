@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl, LayoutAnimation } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, LayoutAnimation } from 'react-native';
+import { Text } from '@/components/text';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, JobFeedItem, CommissionStatus } from '@/lib/api';
@@ -7,7 +8,7 @@ import { Screen, Card, EmptyState, TextField, ErrorBanner, Reveal, AnimatedPress
 import { Button } from '@/components/Button';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { colors, spacing, typography, radius } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 /** Smoothly animates the height/opacity change of the inline offer form
  * opening or closing, instead of it instantly popping in/out — built on
@@ -80,7 +81,7 @@ export default function JobFeedScreen() {
         <Reveal delay={40}>
           <View style={styles.blockedBox}>
             <View style={styles.blockedTitleRow}>
-              <Ionicons name="lock-closed" size={15} color="#B91C1C" />
+              <Ionicons name="lock-closed" size={15} color={colors.danger} />
               <Text style={styles.blockedTitle}>{t.jobFeed.accountOnHold}</Text>
             </View>
             <Text style={styles.blockedText}>
@@ -118,7 +119,7 @@ export default function JobFeedScreen() {
                       <Text style={typography.h3}>{item.service.name}</Text>
                       {item.urgency === 'URGENT' && (
                         <View style={styles.urgentBadge}>
-                          <Ionicons name="flash" size={11} color="#B45309" />
+                          <Ionicons name="flash" size={11} color={colors.warning} />
                           <Text style={styles.urgentText}>{t.jobFeed.urgent}</Text>
                         </View>
                       )}
@@ -220,22 +221,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentBg,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
   },
-  urgentText: { fontSize: 10, fontWeight: '700', color: '#B45309' },
+  urgentText: { fontSize: 10, fontWeight: '700', color: colors.warning },
   address: { fontSize: 12, color: colors.inkFaint, marginTop: 2, marginLeft: 18 },
   budget: { marginTop: spacing.xs, color: colors.primary, fontWeight: '600', fontSize: 13 },
   offerLink: { alignSelf: 'center', paddingVertical: spacing.xs },
   offerLinkText: { fontSize: 12, color: colors.inkMuted, fontWeight: '600' },
   offerLinkTextDisabled: { color: colors.inkFaint },
   blockedBox: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: colors.dangerBg,
     borderRadius: 10,
     padding: spacing.sm,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
   },
   blockedTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 3 },
-  blockedTitle: { color: '#B91C1C', fontWeight: '700', fontSize: 13 },
-  blockedText: { color: '#B91C1C', fontSize: 12.5, lineHeight: 17 },
+  blockedTitle: { color: colors.danger, fontWeight: '700', fontSize: 13 },
+  blockedText: { color: colors.danger, fontSize: 12.5, lineHeight: 17 },
 });

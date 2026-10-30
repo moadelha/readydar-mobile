@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { Text } from '@/components/text';
 import { Stack, useRouter, useFocusEffect } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, Booking } from '@/lib/api';
 import { Screen, Card, EmptyState, StatusBadge, ErrorBanner, Reveal, AnimatedPressable, SkeletonListItem } from '@/components/ui';
 import { STATUS_TONE } from '@/lib/status';
 import { colors, radius, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 
 /**
@@ -55,7 +56,7 @@ export default function HostBookingsScreen() {
             <Text style={[typography.bodyMuted, { marginTop: 2 }]}>{t.bookingsList.subtitle}</Text>
           </View>
           <AnimatedPressable scaleTo={0.9} onPress={() => router.push('/host/booking/new')} style={styles.addButton}>
-            <Ionicons name="add" size={22} color={colors.white} />
+            <Ionicons name="add" size={22} color={colors.onPrimary} />
           </AnimatedPressable>
         </View>
       </Reveal>
@@ -95,7 +96,7 @@ export default function HostBookingsScreen() {
                       <Text style={typography.h3}>{item.service.name}</Text>
                       {item.urgency === 'URGENT' && (
                         <View style={styles.urgentBadge}>
-                          <Ionicons name="flash" size={11} color="#B45309" />
+                          <Ionicons name="flash" size={11} color={colors.warning} />
                           <Text style={styles.urgentText}>{t.bookingsList.urgent}</Text>
                         </View>
                       )}
@@ -147,7 +148,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentBg,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
   },
-  urgentText: { fontSize: 10, fontWeight: '700', color: '#B45309' },
+  urgentText: { fontSize: 10, fontWeight: '700', color: colors.warning },
 });

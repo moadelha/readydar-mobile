@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl } from 'react-native';
+import { View, StyleSheet, FlatList, Pressable, RefreshControl } from 'react-native';
+import { Text } from '@/components/text';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Screen, ErrorBanner, EmptyState, SegmentedControl, SkeletonListItem, AnimatedPressable } from '@/components/ui';
 import { ChannelMark } from '@/components/channel-mark';
 import { useAuth, ApiError } from '@/lib/auth-context';
@@ -215,13 +216,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: colors.inkMuted,
-    backgroundColor: 'rgba(27,31,35,0.06)',
+    backgroundColor: colors.surface2,
     paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     overflow: 'hidden',
   },
-  tagInquiry: { color: '#92400E', backgroundColor: colors.accentBg },
+  tagInquiry: { color: colors.warning, backgroundColor: colors.accentBg },
   badge: {
     minWidth: 20,
     height: 20,
@@ -231,5 +232,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeText: { color: colors.white, fontSize: 11, fontWeight: '700' },
+  badgeText: { color: colors.onPrimary, fontSize: 11, fontWeight: '700' },
 });

@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl, Pressable, Alert, Linking } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, Pressable, Alert, Linking } from 'react-native';
+import { Text } from '@/components/text';
 import { Stack, useRouter, useFocusEffect } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, CleaningContact } from '@/lib/api';
 import { Screen, Card, EmptyState, LoadingScreen, ErrorBanner, StatusBadge } from '@/components/ui';
 import { colors, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useHostAccess } from '@/lib/access';
 import { NoAccess } from '@/components/no-access';
 
@@ -112,7 +113,7 @@ function CleaningContactsInner() {
       />
 
       <Pressable onPress={() => router.push('/host/cleaning-contact/new')} style={styles.fab}>
-        <Ionicons name="add" size={24} color={colors.white} />
+        <Ionicons name="add" size={24} color={colors.onPrimary} />
       </Pressable>
     </Screen>
   );

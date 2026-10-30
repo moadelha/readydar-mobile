@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { AllCheckIn, CalendarEvent, resolveThumbnailUrl } from './api';
 import { stayLabel } from './checkin-groups';
 import { Dict } from './i18n/dictionary';

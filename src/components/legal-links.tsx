@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, Linking } from 'react-native';
+import { View, StyleSheet, Linking } from 'react-native';
+import { Text } from '@/components/text';
 import { WEB_URL } from '@/lib/api';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { colors, spacing, typography } from '@/theme';

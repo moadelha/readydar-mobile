@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Pressable, Linking, Modal, Switch } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Linking, Modal, Switch } from 'react-native';
+import { Text } from '@/components/text';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
@@ -42,11 +43,12 @@ import {
   HostNotification,
 } from '@/lib/notifications';
 import { useToast } from '@/lib/toast';
-import { colors, spacing, typography } from '@/theme';
-import { Ionicons } from '@expo/vector-icons';
+import { colors, radius, spacing, typography } from '@/theme';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { Dict } from '@/lib/i18n/dictionary';
 import { useHostAccess } from '@/lib/access';
+import { rtlFlip } from '@/lib/rtl';
 
 /**
  * How many rows each section shows before the rest go behind "View all".
@@ -154,7 +156,13 @@ export default function HostDashboardScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const toast = useToast();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  // "Thursday 29 October" above the greeting, in the app's language.
+  const todayLabel = new Date().toLocaleDateString(lang === 'FR' ? 'fr-FR' : lang === 'AR' ? 'ar-MA' : 'en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
   // Sheets below render inside a <Modal>, which sits outside the <Screen>
   // tree — so they don't inherit its safe-area padding and have to consume
   // the bottom inset themselves. Without it the last button in a sheet sits
@@ -627,8 +635,8 @@ export default function HostDashboardScreen() {
       <Screen edges={['top']}>
         <View style={styles.container}>
           <View style={{ gap: 6 }}>
-            <View style={{ width: 160, height: 26, borderRadius: 6, backgroundColor: 'rgba(27,31,35,0.08)' }} />
-            <View style={{ width: 220, height: 14, borderRadius: 6, backgroundColor: 'rgba(27,31,35,0.06)', marginTop: 4 }} />
+            <View style={{ width: 160, height: 26, borderRadius: 6, backgroundColor: colors.surface2 }} />
+            <View style={{ width: 220, height: 14, borderRadius: 6, backgroundColor: colors.surface2, marginTop: 4 }} />
           </View>
           <SkeletonListItem style={{ marginTop: spacing.xl }} />
           <SkeletonListItem />
@@ -656,6 +664,7 @@ export default function HostDashboardScreen() {
         <Reveal>
           <View style={styles.headerRow}>
             <View style={{ flex: 1 }}>
+              <Text style={[typography.label, { marginBottom: 6 }]}>{todayLabel}</Text>
               <Text style={typography.h1}>
                 {session?.user.firstName ? t.dashboardHost.greeting(session.user.firstName) : t.dashboardHost.greetingFallback}
               </Text>
@@ -687,17 +696,13 @@ export default function HostDashboardScreen() {
           <>
             <Reveal delay={40}>
               <View style={styles.quickActionsRow}>
-                <Pressable style={styles.quickAction} onPress={() => router.push('/host/booking/new')}>
-                  <View style={styles.quickActionIcon}>
-                    <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
-                  </View>
+                <Pressable style={({ pressed }) => [styles.quickAction, pressed && styles.quickActionPressed]} onPress={() => router.push('/host/booking/new')}>
+                  <Ionicons name="sparkles-outline" size={18} color={colors.green700} />
                   <Text style={styles.quickActionLabel}>{t.dashboardHost.quickRequestCleaning}</Text>
                 </Pressable>
                 {canCheckins && (
-                <Pressable style={styles.quickAction} onPress={() => router.push('/host/checkin/new')}>
-                  <View style={styles.quickActionIcon}>
-                    <Ionicons name="key-outline" size={18} color={colors.primary} />
-                  </View>
+                <Pressable style={({ pressed }) => [styles.quickAction, pressed && styles.quickActionPressed]} onPress={() => router.push('/host/checkin/new')}>
+                  <Ionicons name="key-outline" size={18} color={colors.green700} />
                   <Text style={styles.quickActionLabel}>{t.dashboardHost.quickGuestCheckIn}</Text>
                 </Pressable>
                 )}
@@ -751,7 +756,7 @@ export default function HostDashboardScreen() {
                             <Ionicons
                               name={copiedId === c.id ? 'checkmark' : 'link-outline'}
                               size={13}
-                              color={colors.white}
+                              color={colors.onPrimary}
                             />
                             <Text style={styles.linkButtonText}>{copiedId === c.id ? t.dashboardHost.copied : t.dashboardHost.copyLink}</Text>
                           </Pressable>
@@ -775,7 +780,7 @@ export default function HostDashboardScreen() {
                 <Text style={styles.moreText}>
                   {t.dashboardHost.moreArrivingSoon(upcomingCheckIns.length - CHECKIN_LIMIT)}
                 </Text>
-                <Ionicons name="chevron-forward" size={15} color={colors.primary} />
+                <Ionicons name="chevron-forward" size={15} color={colors.primary} style={rtlFlip} />
               </Pressable>
             )}
 
@@ -831,7 +836,7 @@ export default function HostDashboardScreen() {
             {tomorrowCheckouts.length > TOMORROW_LIMIT && (
               <Pressable style={styles.moreRow} onPress={() => router.push('/calendar')}>
                 <Text style={styles.moreText}>{t.dashboardHost.moreCheckingOut(tomorrowCheckouts.length - TOMORROW_LIMIT)}</Text>
-                <Ionicons name="chevron-forward" size={15} color={colors.primary} />
+                <Ionicons name="chevron-forward" size={15} color={colors.primary} style={rtlFlip} />
               </Pressable>
             )}
 
@@ -962,7 +967,7 @@ export default function HostDashboardScreen() {
                         <Text style={styles.notifWhen}>{notificationTime(item.at, t)}</Text>
                       </View>
                       {isUnread && <View style={styles.notifDot} />}
-                      <Ionicons name="chevron-forward" size={15} color={colors.inkFaint} />
+                      <Ionicons name="chevron-forward" size={15} color={colors.inkFaint} style={rtlFlip} />
                     </Pressable>
                   );
                 })}
@@ -1356,23 +1361,18 @@ const styles = StyleSheet.create({
   quickActionsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
   quickAction: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 10,
     backgroundColor: colors.white,
-    borderRadius: 14,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing.md,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
   },
-  quickActionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.successBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickActionLabel: { fontSize: 12, fontWeight: '600', color: colors.ink },
+  quickActionPressed: { backgroundColor: colors.surface2 },
+  quickActionLabel: { fontSize: 14, fontWeight: '500', color: colors.ink, flexShrink: 1 },
   filterRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: spacing.sm },
   linkActions: { alignItems: 'flex-end', gap: 6 },
   linkButton: {
@@ -1384,7 +1384,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 999,
   },
-  linkButtonText: { fontSize: 11, fontWeight: '700', color: colors.white },
+  linkButtonText: { fontSize: 11, fontWeight: '700', color: colors.onPrimary },
   shareButton: {
     width: 30,
     height: 30,
@@ -1411,7 +1411,7 @@ const styles = StyleSheet.create({
     gap: 6,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 999,
+    borderRadius: radius.sm,
     paddingVertical: 5,
     paddingHorizontal: 8,
     maxWidth: '48%',
@@ -1432,7 +1432,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.sm,
-    borderRadius: 14,
+    borderRadius: radius.md,
     marginBottom: 2,
   },
   // Unread gets a tint rather than a bold border: the list is mostly unread
@@ -1443,13 +1443,13 @@ const styles = StyleSheet.create({
   notifDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary },
   sheetBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   sheet: {
     backgroundColor: colors.white,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
     padding: spacing.lg,
     maxHeight: '88%',
   },
