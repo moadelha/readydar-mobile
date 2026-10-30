@@ -495,6 +495,8 @@ export interface Property {
   maxGuests: number;
   createdAt?: string;
   nightlyRate?: string | null;
+  /** Currency of `nightlyRate` (and the rates calendar); recorded money (stays, expenses) stays in MAD. */
+  currency?: string | null;
   manualStatusOverride?: string | null;
   accessInstructions?: string | null;
   cleaningNotes?: string | null;

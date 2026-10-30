@@ -111,7 +111,7 @@ export default function PropertiesScreen() {
                     </Text>
                   </View>
                   {item.nightlyRate && (
-                    <Text style={styles.rate}>{t.propertiesList.ratePerNight(Math.round(Number(item.nightlyRate)))}</Text>
+                    <Text style={styles.rate}>{t.propertiesList.ratePerNight(Math.round(Number(item.nightlyRate)), item.currency ?? 'MAD')}</Text>
                   )}
                 </View>
               </View>

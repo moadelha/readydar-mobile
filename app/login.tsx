@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { View, Linking } from 'react-native';
 import { Text } from '@/components/text';
 import { Link } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
@@ -8,6 +8,7 @@ import { AuthShell, authStyles } from '@/components/auth-shell';
 import { Button } from '@/components/Button';
 import { spacing, typography } from '@/theme';
 import { useLanguage } from '@/lib/i18n/language-context';
+import { WEB_URL } from '@/lib/api';
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -55,6 +56,16 @@ export default function LoginScreen() {
           onSubmitEditing={handleSubmit}
           returnKeyType="go"
         />
+        {/* The reset page lives on the website. It also lets someone who
+            signed up there with Google set a password to use in the app. */}
+        <Text
+          style={[typography.bodyMuted, authStyles.link, { alignSelf: 'flex-end', marginTop: -spacing.sm, marginBottom: spacing.md }]}
+          onPress={() => Linking.openURL(`${WEB_URL}/forgot-password`)}
+          accessibilityRole="link"
+          suppressHighlighting
+        >
+          {t.login.forgotPassword}
+        </Text>
       </View>
 
       {error && (

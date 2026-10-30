@@ -522,7 +522,7 @@ export default function PropertyDetailScreen() {
         <Text style={typography.caption}>
           {t.propertiesList.bedBathGuests(property.bedrooms, property.bathrooms, property.maxGuests)}
         </Text>
-        {property.nightlyRate && <Text style={styles.rate}>{t.propertiesList.ratePerNight(Math.round(Number(property.nightlyRate)))}</Text>}
+        {property.nightlyRate && <Text style={styles.rate}>{t.propertiesList.ratePerNight(Math.round(Number(property.nightlyRate)), property.currency ?? 'MAD')}</Text>}
 
         {property.hospitableListingId && (
           <View style={styles.syncNotice}>

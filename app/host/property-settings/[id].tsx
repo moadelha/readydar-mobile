@@ -314,7 +314,7 @@ function PropertySettingsInner() {
         <Text style={typography.bodyMuted}>{ps.pricingBody}</Text>
         <View style={{ marginTop: spacing.md }}>
           <TextField
-            label={ps.nightlyRate}
+            label={ps.nightlyRate(property?.currency ?? 'MAD')}
             value={nightlyRate}
             onChangeText={setNightlyRate}
             keyboardType="numeric"

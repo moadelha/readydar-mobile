@@ -21,7 +21,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.readydar.com/api/v1",
-        "EXPO_PUBLIC_WEB_URL": "https://readydar.com"
+        "EXPO_PUBLIC_WEB_URL": "https://readydar.com",
+        "EXPO_PUBLIC_CHANNEX_ENABLED": "true"
       }
     },
     "production": {
@@ -29,7 +30,8 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.readydar.com/api/v1",
-        "EXPO_PUBLIC_WEB_URL": "https://readydar.com"
+        "EXPO_PUBLIC_WEB_URL": "https://readydar.com",
+        "EXPO_PUBLIC_CHANNEX_ENABLED": "true"
       }
     }
   },

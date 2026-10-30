@@ -49,7 +49,11 @@ export default function NewCheckInScreen() {
     if (!session || !propertyId) return;
     api.properties.getOne(propertyId, session.accessToken).then((p) => {
       setProperty(p);
-      setNightlyRate(p.nightlyRate != null ? String(p.nightlyRate) : '');
+      // The stay's rate is recorded in MAD, but a property's own price is in
+      // its own currency — so it's only a safe default for a MAD property.
+      // Left blank, the server uses the property's price converted to MAD
+      // (same rule as the web form).
+      setNightlyRate(p.nightlyRate != null && (p.currency ?? 'MAD') === 'MAD' ? String(p.nightlyRate) : '');
     }).catch(() => {});
   }, [session, propertyId]);
 

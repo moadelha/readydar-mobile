@@ -69,6 +69,8 @@ export interface Dict {
     logIn: string;
     loggingIn: string;
     noAccount: string;
+    /** Opens the website's reset page; also how someone who signed up with Google sets a password for the app. */
+    forgotPassword: string;
     signUp: string;
     genericError: string;
   };
@@ -158,7 +160,8 @@ export interface Dict {
     saving: string;
     pricingTitle: string;
     pricingBody: string;
-    nightlyRate: string;
+    /** A property's own price is in its own currency (Property.currency). */
+    nightlyRate: (currency: string) => string;
     nightlyRatePlaceholder: string;
     invalidRate: string;
     welcomeTitle: string;
@@ -598,7 +601,7 @@ export interface Dict {
     addFirstProperty: string;
     airbnbBadge: string;
     bedBathGuests: (bed: number, bath: number, guests: number) => string;
-    ratePerNight: (rate: number) => string;
+    ratePerNight: (rate: number, currency: string) => string;
   };
   propertyDetail: {
     headerBack: string;
@@ -768,6 +771,7 @@ export const en: Dict = {
     logIn: 'Log in',
     loggingIn: 'Logging in…',
     noAccount: "Don't have an account? ",
+    forgotPassword: 'Forgot password?',
     signUp: 'Sign up',
     genericError: 'Unable to log in. Please try again.',
   },
@@ -856,7 +860,7 @@ export const en: Dict = {
     saving: 'Saving…',
     pricingTitle: 'Pricing',
     pricingBody: 'The default nightly rate for this property — used for future reservations and check-in links.',
-    nightlyRate: 'Nightly rate (MAD)',
+    nightlyRate: (currency) => `Nightly rate (${currency})`,
     nightlyRatePlaceholder: 'e.g. 450',
     invalidRate: 'Enter a valid nightly rate.',
     welcomeTitle: 'Guest welcome message',
@@ -1291,7 +1295,7 @@ export const en: Dict = {
     addFirstProperty: 'Add your first property',
     airbnbBadge: 'Airbnb',
     bedBathGuests: (bed, bath, guests) => `${bed} bed · ${bath} bath · up to ${guests} guests`,
-    ratePerNight: (rate) => `${rate} MAD / night`,
+    ratePerNight: (rate, currency) => `${rate} ${currency} / night`,
   },
   propertyDetail: {
     headerBack: 'Back',
@@ -1460,6 +1464,7 @@ export const fr: Dict = {
     logIn: 'Se connecter',
     loggingIn: 'Connexion…',
     noAccount: 'Pas encore de compte ? ',
+    forgotPassword: 'Mot de passe oublié ?',
     signUp: 'Créer un compte',
     genericError: 'Connexion impossible. Veuillez réessayer.',
   },
@@ -1548,7 +1553,7 @@ export const fr: Dict = {
     saving: 'Enregistrement…',
     pricingTitle: 'Tarif',
     pricingBody: "Le tarif par nuit par défaut de ce logement — utilisé pour les futures réservations et les liens d'enregistrement.",
-    nightlyRate: 'Tarif par nuit (MAD)',
+    nightlyRate: (currency) => `Tarif par nuit (${currency})`,
     nightlyRatePlaceholder: 'ex. 450',
     invalidRate: 'Saisissez un tarif par nuit valide.',
     welcomeTitle: 'Message de bienvenue',
@@ -1984,7 +1989,7 @@ export const fr: Dict = {
     addFirstProperty: 'Ajoutez votre premier logement',
     airbnbBadge: 'Airbnb',
     bedBathGuests: (bed, bath, guests) => `${bed} chambre(s) · ${bath} sdb · jusqu'à ${guests} voyageurs`,
-    ratePerNight: (rate) => `${rate} MAD / nuit`,
+    ratePerNight: (rate, currency) => `${rate} ${currency} / nuit`,
   },
   propertyDetail: {
     headerBack: 'Retour',
@@ -2174,6 +2179,7 @@ export const ar: Dict = {
     logIn: 'تسجيل الدخول',
     loggingIn: 'جارٍ تسجيل الدخول…',
     noAccount: 'ليس لديك حساب؟ ',
+    forgotPassword: 'نسيت كلمة المرور؟',
     signUp: 'إنشاء حساب',
     genericError: 'تعذّر تسجيل الدخول. حاول مرة أخرى.',
   },
@@ -2262,7 +2268,7 @@ export const ar: Dict = {
     saving: 'جارٍ الحفظ…',
     pricingTitle: 'السعر',
     pricingBody: 'سعر الليلة الافتراضي لهذا العقار — يُستخدم للحجوزات القادمة وروابط تسجيل الوصول.',
-    nightlyRate: 'سعر الليلة (درهم)',
+    nightlyRate: (currency) => `سعر الليلة (${currency === 'MAD' ? 'درهم' : currency})`,
     nightlyRatePlaceholder: 'مثل: 450',
     invalidRate: 'أدخل سعر ليلة صالحًا.',
     welcomeTitle: 'رسالة الترحيب بالضيف',
@@ -2716,7 +2722,7 @@ export const ar: Dict = {
     addFirstProperty: 'أضف عقارك الأول',
     airbnbBadge: 'Airbnb',
     bedBathGuests: (bed, bath, guests) => `${bed} غرف · ${bath} حمامات · حتى ${guests} ضيوف`,
-    ratePerNight: (rate) => `${rate} درهم / الليلة`,
+    ratePerNight: (rate, currency) => `${rate} ${currency === 'MAD' ? 'درهم' : currency} / الليلة`,
   },
   propertyDetail: {
     headerBack: 'رجوع',
