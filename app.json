@@ -26,7 +26,7 @@
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE"
       ],
-      "versionCode": 29
+      "versionCode": 30
     },
     "ios": {
       "supportsTablet": false,
