@@ -9,6 +9,7 @@ import { Button } from '@/components/Button';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { colors, spacing, typography, radius } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { formatJobSlot } from '@/lib/dates';
 
 /** Smoothly animates the height/opacity change of the inline offer form
  * opening or closing, instead of it instantly popping in/out — built on
@@ -20,7 +21,7 @@ function animateNextLayout() {
 export default function JobFeedScreen() {
   const { session } = useAuth();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [jobs, setJobs] = useState<JobFeedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -137,7 +138,7 @@ export default function JobFeedScreen() {
                     <View style={styles.metaRow}>
                       <Ionicons name="time-outline" size={13} color={colors.inkFaint} />
                       <Text style={typography.caption}>
-                        {new Date(item.scheduledDate).toLocaleDateString()} at {item.scheduledTime}
+                        {formatJobSlot(item.scheduledDate, item.scheduledTime, lang)}
                       </Text>
                     </View>
                     {item.budget && <Text style={styles.budget}>{item.budget} {t.jobFeed.budgetSuffix}</Text>}

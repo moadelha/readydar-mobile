@@ -14,6 +14,8 @@ import { useToast } from '@/lib/toast';
 import { useReviewsStrings } from '@/lib/i18n/reviews-strings';
 import { providerName } from '@/lib/i18n/messages-strings';
 import { colors, radius, spacing, typography } from '@/theme';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { formatDay } from '@/lib/dates';
 
 /**
  * Guest reviews for every property, newest first, with a per-property
@@ -186,6 +188,7 @@ function ReviewCard({
   onPatch: (patch: Partial<GuestReview>) => void;
 }) {
   const r = useReviewsStrings();
+  const { lang } = useLanguage();
   const toast = useToast();
   const [isReplying, setIsReplying] = useState(false);
   const [draft, setDraft] = useState('');
@@ -227,7 +230,7 @@ function ReviewCard({
           </Text>
           <Text style={typography.caption} numberOfLines={1}>
             {review.property.name}
-            {review.submittedAt ? ` · ${new Date(review.submittedAt).toLocaleDateString()}` : ''}
+            {review.submittedAt ? ` · ${formatDay(review.submittedAt, lang, { weekday: false })}` : ''}
           </Text>
         </View>
         {score10 !== null && review.platform === 'BOOKING_COM' ? (

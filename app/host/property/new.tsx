@@ -7,6 +7,7 @@ import { api, City, PropertyType } from '@/lib/api';
 import { Screen, TextField, Chip } from '@/components/ui';
 import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
+import { useLargeTitle } from '@/lib/large-title';
 
 const TYPE_OPTIONS: { value: PropertyType; label: string }[] = [
   { value: 'APARTMENT', label: 'Apartment' },
@@ -18,6 +19,7 @@ const TYPE_OPTIONS: { value: PropertyType; label: string }[] = [
 ];
 
 export default function AddPropertyScreen() {
+  const largeTitle = useLargeTitle();
   const { session } = useAuth();
   const router = useRouter();
   const [cities, setCities] = useState<City[]>([]);
@@ -77,8 +79,8 @@ export default function AddPropertyScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'Add property', headerBackTitle: 'Back' }} />
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <Stack.Screen options={{ headerShown: true, title: largeTitle.headerTitle('Add a property'), headerBackTitle: 'Back' }} />
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" {...largeTitle.scrollProps}>
         <Text style={typography.h1}>Add a property</Text>
         <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>
           You can fine-tune automation, guest welcome messages, and iCal sync later from the web dashboard.

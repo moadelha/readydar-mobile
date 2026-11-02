@@ -31,12 +31,14 @@ import { Button } from '@/components/Button';
 import { colors, radius, spacing, typography } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { downloadAndShare } from '@/lib/files';
-import { groupByMonth } from '@/lib/checkin-groups';
+import { bucketOf, groupByMonth } from '@/lib/checkin-groups';
+import { rtlFlip } from '@/lib/rtl';
 import { PROPERTY_STATUS_TONE, PropertyStatus } from '@/lib/status';
 import { useLanguage } from '@/lib/i18n/language-context';
-import { Dict } from '@/lib/i18n/dictionary';
 import { useHostAccess } from '@/lib/access';
 import { ChannelMark } from '@/components/channel-mark';
+import { useLargeTitle } from '@/lib/large-title';
+import * as ImagePicker from 'expo-image-picker';
 
 /**
  * The statuses a host can set by hand — the same four the web dashboard's
@@ -76,7 +78,27 @@ function isAbsolutePhotoUrl(value: string) {
   return /^https?:\/\//i.test(value);
 }
 
+/**
+ * A door photo thumbnail that falls back to a plain tile when the image
+ * won't load — a dead link used to leave an empty gap under the heading.
+ */
+function DoorPhotoThumb({ uri, onPress, onLongPress }: { uri: string; onPress: () => void; onLongPress?: () => void }) {
+  const [broken, setBroken] = useState(false);
+  return (
+    <Pressable onPress={onPress} onLongPress={onLongPress} delayLongPress={350}>
+      {broken ? (
+        <View style={[styles.photo, styles.photoBroken]}>
+          <Ionicons name="image-outline" size={20} color={colors.inkFaint} />
+        </View>
+      ) : (
+        <Image source={{ uri }} style={styles.photo} onError={() => setBroken(true)} />
+      )}
+    </Pressable>
+  );
+}
+
 export default function PropertyDetailScreen() {
+  const largeTitle = useLargeTitle();
   // `checkin` is optional and only ever set when something linked straight to
   // one — Home's notification bell, today. It opens that check-in's month
   // group and scrolls to it, so a host who taps "Sarah completed their
@@ -107,6 +129,8 @@ export default function PropertyDetailScreen() {
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [welcomeBusyId, setWelcomeBusyId] = useState<string | null>(null);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  /** Which photo is uploading — the cover, or a new door photo. */
+  const [photoBusy, setPhotoBusy] = useState<'cover' | 'door' | null>(null);
   const [pdfBusyId, setPdfBusyId] = useState<string | null>(null);
   const [contractPdfBusyId, setContractPdfBusyId] = useState<string | null>(null);
   /** `${checkInId}:${guestId}` while that one photo's signed URL is in flight. */
@@ -262,6 +286,51 @@ export default function PropertyDetailScreen() {
     } finally {
       setIsMarkingReady(false);
     }
+  }
+
+  /** Picks a photo from the library and saves it as the cover or as a new door/access photo. */
+  async function handleAddPhoto(kind: 'cover' | 'door') {
+    if (!session || !id) return;
+    let result: ImagePicker.ImagePickerResult;
+    try {
+      result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+    } catch {
+      setError(t.propertyDetail.errorPhotoAccess);
+      return;
+    }
+    const asset = result.assets?.[0];
+    if (result.canceled || !asset) return;
+    const file = { uri: asset.uri, name: asset.fileName ?? 'photo.jpg', type: asset.mimeType ?? 'image/jpeg' };
+    setError(null);
+    setPhotoBusy(kind);
+    try {
+      if (kind === 'cover') await api.properties.uploadCoverPhoto(id, file, session.accessToken);
+      else await api.properties.uploadDoorPhoto(id, file, session.accessToken);
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t.propertyDetail.errorUploadPhoto);
+    } finally {
+      setPhotoBusy(null);
+    }
+  }
+
+  function confirmDeleteDoorPhoto(photoId: string) {
+    Alert.alert(t.propertyDetail.deleteDoorPhotoTitle, t.propertyDetail.deleteDoorPhotoMessage, [
+      { text: t.common.cancel, style: 'cancel' },
+      {
+        text: t.propertyDetail.deleteDoorPhotoConfirm,
+        style: 'destructive',
+        onPress: async () => {
+          if (!session || !id) return;
+          try {
+            await api.properties.deleteDoorPhoto(id, photoId, session.accessToken);
+            await load();
+          } catch (err) {
+            setError(err instanceof ApiError ? err.message : t.propertyDetail.errorUploadPhoto);
+          }
+        },
+      },
+    ]);
   }
 
   async function handleShareCheckIn(checkIn: GuestCheckIn) {
@@ -492,7 +561,7 @@ export default function PropertyDetailScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: property.name,
+          title: largeTitle.headerTitle(property.name),
           headerBackTitle: t.propertyDetail.headerBack,
           // Settings (rate, welcome message, access codes, turnover alerts)
           // are all @MinHostRole('MANAGER') on the API.
@@ -505,14 +574,44 @@ export default function PropertyDetailScreen() {
       />
       <ScrollView
         ref={scrollRef}
+        {...largeTitle.scrollProps}
         contentContainerStyle={[styles.container, { paddingBottom: spacing.xl * 2 + insets.bottom }]}
       >
-        {/* The cover photo the Hospitable sync already imports — shown here
-            so the property page opens on something recognisable rather than
-            a wall of text. Properties with no photo just start at the name,
-            no placeholder box. */}
-        {coverUrl && <Image source={{ uri: coverUrl }} style={styles.cover} />}
-        <Text style={typography.h1}>{property.name}</Text>
+        {/* The cover photo (imported from Airbnb, or added here) — so the
+            page opens on the place itself rather than a wall of text.
+            Without one, managers get a quiet box to add it; anyone else
+            just starts at the name. */}
+        {coverUrl ? (
+          <View>
+            <Image source={{ uri: coverUrl }} style={styles.cover} />
+            {isManager && (
+              <Pressable
+                onPress={() => handleAddPhoto('cover')}
+                disabled={photoBusy !== null}
+                style={styles.coverChange}
+                accessibilityRole="button"
+              >
+                <Ionicons name="camera-outline" size={14} color={colors.ink} />
+                <Text style={styles.coverChangeText}>
+                  {photoBusy === 'cover' ? t.propertyDetail.uploadingPhoto : t.propertyDetail.changeCoverPhoto}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        ) : isManager ? (
+          <Pressable
+            onPress={() => handleAddPhoto('cover')}
+            disabled={photoBusy !== null}
+            style={({ pressed }) => [styles.coverEmpty, pressed && { backgroundColor: colors.surface2 }]}
+            accessibilityRole="button"
+          >
+            <Ionicons name="image-outline" size={22} color={colors.inkFaint} />
+            <Text style={styles.coverEmptyText}>
+              {photoBusy === 'cover' ? t.propertyDetail.uploadingPhoto : t.propertyDetail.addCoverPhoto}
+            </Text>
+          </Pressable>
+        ) : null}
+        <Text style={typography.h1} {...largeTitle.titleProps}>{property.name}</Text>
         <View style={styles.metaRow}>
           <Ionicons name="location-outline" size={13} color={colors.inkFaint} />
           <Text style={typography.bodyMuted}>
@@ -583,41 +682,54 @@ export default function PropertyDetailScreen() {
           )}
         </View>
 
-        <View style={styles.actionRow}>
-          <Button
-            label={t.propertyDetail.requestCleaning}
-            onPress={() => router.push({ pathname: '/host/booking/new', params: { propertyId: property.id } })}
-            style={{ flex: 1 }}
-          />
+        {/*
+          One button, for the one thing this place may be waiting on: once
+          it's cleaned, Mark ready. Everything else is a quiet list below —
+          four bordered buttons of equal weight read as a wall, and none of
+          them stood out as the thing to do.
+        */}
+        {effectiveStatus !== 'READY' && (
           <Button
             label={isMarkingReady ? '…' : t.propertyDetail.markReady}
             onPress={handleMarkReady}
             loading={isMarkingReady}
-            variant="outline"
-            style={{ flex: 1 }}
+            style={{ marginTop: spacing.lg }}
           />
-        </View>
-
-        {canExpenses && (
-        <Button
-          label={t.propertyDetail.logExpense}
-          onPress={() => router.push({ pathname: '/host/expense/new', params: { propertyId: property.id } })}
-          variant="outline"
-          style={{ marginTop: spacing.sm }}
-        />
         )}
 
-        {canCleaningReports && (
-        <Button
-          label={t.propertyDetail.cleaningReports}
-          onPress={() =>
-            cleaningReportsEnabled === false
-              ? Alert.alert(t.cleaningReports.upgradeTitle, t.cleaningReports.upgradeBody)
-              : router.push({ pathname: '/host/cleaning-reports', params: { propertyId: property.id } })
-          }
-          variant="outline"
-          style={{ marginTop: spacing.sm }}
-        />
+        {(canExpenses || canCleaningReports) && (
+        <View style={styles.actionList}>
+          {[
+            canExpenses && {
+              key: 'expense',
+              icon: 'receipt-outline' as const,
+              label: t.propertyDetail.logExpense,
+              onPress: () => router.push({ pathname: '/host/expense/new', params: { propertyId: property.id } }),
+            },
+            canCleaningReports && {
+              key: 'reports',
+              icon: 'document-text-outline' as const,
+              label: t.propertyDetail.cleaningReports,
+              onPress: () =>
+                cleaningReportsEnabled === false
+                  ? Alert.alert(t.cleaningReports.upgradeTitle, t.cleaningReports.upgradeBody)
+                  : router.push({ pathname: '/host/cleaning-reports', params: { propertyId: property.id } }),
+            },
+          ]
+            .filter((a): a is Exclude<typeof a, false> => !!a)
+            .map((a, i) => (
+              <Pressable
+                key={a.key}
+                onPress={a.onPress}
+                style={({ pressed }) => [styles.actionItem, i > 0 && styles.actionDivider, pressed && { backgroundColor: colors.surface2 }]}
+                accessibilityRole="button"
+              >
+                <Ionicons name={a.icon} size={18} color={colors.inkMuted} />
+                <Text style={styles.actionLabel}>{a.label}</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} style={rtlFlip} />
+              </Pressable>
+            ))}
+        </View>
         )}
 
         {canCheckins && (
@@ -695,9 +807,16 @@ export default function PropertyDetailScreen() {
                       ]
                         .filter(Boolean)
                         .join(' · ');
+                      // The label follows the Guests screen's rule: a link still
+                      // PENDING after its stay has ended reads as expired —
+                      // otherwise last month's guests show "Waiting" here and
+                      // "Expired" there. The actions still follow the stored
+                      // status, so a stale link can still be shared or deleted.
+                      const bucket = bucketOf(c);
+                      const shownStatus = bucket === 'UPCOMING' ? 'PENDING' : bucket;
                       const expandable = c.status === 'PENDING' || c.status === 'SUBMITTED';
                       const expanded = expandable && openRowId === c.id;
-                      const tone = STAY_TONE[c.status] ?? STAY_TONE.EXPIRED;
+                      const tone = STAY_TONE[shownStatus];
                       return (
                         <View
                           key={c.id}
@@ -734,7 +853,7 @@ export default function PropertyDetailScreen() {
                               <View style={styles.stayStatus}>
                                 <View style={[styles.statusDot, { backgroundColor: tone }]} />
                                 <Text style={[styles.statusText, { color: tone }]}>
-                                  {t.propertyDetail.checkInStatusShort[c.status as keyof Dict['propertyDetail']['checkInStatusShort']] ?? c.status}
+                                  {t.propertyDetail.checkInStatusShort[shownStatus]}
                                 </Text>
                               </View>
                             </View>
@@ -991,16 +1110,35 @@ export default function PropertyDetailScreen() {
           </>
         )}
 
-        {doorPhotos.length > 0 && (
+        {(doorPhotos.length > 0 || isManager) && (
           <>
             <Text style={styles.sectionTitle}>{t.propertyDetail.doorPhotosTitle}</Text>
+            {doorPhotos.length === 0 && (
+              <Text style={[typography.bodyMuted, { marginBottom: spacing.sm }]}>{t.propertyDetail.doorPhotosEmpty}</Text>
+            )}
             <View style={styles.photoGrid}>
               {doorPhotos.map((p) => (
-                <Pressable key={p.id} onPress={() => setViewerUrl(resolveUploadUrl(p.url))}>
-                  <Image source={{ uri: resolveThumbnailUrl(p.url, 170) }} style={styles.photo} />
-                </Pressable>
+                <DoorPhotoThumb
+                  key={p.id}
+                  uri={resolveThumbnailUrl(p.url, 170)}
+                  onPress={() => setViewerUrl(resolveUploadUrl(p.url))}
+                  onLongPress={isManager ? () => confirmDeleteDoorPhoto(p.id) : undefined}
+                />
               ))}
+              {isManager && (
+                <Pressable
+                  onPress={() => handleAddPhoto('door')}
+                  disabled={photoBusy !== null}
+                  style={({ pressed }) => [styles.photo, styles.addPhotoTile, pressed && { backgroundColor: colors.surface2 }]}
+                  accessibilityRole="button"
+                  accessibilityLabel={t.propertyDetail.addPhoto}
+                >
+                  <Ionicons name={photoBusy === 'door' ? 'hourglass-outline' : 'add'} size={22} color={colors.inkMuted} />
+                  <Text style={styles.addPhotoText}>{t.propertyDetail.addPhoto}</Text>
+                </Pressable>
+              )}
             </View>
+            {isManager && doorPhotos.length > 0 && <Text style={[typography.caption, { marginTop: spacing.xs }]}>{t.propertyDetail.doorPhotosHint}</Text>}
           </>
         )}
 
@@ -1049,7 +1187,17 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     marginTop: spacing.sm,
   },
-  actionRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
+  actionList: {
+    marginTop: spacing.md,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+  },
+  actionItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 52, paddingHorizontal: spacing.md },
+  actionDivider: { borderTopWidth: 1, borderTopColor: colors.border },
+  actionLabel: { flex: 1, fontSize: 15, color: colors.ink, fontWeight: '500' },
   sectionTitle: { ...typography.h3, marginTop: spacing.lg, marginBottom: spacing.sm },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -1123,6 +1271,41 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     backgroundColor: colors.surface2,
   },
+  coverChange: {
+    position: 'absolute',
+    right: spacing.sm,
+    bottom: spacing.md + spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+    backgroundColor: colors.white,
+  },
+  coverChangeText: { fontSize: 13, fontWeight: '500', color: colors.ink },
+  coverEmpty: {
+    height: 120,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.lineStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  coverEmptyText: { fontSize: 14, fontWeight: '500', color: colors.inkMuted },
+  addPhotoTile: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.lineStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  addPhotoText: { fontSize: 11, fontWeight: '500', color: colors.inkMuted },
+  photoBroken: { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface2 },
   idPhotoThumb: { width: 64, height: 64, borderRadius: radius.sm },
   idPhotoLocked: {
     alignItems: 'center',

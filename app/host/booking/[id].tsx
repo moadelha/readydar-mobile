@@ -9,8 +9,11 @@ import { Button } from '@/components/Button';
 import { STATUS_LABELS, STATUS_TONE } from '@/lib/status';
 import { colors, radius, spacing, typography } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { formatJobSlot } from '@/lib/dates';
 
 export default function HostBookingDetailScreen() {
+  const { lang } = useLanguage();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const router = useRouter();
@@ -111,7 +114,7 @@ export default function HostBookingDetailScreen() {
               {booking.property.addressLine}, {booking.property.city.name}
             </Text>
             <Text style={typography.caption}>
-              {new Date(booking.scheduledDate).toLocaleDateString()} at {booking.scheduledTime}
+              {formatJobSlot(booking.scheduledDate, booking.scheduledTime, lang)}
               {booking.urgency === 'URGENT' ? ' · Urgent' : ''}
             </Text>
           </View>

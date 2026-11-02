@@ -22,12 +22,13 @@ import { STATUS_TONE } from '@/lib/status';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { colors, radius, spacing, typography } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { formatJobSlot } from '@/lib/dates';
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const toast = useToast();
   const [booking, setBooking] = useState<Booking | null>(null);
   const [isActing, setIsActing] = useState(false);
@@ -152,7 +153,7 @@ export default function JobDetailScreen() {
                 {booking.property.addressLine}, {booking.property.city.name}
               </Text>
               <Text style={typography.caption}>
-                {new Date(booking.scheduledDate).toLocaleDateString()} at {booking.scheduledTime}
+                {formatJobSlot(booking.scheduledDate, booking.scheduledTime, lang)}
               </Text>
             </View>
             <View style={{ alignItems: 'flex-end', gap: 6 }}>

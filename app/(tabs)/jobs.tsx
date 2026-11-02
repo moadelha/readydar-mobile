@@ -9,11 +9,12 @@ import { STATUS_TONE } from '@/lib/status';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { colors, radius, spacing, typography } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { formatJobSlot } from '@/lib/dates';
 
 export default function MyJobsScreen() {
   const { session } = useAuth();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [jobs, setJobs] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -85,7 +86,7 @@ export default function MyJobsScreen() {
                       <Text style={typography.bodyMuted}>{item.property.name}</Text>
                     </View>
                     <Text style={typography.caption}>
-                      {new Date(item.scheduledDate).toLocaleDateString()} at {item.scheduledTime}
+                      {formatJobSlot(item.scheduledDate, item.scheduledTime, lang)}
                     </Text>
                   </View>
                   <StatusBadge label={t.bookingStatus[item.status]} tone={STATUS_TONE[item.status]} />

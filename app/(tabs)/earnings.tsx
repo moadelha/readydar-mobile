@@ -8,10 +8,11 @@ import { Screen, Card, EmptyState, ErrorBanner, Reveal, AnimatedNumber, Skeleton
 import { useLanguage } from '@/lib/i18n/language-context';
 import { colors, spacing, typography } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { formatDay } from '@/lib/dates';
 
 export default function EarningsScreen() {
   const { session } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [summary, setSummary] = useState<EarningsSummary | null>(null);
   const [commission, setCommission] = useState<CommissionStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -129,7 +130,7 @@ export default function EarningsScreen() {
                   <View>
                     <Text style={typography.body}>{e.booking.service.name}</Text>
                     <Text style={typography.caption}>
-                      {e.booking.property.name} · {new Date(e.createdAt).toLocaleDateString()}
+                      {e.booking.property.name} · {formatDay(e.createdAt, lang)}
                     </Text>
                   </View>
                   <Text style={styles.entryAmount}>+{Number(e.amount).toFixed(0)} MAD</Text>

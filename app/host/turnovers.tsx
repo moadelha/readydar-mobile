@@ -9,6 +9,8 @@ import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useHostAccess } from '@/lib/access';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { formatDay } from '@/lib/dates';
 
 type Kind = 'checkin' | 'reservation';
 interface Row {
@@ -22,6 +24,7 @@ function guestLabel(item: PendingTurnoverItem) {
 }
 
 export default function TurnoversScreen() {
+  const { lang } = useLanguage();
   const { session } = useAuth();
   const router = useRouter();
   const { isManager } = useHostAccess();
@@ -134,7 +137,7 @@ export default function TurnoversScreen() {
                         <Text style={typography.h3}>{guestLabel(row.item)}</Text>
                         <Text style={typography.bodyMuted}>{row.item.property.name}</Text>
                         <Text style={typography.caption}>
-                          Checkout {new Date((row.item.expectedCheckOut ?? row.item.checkOut)!).toLocaleDateString()}
+                          Checkout {formatDay((row.item.expectedCheckOut ?? row.item.checkOut)!, lang, { utc: true })}
                         </Text>
                         {!row.item.property.defaultCleaningContact && (
                           <Text style={[typography.caption, { color: colors.danger, marginTop: 2 }]}>

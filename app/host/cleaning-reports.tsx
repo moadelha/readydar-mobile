@@ -9,6 +9,7 @@ import { Screen, Card, EmptyState, LoadingScreen, ErrorBanner, StatusBadge } fro
 import { colors, spacing, typography } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
+import { formatDay } from '@/lib/dates';
 
 /**
  * One property's cleaning reports (proof-of-cleaning walkthroughs), newest
@@ -22,7 +23,7 @@ export default function CleaningReportsScreen() {
   const { session } = useAuth();
   const planStrings = usePlanStrings();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   const [property, setProperty] = useState<Property | null>(null);
   const [reports, setReports] = useState<CleaningReport[]>([]);
@@ -104,7 +105,7 @@ export default function CleaningReportsScreen() {
   return (
     <Screen>
       <Stack.Screen
-        options={{ headerShown: true, title: t.cleaningReports.title, headerBackTitle: t.cleaningReports.back }}
+        options={{ headerShown: true, title: '', headerBackTitle: t.cleaningReports.back }}
       />
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
@@ -165,7 +166,7 @@ export default function CleaningReportsScreen() {
                   <Text style={typography.caption}>{t.cleaningReports.photoCount(photoCount)}</Text>
                 </View>
                 <Text style={[typography.bodyMuted, { marginTop: 6 }]}>
-                  {t.cleaningReports.startedOn(new Date(item.startedAt).toLocaleDateString())}
+                  {t.cleaningReports.startedOn(formatDay(item.startedAt, lang))}
                 </Text>
               </Card>
             </Pressable>

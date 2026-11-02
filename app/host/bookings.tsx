@@ -9,6 +9,7 @@ import { STATUS_TONE } from '@/lib/status';
 import { colors, radius, spacing, typography } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
+import { formatJobSlot } from '@/lib/dates';
 
 /**
  * All cleaning/maintenance jobs across every property — no longer a bottom
@@ -20,7 +21,7 @@ import { useLanguage } from '@/lib/i18n/language-context';
 export default function HostBookingsScreen() {
   const { session } = useAuth();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,16 +49,13 @@ export default function HostBookingsScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: t.bookingsList.pageTitle, headerBackTitle: t.bookingsList.headerBack }} />
+      <Stack.Screen options={{ headerShown: true, title: '', headerBackTitle: t.bookingsList.headerBack }} />
       <Reveal>
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
             <Text style={typography.h1}>{t.bookingsList.title}</Text>
             <Text style={[typography.bodyMuted, { marginTop: 2 }]}>{t.bookingsList.subtitle}</Text>
           </View>
-          <AnimatedPressable scaleTo={0.9} onPress={() => router.push('/host/booking/new')} style={styles.addButton}>
-            <Ionicons name="add" size={22} color={colors.onPrimary} />
-          </AnimatedPressable>
         </View>
       </Reveal>
 
@@ -82,8 +80,6 @@ export default function HostBookingsScreen() {
           ListEmptyComponent={
             <EmptyState
               message={t.bookingsList.emptyMessage}
-              actionLabel={t.bookingsList.actionLabel}
-              onAction={() => router.push('/host/booking/new')}
               icon="clipboard-outline"
             />
           }
@@ -106,7 +102,7 @@ export default function HostBookingsScreen() {
                       <Text style={typography.bodyMuted}>{item.property.name}</Text>
                     </View>
                     <Text style={typography.caption}>
-                      {new Date(item.scheduledDate).toLocaleDateString()} {t.bookingsList.at} {item.scheduledTime}
+                      {formatJobSlot(item.scheduledDate, item.scheduledTime, lang)}
                     </Text>
                   </View>
                   <StatusBadge label={t.bookingStatus[item.status]} tone={STATUS_TONE[item.status]} />
@@ -128,14 +124,6 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
     gap: spacing.sm,
-  },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   row: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.sm },

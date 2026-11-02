@@ -9,8 +9,10 @@ import { Button } from '@/components/Button';
 import { spacing, typography } from '@/theme';
 import { useHostAccess } from '@/lib/access';
 import { NoAccess } from '@/components/no-access';
+import { useLargeTitle } from '@/lib/large-title';
 
 function NewCleaningContactInner() {
+  const largeTitle = useLargeTitle();
   const { session } = useAuth();
   const router = useRouter();
 
@@ -45,8 +47,8 @@ function NewCleaningContactInner() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'Add cleaning contact', headerBackTitle: 'Back' }} />
-      <ScrollView contentContainerStyle={styles.container}>
+      <Stack.Screen options={{ headerShown: true, title: largeTitle.headerTitle('Add a cleaning contact'), headerBackTitle: 'Back' }} />
+      <ScrollView contentContainerStyle={styles.container} {...largeTitle.scrollProps}>
         <Text style={typography.h1}>Add a cleaning contact</Text>
         <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>
           Set as a property's default contact to get notified automatically after every guest checkout.

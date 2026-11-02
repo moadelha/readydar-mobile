@@ -12,6 +12,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 
 import { todayIso } from '@/lib/calendar-visuals';
+import { DateField } from '@/components/date-field';
 
 /**
  * Mirrors MARKETPLACE_BOOKING_ENABLED in the web app
@@ -214,7 +215,7 @@ export default function NewBookingScreen() {
         <View style={{ marginTop: spacing.lg }}>
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <TextField label="Date (YYYY-MM-DD)" value={scheduledDate} onChangeText={setScheduledDate} placeholder="2026-08-20" />
+              <DateField label={t.common.date} value={scheduledDate} onChange={setScheduledDate} minDate={todayIso()} />
             </View>
             <View style={{ flex: 1 }}>
               <TextField label="Time (HH:mm)" value={scheduledTime} onChangeText={setScheduledTime} placeholder="14:00" />

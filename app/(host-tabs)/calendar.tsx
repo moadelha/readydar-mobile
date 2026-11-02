@@ -41,6 +41,7 @@ import {
   eventIcon,
   barTextColor,
   dateLocale,
+  weekdayLetters,
 } from '@/lib/calendar-visuals';
 import { ChannelMark } from '@/components/channel-mark';
 import { useToast } from '@/lib/toast';
@@ -52,19 +53,10 @@ import { rtlFlip } from '@/lib/rtl';
 
 type CalendarView = 'LIST' | 'MONTH';
 
-/**
- * Weeks start on Monday, like the web calendar and the calendars hosts use
- * in Europe and Morocco. The letters come from the app's language.
- */
-function weekdayLetters(locale: string) {
-  // 1 January 2024 was a Monday.
-  return Array.from({ length: 7 }, (_, i) =>
-    new Date(2024, 0, 1 + i).toLocaleDateString(locale, { weekday: 'narrow' }),
-  );
-}
-/** How many upcoming days the Listings view's per-property dot grid covers — 2 rows of 7 in a compact 14-day preview. */
+// Weeks start on Monday (weekdayLetters), like the web calendar and the
+// calendars hosts use in Europe and Morocco.
+/** How many upcoming days the Listings view's per-property strip covers. */
 const LIST_WINDOW_DAYS = 14;
-const LIST_GRID_COLS = 7;
 
 /**
  * Month-grid geometry.
@@ -142,7 +134,6 @@ export default function CalendarScreen() {
 
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [copiedEventId, setCopiedEventId] = useState<string | null>(null);
   const [sheetBusy, setSheetBusy] = useState(false);
   /** Nightly rate typed into the booking sheet when converting a blocked range. */
@@ -699,6 +690,8 @@ export default function CalendarScreen() {
 
         {view === 'LIST' && (
           <View>
+            {/* Legend first here: at the end of a long list it sat under the + button. */}
+            {visibleProperties.length > 0 && <View style={{ marginBottom: spacing.sm }}>{legend}</View>}
             {visibleProperties.length === 0 ? (
               <EmptyState message={t.calendarHost.noPropertiesToShow} />
             ) : (
@@ -727,34 +720,60 @@ export default function CalendarScreen() {
                           </View>
                         )}
                       </View>
-                      <View style={styles.listDotGrid}>
-                        {listDays.map((day) => {
-                          const dayStatus = dayStatusForProperty(p.id, day);
-                          const isToday = day === today;
-                          return (
-                            <View
-                              key={day}
-                              style={[
-                                styles.listDot,
-                                { backgroundColor: listDotColor(dayStatus) },
-                                isToday && styles.listDotToday,
-                              ]}
-                            />
-                          );
-                        })}
-                      </View>
                     </View>
+                    {/* The next two weeks as one strip of days, each filled
+                        in the colour of what's on it and labelled with its
+                        date — readable at a glance, unlike the old 8pt dots. */}
+                    {(() => {
+                      const days = listDays.map((day) => ({ day, ...dayStatusForProperty(p.id, day) }));
+                      // Nights, not days: a stay's checkout day isn't a night
+                      // booked, so count days some stay covers before its end.
+                      const stays = (listEventsByProperty[p.id] ?? []).filter((e) => e.kind === 'GUEST_STAY' && !e.isBlocked);
+                      const booked = listDays.filter((day) =>
+                        stays.some((e) => day >= e.date.slice(0, 10) && day < (e.endDate || e.date).slice(0, 10)),
+                      ).length;
+                      return (
+                        <>
+                          <View style={styles.strip}>
+                            {days.map((d) => {
+                              const filled = d.status !== 'free';
+                              const bg = listDotColor(d);
+                              return (
+                                <View
+                                  key={d.day}
+                                  style={[
+                                    styles.stripDay,
+                                    { backgroundColor: filled ? bg : colors.surface2 },
+                                    d.day === today && styles.stripToday,
+                                  ]}
+                                >
+                                  <Text style={[styles.stripDate, { color: filled ? barTextColor(bg) : colors.inkMuted }]}>
+                                    {parseDateOnly(d.day).getDate()}
+                                  </Text>
+                                </View>
+                              );
+                            })}
+                          </View>
+                          <Text style={styles.stripCaption}>{t.calendarHost.nextTwoWeeks(booked)}</Text>
+                        </>
+                      );
+                    })()}
                   </Card>
                 );
               })
             )}
-            {visibleProperties.length > 0 && legend}
           </View>
         )}
 
       </ScrollView>
 
-      <Pressable style={styles.fab} onPress={() => setQuickAddOpen(true)}>
+      <Pressable
+        style={styles.fab}
+        // Straight to a new check-in link: with cleaner booking gone it's the only thing to add here.
+        onPress={() => router.push({ pathname: '/host/checkin/new', params: propertyFilter ? { propertyId: propertyFilter } : {} })}
+        accessibilityRole="button"
+        accessibilityLabel={t.calendarHost.guestOnlineCheckIn}
+      >
         <Ionicons name="add" size={24} color={colors.onPrimary} />
       </Pressable>
 
@@ -952,40 +971,6 @@ export default function CalendarScreen() {
         </Pressable>
       </Modal>
 
-      {/* Quick add */}
-      <Modal visible={quickAddOpen} animationType="fade" transparent onRequestClose={() => setQuickAddOpen(false)}>
-        <Pressable style={styles.sheetBackdrop} onPress={() => setQuickAddOpen(false)}>
-          <Pressable style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onPress={(e) => e.stopPropagation()}>
-            <Text style={typography.h3}>{t.calendarHost.addSheetTitle}</Text>
-            <Pressable
-              style={styles.quickAddRow}
-              onPress={() => {
-                setQuickAddOpen(false);
-                router.push({ pathname: '/host/booking/new', params: propertyFilter ? { propertyId: propertyFilter } : {} });
-              }}
-            >
-              <Ionicons name="sparkles-outline" size={20} color={colors.green700} />
-              <View style={{ flex: 1 }}>
-                <Text style={typography.h3}>{t.calendarHost.addCleaning}</Text>
-                <Text style={typography.bodyMuted}>{t.calendarHost.addCleaningSubtitle}</Text>
-              </View>
-            </Pressable>
-            <Pressable
-              style={styles.quickAddRow}
-              onPress={() => {
-                setQuickAddOpen(false);
-                router.push({ pathname: '/host/checkin/new', params: propertyFilter ? { propertyId: propertyFilter } : {} });
-              }}
-            >
-              <Ionicons name="key-outline" size={20} color={colors.green700} />
-              <View style={{ flex: 1 }}>
-                <Text style={typography.h3}>{t.calendarHost.guestOnlineCheckIn}</Text>
-                <Text style={typography.bodyMuted}>{t.calendarHost.guestOnlineCheckInSubtitle}</Text>
-              </View>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </Screen>
   );
 }
@@ -1072,14 +1057,11 @@ const styles = StyleSheet.create({
   legendText: { fontSize: 12, color: colors.inkMuted, fontWeight: '500' },
   listRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  listDotGrid: {
-    width: LIST_GRID_COLS * 10,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 2,
-  },
-  listDot: { width: 8, height: 8, borderRadius: 4 },
-  listDotToday: { borderWidth: 1.5, borderColor: colors.ink },
+  strip: { flexDirection: 'row', gap: 2, marginTop: spacing.md },
+  stripDay: { flex: 1, height: 26, borderRadius: 3, alignItems: 'center', justifyContent: 'center' },
+  stripToday: { borderWidth: 1.5, borderColor: colors.ink },
+  stripDate: { fontSize: 10, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  stripCaption: { ...typography.caption, marginTop: 6 },
   fab: {
     position: 'absolute',
     right: spacing.lg,
@@ -1104,5 +1086,4 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xl,
   },
-  quickAddRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md },
 });

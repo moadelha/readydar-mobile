@@ -13,6 +13,7 @@ import { useLanguage } from '@/lib/i18n/language-context';
 import { colors, radius, spacing, typography } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { addDaysIso, todayIso } from '@/lib/calendar-visuals';
+import { DateField } from '@/components/date-field';
 
 const CATEGORY_OPTIONS = Object.keys(EXPENSE_CATEGORY_LABELS) as ExpenseCategory[];
 
@@ -257,7 +258,7 @@ export default function NewExpenseScreen() {
           <Chip label={t.expenseNew.dateYesterday} active={date === yesterdayIso()} onPress={() => setDate(yesterdayIso())} />
         </View>
         <View style={{ marginTop: spacing.sm }}>
-          <TextField label={t.expenseNew.dateFormatLabel} value={date} onChangeText={setDate} />
+          <DateField label={t.expenseNew.dateFormatLabel} value={date} onChange={setDate} />
         </View>
 
         <View style={{ marginTop: spacing.md }}>

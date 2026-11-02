@@ -26,8 +26,15 @@ export type CheckInBucket = 'UPCOMING' | 'SUBMITTED' | 'EXPIRED';
 export function bucketOf(item: GuestCheckIn, now = Date.now()): CheckInBucket {
   if (item.status === 'SUBMITTED') return 'SUBMITTED';
   if (item.status === 'EXPIRED') return 'EXPIRED';
-  const deadline = item.expiresAt ?? item.expectedCheckOut;
-  if (deadline && new Date(deadline).getTime() < now) return 'EXPIRED';
+  // expiresAt is what the backend itself enforces. Without one, the checkout
+  // is a calendar date stored as UTC midnight, so the link stays live until
+  // that day is over rather than going "expired" while the guest is still in.
+  const deadline = item.expiresAt
+    ? new Date(item.expiresAt).getTime()
+    : item.expectedCheckOut
+      ? new Date(item.expectedCheckOut).getTime() + 86_400_000
+      : null;
+  if (deadline !== null && deadline < now) return 'EXPIRED';
   return 'UPCOMING';
 }
 

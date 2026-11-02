@@ -8,6 +8,8 @@ import { colors, spacing, typography, radius } from '@/theme';
 import { useAuth } from '@/lib/auth-context';
 import { api, ApiError, Entitlements, PlanFeature, WEB_URL } from '@/lib/api';
 import { usePlanStrings } from '@/lib/i18n/plan-strings';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { formatDay } from '@/lib/dates';
 
 /**
  * Plans v2 — read-only view of the host's plan, usage and features. No
@@ -25,6 +27,7 @@ const FEATURE_ORDER: PlanFeature[] = ['cleaningReports', 'ttlock', 'inbox', 'pri
 export default function PlanScreen() {
   const { session } = useAuth();
   const s = usePlanStrings();
+  const { lang } = useLanguage();
   const [ent, setEnt] = useState<Entitlements | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,7 +67,7 @@ export default function PlanScreen() {
               <Text style={styles.line}>{ent.line === 'PRO' ? s.pro : s.light}</Text>
               <Text style={typography.h1}>{ent.planName ?? s.freePlan}</Text>
               {ent.isTrial && ent.trialEndsAt ? (
-                <Text style={typography.bodyMuted}>{s.trialUntil(new Date(ent.trialEndsAt).toLocaleDateString())}</Text>
+                <Text style={typography.bodyMuted}>{s.trialUntil(formatDay(ent.trialEndsAt, lang, { weekday: false }))}</Text>
               ) : ent.planCode === 'FREE' ? (
                 <Text style={typography.bodyMuted}>{s.freePlan}</Text>
               ) : null}

@@ -10,11 +10,13 @@ import { useToast } from '@/lib/toast';
 import { colors, spacing, typography } from '@/theme';
 import { useHostAccess } from '@/lib/access';
 import { NoAccess } from '@/components/no-access';
+import { useLargeTitle } from '@/lib/large-title';
 
 const TEMPLATE_VARIABLES =
   '{{hostName}} {{guestName}} {{propertyName}} {{propertyAddress}} {{checkInDate}} {{checkOutDate}} {{guestCount}} {{totalPrice}}';
 
 function ContractSettingsInner() {
+  const largeTitle = useLargeTitle();
   const { session } = useAuth();
   const toast = useToast();
   const [loaded, setLoaded] = useState(false);
@@ -71,8 +73,8 @@ function ContractSettingsInner() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'Rental contract', headerBackTitle: 'Back' }} />
-      <ScrollView contentContainerStyle={styles.container}>
+      <Stack.Screen options={{ headerShown: true, title: largeTitle.headerTitle('Rental contract'), headerBackTitle: 'Back' }} />
+      <ScrollView contentContainerStyle={styles.container} {...largeTitle.scrollProps}>
         <Reveal>
           <Text style={typography.h1}>Rental contract</Text>
           <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>

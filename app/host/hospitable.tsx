@@ -11,11 +11,16 @@ import { colors, spacing, typography, radius } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useHostAccess } from '@/lib/access';
 import { NoAccess } from '@/components/no-access';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { useLargeTitle } from '@/lib/large-title';
 
 function HospitableConnectInner() {
+  const largeTitle = useLargeTitle();
   const { session } = useAuth();
   const router = useRouter();
   const toast = useToast();
+  const { t } = useLanguage();
+  const c = t.connectAirbnb;
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [listings, setListings] = useState<HospitableListing[] | null>(null);
@@ -29,7 +34,7 @@ function HospitableConnectInner() {
       const { return_url } = await api.hospitable.connect(session.accessToken);
       await Linking.openURL(return_url);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not start the Airbnb connection.');
+      setError(err instanceof ApiError ? err.message : c.errorConnect);
     } finally {
       setIsConnecting(false);
     }
@@ -44,23 +49,12 @@ function HospitableConnectInner() {
       const found = await api.hospitable.listListings(session.accessToken);
       setListings(found);
       if (result.propertiesCreated > 0 || result.reservationsCreated > 0 || result.datesBlocked > 0) {
-        const parts = [
-          `${result.propertiesCreated} new propert${result.propertiesCreated === 1 ? 'y' : 'ies'}`,
-          `${result.reservationsCreated} new stay${result.reservationsCreated === 1 ? '' : 's'}`,
-        ];
-        if (result.datesBlocked > 0) {
-          parts.push(`${result.datesBlocked} blocked date range${result.datesBlocked === 1 ? '' : 's'}`);
-        }
-        toast.show(`Synced Airbnb — ${parts.join(', ')}`, 'success');
+        toast.show(c.synced(result.propertiesCreated, result.reservationsCreated, result.datesBlocked), 'success');
       } else {
-        toast.show('Everything is already up to date.', 'success');
+        toast.show(c.upToDate, 'success');
       }
     } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : 'Could not sync with Hospitable — make sure your Airbnb account is connected first.',
-      );
+      setError(err instanceof ApiError ? err.message : c.errorSync);
     } finally {
       setIsSyncing(false);
     }
@@ -68,32 +62,26 @@ function HospitableConnectInner() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'Connect Airbnb', headerBackTitle: 'Back' }} />
-      <ScrollView contentContainerStyle={styles.container}>
+      <Stack.Screen options={{ headerShown: true, title: largeTitle.headerTitle(c.title), headerBackTitle: t.common.back }} />
+      <ScrollView contentContainerStyle={styles.container} {...largeTitle.scrollProps}>
         <Reveal>
-          <Text style={typography.h1}>Connect Airbnb</Text>
-          <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>
-            ReadyDar uses Hospitable to link directly to your Airbnb account, so your listings and reservations
-            import automatically instead of being entered by hand.
-          </Text>
+          <Text style={typography.h1}>{c.title}</Text>
+          <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>{c.intro}</Text>
+          {/* Said plainly up front: hosts have assumed a block made here reaches Airbnb. */}
+          <View style={styles.oneWay}>
+            <Ionicons name="swap-horizontal-outline" size={16} color={colors.warning} />
+            <Text style={[typography.body, { flex: 1 }]}>{c.oneWayNote}</Text>
+          </View>
         </Reveal>
 
         {error && <ErrorBanner message={error} />}
 
         <Reveal delay={40}>
           <Card style={{ marginTop: spacing.lg }}>
-            <View style={styles.stepRow}>
-              <View style={styles.stepBadge}>
-                <Text style={styles.stepBadgeText}>1</Text>
-              </View>
-              <Text style={typography.h3}>Connect your Airbnb account</Text>
-            </View>
-            <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>
-              Opens in your browser — Hospitable's own secure page, not ReadyDar. Once you've authorized it there,
-              come back to this screen and tap "Sync now" below.
-            </Text>
+            <Text style={typography.h3}>{c.step1Title}</Text>
+            <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>{c.step1Body}</Text>
             <Button
-              label={isConnecting ? 'Opening…' : 'Connect Airbnb account'}
+              label={isConnecting ? c.opening : c.connectButton}
               onPress={handleConnect}
               loading={isConnecting}
               style={{ marginTop: spacing.md }}
@@ -103,19 +91,10 @@ function HospitableConnectInner() {
 
         <Reveal delay={80}>
           <Card style={{ marginTop: spacing.md }}>
-            <View style={styles.stepRow}>
-              <View style={styles.stepBadge}>
-                <Text style={styles.stepBadgeText}>2</Text>
-              </View>
-              <Text style={typography.h3}>Import your listings</Text>
-            </View>
-            <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>
-              Pulls in every connected Airbnb listing as a property, plus its upcoming reservations and any dates
-              you've blocked on Airbnb. This also happens automatically in the background as new bookings come in —
-              tap this any time you want it to happen right now instead of waiting.
-            </Text>
+            <Text style={typography.h3}>{c.step2Title}</Text>
+            <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>{c.step2Body}</Text>
             <Button
-              label={isSyncing ? 'Syncing…' : 'Sync now'}
+              label={isSyncing ? c.syncing : c.syncNow}
               onPress={handleSync}
               loading={isSyncing}
               variant="outline"
@@ -128,15 +107,15 @@ function HospitableConnectInner() {
           <Reveal delay={120}>
             <View style={styles.sectionHeaderRow}>
               <Text style={[styles.sectionTitle, { marginTop: 0, marginBottom: 0 }]}>
-                Found on Airbnb ({listings.length})
+                {c.foundOnAirbnb(listings.length)}
               </Text>
               <Pressable onPress={() => setListings(null)} hitSlop={8}>
-                <Text style={styles.dismissText}>Hide</Text>
+                <Text style={styles.dismissText}>{c.hide}</Text>
               </Pressable>
             </View>
             {listings.length === 0 ? (
               <Card>
-                <Text style={typography.bodyMuted}>No listings found yet — connect your Airbnb account above first.</Text>
+                <Text style={typography.bodyMuted}>{c.noListings}</Text>
               </Card>
             ) : (
               listings.map((listing) => (
@@ -150,7 +129,7 @@ function HospitableConnectInner() {
                       </View>
                     )}
                     <View style={{ flex: 1 }}>
-                      <Text style={typography.body}>{listing.public_name || listing.private_name || 'Airbnb listing'}</Text>
+                      <Text style={typography.body}>{listing.public_name || listing.private_name || c.listingFallback}</Text>
                       {listing.address?.city && <Text style={typography.caption}>{listing.address.city}</Text>}
                     </View>
                   </View>
@@ -167,11 +146,7 @@ function HospitableConnectInner() {
             style={styles.infoRow}
           >
             <Ionicons name="information-circle-outline" size={16} color={colors.inkFaint} />
-            <Text style={[typography.bodyMuted, { flex: 1 }]}>
-              Imported properties show an "Airbnb" tag on the Properties tab. Their name, address, and room counts
-              stay in sync with Airbnb automatically — edit those on Airbnb, not here. Each new Airbnb reservation
-              also gets its own check-in link automatically, ready to send to the guest from the property page.
-            </Text>
+            <Text style={[typography.bodyMuted, { flex: 1 }]}>{c.footer}</Text>
           </AnimatedPressable>
         </Reveal>
       </ScrollView>
@@ -181,16 +156,15 @@ function HospitableConnectInner() {
 
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
-  stepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  stepBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.successBg,
-    alignItems: 'center',
-    justifyContent: 'center',
+  oneWay: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'flex-start',
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.warningBg,
+    borderRadius: radius.md,
   },
-  stepBadgeText: { color: colors.primary, fontWeight: '700', fontSize: 12 },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',

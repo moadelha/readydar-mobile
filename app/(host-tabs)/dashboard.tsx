@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Linking, Modal, Switch } from 'react-native';
 import { Text } from '@/components/text';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -146,10 +146,10 @@ function checkOutTimeLabel(property?: Property | null): string | null {
 }
 
 /** "City Center · Apartment 3" — the unit number only when the property has one. */
-function locationLine(property?: Property | null, fallbackName?: string) {
+function locationLine(t: Dict, property?: Property | null, fallbackName?: string) {
   const city = property?.city?.name ?? '';
   const unit = property?.apartmentNumber?.trim();
-  return [city || fallbackName, unit].filter(Boolean).join(' · ');
+  return [city || fallbackName, unit ? t.dashboardHost.unitShort(unit) : null].filter(Boolean).join(' · ');
 }
 
 export default function HostDashboardScreen() {
@@ -181,6 +181,9 @@ export default function HostDashboardScreen() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [allFilter, setAllFilter] = useState<AllFilter>('ALL');
+  const scrollRef = useRef<ScrollView>(null);
+  /** Where the All apartments section starts, so the To clean number can take the host there. */
+  const allApartmentsTop = useRef(0);
   /** The check-in whose reservation card is open, if any. */
   const [openCheckIn, setOpenCheckIn] = useState<PendingCheckIn | null>(null);
   /** The tomorrow's-checkout row whose detail card is open, if any. */
@@ -378,7 +381,7 @@ export default function HostDashboardScreen() {
       return {
         propertyId: ev.propertyId,
         propertyName: ev.propertyName,
-        location: locationLine(property, ev.propertyName),
+        location: locationLine(t, property, ev.propertyName),
         photoUrl: propertyCoverUrl(property, 160),
         event: ev,
         turnover: !!incoming,
@@ -391,6 +394,15 @@ export default function HostDashboardScreen() {
     );
   }, [tomorrowEvents, propertyById]);
 
+
+  /** Guests arriving today, for the summary at the top — one per stay, blocks excluded. */
+  const arrivalsToday = useMemo(() => {
+    const today = todayIso();
+    return new Set(
+      todayEvents.filter((ev) => ev.kind === 'GUEST_STAY' && !ev.isBlocked && ev.date.slice(0, 10) === today).map((ev) => ev.id),
+    ).size;
+  }, [todayEvents]);
+  const needsCleaningCount = useMemo(() => overview.filter((o) => o.status === 'NEEDS_CLEANING').length, [overview]);
 
   const filteredAll = useMemo(
     () => (allFilter === 'ALL' ? overview : overview.filter((o) => o.status === allFilter)),
@@ -649,6 +661,7 @@ export default function HostDashboardScreen() {
   return (
     <Screen edges={['top']}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.container}
         refreshControl={
           <RefreshControl
@@ -694,19 +707,43 @@ export default function HostDashboardScreen() {
           </Reveal>
         ) : (
           <>
+            {/* Today at a glance — the three numbers a host opens the app
+                for. Each one is a way in: the calendar, tomorrow's list, or
+                the apartments filtered to what needs cleaning. */}
             <Reveal delay={40}>
-              <View style={styles.quickActionsRow}>
-                <Pressable style={({ pressed }) => [styles.quickAction, pressed && styles.quickActionPressed]} onPress={() => router.push('/host/booking/new')}>
-                  <Ionicons name="sparkles-outline" size={18} color={colors.green700} />
-                  <Text style={styles.quickActionLabel}>{t.dashboardHost.quickRequestCleaning}</Text>
-                </Pressable>
-                {canCheckins && (
-                <Pressable style={({ pressed }) => [styles.quickAction, pressed && styles.quickActionPressed]} onPress={() => router.push('/host/checkin/new')}>
-                  <Ionicons name="key-outline" size={18} color={colors.green700} />
-                  <Text style={styles.quickActionLabel}>{t.dashboardHost.quickGuestCheckIn}</Text>
-                </Pressable>
-                )}
+              <View style={styles.todayCard}>
+                {[
+                  { key: 'in', value: arrivalsToday, label: t.dashboardHost.statArrivingToday, onPress: () => router.push('/calendar') },
+                  { key: 'out', value: tomorrowCheckouts.length, label: t.dashboardHost.statLeavingTomorrow, onPress: () => router.push('/calendar') },
+                  { key: 'clean', value: needsCleaningCount, label: t.dashboardHost.statToClean, onPress: () => {
+                    setAllFilter('NEEDS_CLEANING');
+                    scrollRef.current?.scrollTo({ y: Math.max(0, allApartmentsTop.current - spacing.md), animated: true });
+                  } },
+                ].map((s, i) => (
+                  <Pressable
+                    key={s.key}
+                    onPress={s.onPress}
+                    style={({ pressed }) => [styles.stat, i > 0 && styles.statDivider, pressed && styles.quickActionPressed]}
+                    accessibilityRole="button"
+                  >
+                    <Text style={[styles.statValue, s.key === 'clean' && s.value > 0 && { color: colors.saffronText }]}>{s.value}</Text>
+                    <Text style={styles.statLabel} numberOfLines={2}>
+                      {s.label}
+                    </Text>
+                  </Pressable>
+                ))}
               </View>
+              {canCheckins && (
+                <Pressable
+                  style={({ pressed }) => [styles.quickAction, pressed && styles.quickActionPressed]}
+                  onPress={() => router.push('/host/checkin/new')}
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="key-outline" size={18} color={colors.green700} />
+                  <Text style={[styles.quickActionLabel, { flex: 1 }]}>{t.dashboardHost.quickGuestCheckIn}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} style={rtlFlip} />
+                </Pressable>
+              )}
             </Reveal>
 
             {/* ---------------------------------------------------------- */}
@@ -723,14 +760,14 @@ export default function HostDashboardScreen() {
             </Reveal>
 
             {upcomingCheckIns.length === 0 ? (
-              <EmptyState
-                icon="key-outline"
-                message={
-                  pendingCheckIns.length > 0
-                    ? t.dashboardHost.noArrivalsSoon
-                    : t.dashboardHost.noGuestsWaiting
-                }
-              />
+              // One quiet line, not a tall empty card: on a calm day the two
+              // empty sections used to push the apartments off the screen.
+              <View style={styles.emptyLine}>
+                <Ionicons name="key-outline" size={16} color={colors.inkFaint} />
+                <Text style={styles.emptyLineText}>
+                  {pendingCheckIns.length > 0 ? t.dashboardHost.noArrivalsSoon : t.dashboardHost.noGuestsWaiting}
+                </Text>
+              </View>
             ) : (
               upcomingCheckIns.slice(0, CHECKIN_LIMIT).map((c, index) => {
                 const property = propertyById[c.propertyId];
@@ -741,7 +778,7 @@ export default function HostDashboardScreen() {
                       photoUrl={propertyCoverUrl(property, 160)}
                       topBadge={arrivalBadge(c.expectedCheckIn, t)}
                       title={guestLabel(c, t)}
-                      subtitle={`${c.property.name}${locationLine(property) ? ` · ${locationLine(property)}` : ''}`}
+                      subtitle={`${c.property.name}${locationLine(t, property) ? ` · ${locationLine(t, property)}` : ''}`}
                       meta={[
                         { icon: 'people-outline', label: t.common.guestsCount(c.guestCount || 1) },
                         ...(time ? [{ icon: 'time-outline' as const, label: t.dashboardHost.checkInAt(time) }] : []),
@@ -813,7 +850,10 @@ export default function HostDashboardScreen() {
             </Reveal>
 
             {tomorrowCheckouts.length === 0 ? (
-              <EmptyState icon="checkmark-circle-outline" message={t.dashboardHost.noCheckoutsTomorrow} />
+              <View style={styles.emptyLine}>
+                <Ionicons name="checkmark-circle-outline" size={16} color={colors.inkFaint} />
+                <Text style={styles.emptyLineText}>{t.dashboardHost.noCheckoutsTomorrow}</Text>
+              </View>
             ) : (
               tomorrowCheckouts.slice(0, TOMORROW_LIMIT).map((item, index) => (
                 <Reveal key={`${item.propertyId}-${index}`} delay={140 + index * 30}>
@@ -843,7 +883,7 @@ export default function HostDashboardScreen() {
             {/* ---------------------------------------------------------- */}
             {/* All apartments                                              */}
             {/* ---------------------------------------------------------- */}
-            <Reveal delay={160}>
+            <Reveal delay={160} onLayout={(e) => { allApartmentsTop.current = e.nativeEvent.layout.y; }}>
               <SectionHeader icon="business-outline" title={t.dashboardHost.allApartments} subtitle={t.dashboardHost.allApartmentsSubtitle} />
             </Reveal>
 
@@ -869,21 +909,22 @@ export default function HostDashboardScreen() {
                   <PropertyRow
                     photoUrl={propertyCoverUrl(item.property, 160)}
                     title={item.property.name}
-                    subtitle={locationLine(item.property)}
-                    right={
-                      <StatusTag
-                        label={t.propertyStatus[item.status]}
-                        tone={
+                    subtitle={locationLine(t, item.property)}
+                    // Under the name rather than beside it: beside, the tag
+                    // left the name a third of the row and cut it to "Riad m…".
+                    tags={[
+                      {
+                        label: t.propertyStatus[item.status],
+                        tone:
                           item.status === 'READY'
                             ? 'success'
                             : item.status === 'NEEDS_CLEANING'
                               ? 'accent'
                               : item.status === 'IN_PROGRESS'
                                 ? 'primary'
-                                : 'neutral'
-                        }
-                      />
-                    }
+                                : 'neutral',
+                      },
+                    ]}
                     onPress={() => router.push(`/host/property/${item.property.id}`)}
                   />
                 </Reveal>
@@ -1004,8 +1045,8 @@ export default function HostDashboardScreen() {
                         <Text style={typography.bodyMuted} numberOfLines={1}>
                           {openCheckIn.property.name}
                         </Text>
-                        {locationLine(property) ? (
-                          <Text style={typography.caption}>{locationLine(property)}</Text>
+                        {locationLine(t, property) ? (
+                          <Text style={typography.caption}>{locationLine(t, property)}</Text>
                         ) : null}
                       </View>
                       <Pressable onPress={() => setOpenCheckIn(null)} hitSlop={12}>
@@ -1263,25 +1304,6 @@ export default function HostDashboardScreen() {
                       </>
                     )}
 
-                    {/* Same-day turnovers are already time-critical enough
-                        that the host is watching them closely — offered
-                        here mainly for the quieter case, where nothing's
-                        arranged yet and a note/urgency flag is how that
-                        gets to whichever cleaner picks it up. */}
-                    {!openCheckout.turnover && (!followUp?.next) && (
-                      <Button
-                        label={t.dashboardHost.requestCleaningForTurnover}
-                        variant="outline"
-                        onPress={() => {
-                          const id = openCheckout.propertyId;
-                          const date = openCheckout.event.endDate.slice(0, 10);
-                          setOpenCheckout(null);
-                          router.push({ pathname: '/host/booking/new', params: { propertyId: id, date } });
-                        }}
-                        style={{ marginTop: spacing.lg }}
-                      />
-                    )}
-
                     {/* Notify the property's default cleaning contact about
                         tomorrow's checkout. Only offered when the backend has
                         a remindable stay for this property with a contact
@@ -1358,9 +1380,32 @@ function SheetFact({
 
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xl },
-  quickActionsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
+  todayCard: {
+    flexDirection: 'row',
+    marginTop: spacing.lg,
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  stat: { flex: 1, paddingVertical: 14, paddingHorizontal: 12 },
+  statDivider: { borderStartWidth: 1, borderStartColor: colors.border },
+  statValue: { ...typography.number, fontSize: 26, lineHeight: 32, fontWeight: '600', color: colors.ink },
+  statLabel: { ...typography.caption, color: colors.inkMuted, marginTop: 2 },
+  emptyLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: 12,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyLineText: { ...typography.bodyMuted, flex: 1 },
   quickAction: {
-    flex: 1,
+    marginTop: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,

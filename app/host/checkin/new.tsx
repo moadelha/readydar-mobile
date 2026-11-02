@@ -8,14 +8,12 @@ import { Screen, Card, TextField, Chip, SegmentedControl } from '@/components/ui
 import { Button } from '@/components/Button';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { colors, spacing, typography } from '@/theme';
-
-function addDaysIso(days: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
+import { DateRangeField } from '@/components/date-field';
+import { addDaysIso, todayIso } from '@/lib/calendar-visuals';
+import { useLargeTitle } from '@/lib/large-title';
 
 export default function NewCheckInScreen() {
+  const largeTitle = useLargeTitle();
   const { propertyId: preselectedPropertyId } = useLocalSearchParams<{ propertyId?: string }>();
   const { session } = useAuth();
   const router = useRouter();
@@ -24,8 +22,8 @@ export default function NewCheckInScreen() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [propertyId, setPropertyId] = useState<string | null>(preselectedPropertyId ?? null);
   const [property, setProperty] = useState<Property | null>(null);
-  const [expectedCheckIn, setExpectedCheckIn] = useState(addDaysIso(0));
-  const [expectedCheckOut, setExpectedCheckOut] = useState(addDaysIso(1));
+  const [expectedCheckIn, setExpectedCheckIn] = useState(todayIso());
+  const [expectedCheckOut, setExpectedCheckOut] = useState(addDaysIso(todayIso(), 1));
   const [guestNameHint, setGuestNameHint] = useState('');
   const [guestCount, setGuestCount] = useState('1');
   const [nightlyRate, setNightlyRate] = useState('');
@@ -113,8 +111,8 @@ export default function NewCheckInScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: t.checkinNew.headerTitle, headerBackTitle: t.common.back }} />
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <Stack.Screen options={{ headerShown: true, title: largeTitle.headerTitle(created ? t.checkinNew.readyTitle : t.checkinNew.headerTitle), headerBackTitle: t.common.back }} />
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" {...largeTitle.scrollProps}>
         {created ? (
           <>
             <Text style={typography.h1}>{t.checkinNew.readyTitle}</Text>
@@ -153,14 +151,16 @@ export default function NewCheckInScreen() {
             )}
 
             <View style={{ marginTop: spacing.lg }}>
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}>
-                  <TextField label={t.checkinNew.checkInDate} value={expectedCheckIn} onChangeText={setExpectedCheckIn} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <TextField label={t.checkinNew.checkOutDate} value={expectedCheckOut} onChangeText={setExpectedCheckOut} />
-                </View>
-              </View>
+              <DateRangeField
+                startLabel={t.checkinNew.checkInDate}
+                endLabel={t.checkinNew.checkOutDate}
+                start={expectedCheckIn}
+                end={expectedCheckOut}
+                onChange={(start, end) => {
+                  setExpectedCheckIn(start);
+                  setExpectedCheckOut(end);
+                }}
+              />
               <TextField
                 label={t.checkinNew.guestName}
                 value={guestNameHint}
@@ -212,7 +212,6 @@ const styles = StyleSheet.create({
   sectionLabel: { ...typography.h3, marginTop: spacing.lg, marginBottom: spacing.sm },
   fieldLabel: { ...typography.bodyMuted, fontWeight: '600', marginBottom: spacing.xs, marginTop: spacing.sm },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  row: { flexDirection: 'row', gap: spacing.sm },
   errorBox: { backgroundColor: colors.dangerBg, borderRadius: 10, padding: spacing.sm, marginTop: spacing.md },
   errorText: { color: colors.danger, fontSize: 13 },
 });

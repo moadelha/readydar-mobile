@@ -102,13 +102,19 @@ export function Reveal({
   children,
   delay = 0,
   style,
+  onLayout,
 }: {
   children: React.ReactNode;
   delay?: number;
   style?: any;
+  onLayout?: React.ComponentProps<typeof Animated.View>['onLayout'];
 }) {
   const entrance = useEntrance(delay);
-  return <Animated.View style={[entrance, style]}>{children}</Animated.View>;
+  return (
+    <Animated.View style={[entrance, style]} onLayout={onLayout}>
+      {children}
+    </Animated.View>
+  );
 }
 
 /**

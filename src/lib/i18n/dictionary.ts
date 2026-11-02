@@ -28,6 +28,12 @@ export interface Dict {
     error: string;
     profile: string;
     back: string;
+    date: string;
+    done: string;
+    previousMonth: string;
+    nextMonth: string;
+    /** Range picker prompt after the check-in day is tapped. */
+    pickCheckOut: string;
     /** "1 guest" / "3 guests" — simple two-way plural, same convention the web dictionary uses (no Arabic dual/plural grammar). */
     guestsCount: (n: number) => string;
   };
@@ -128,6 +134,9 @@ export interface Dict {
     back: string;
   };
   more: {
+    sectionOperations: string;
+    sectionGuests: string;
+    sectionAccount: string;
     title: string;
     subtitle: string;
     guests: string;
@@ -447,7 +456,12 @@ export interface Dict {
     CANCELLED: string;
   };
   dashboardHost: {
+    statArrivingToday: string;
+    statLeavingTomorrow: string;
+    statToClean: string;
     greeting: (name: string) => string;
+    /** The apartment/unit number on a location line — "Apt 13". */
+    unitShort: (unit: string) => string;
     greetingFallback: string;
     subtitle: string;
     emptyTitle: string;
@@ -543,6 +557,8 @@ export interface Dict {
     EXPIRED: string;
   };
   calendarHost: {
+    /** Caption under a property's two-week strip in the Listings view. */
+    nextTwoWeeks: (bookedNights: number) => string;
     title: string;
     allProperties: string;
     viewListings: string;
@@ -604,6 +620,17 @@ export interface Dict {
     ratePerNight: (rate: number, currency: string) => string;
   };
   propertyDetail: {
+    addCoverPhoto: string;
+    changeCoverPhoto: string;
+    uploadingPhoto: string;
+    addPhoto: string;
+    doorPhotosEmpty: string;
+    doorPhotosHint: string;
+    deleteDoorPhotoTitle: string;
+    deleteDoorPhotoMessage: string;
+    deleteDoorPhotoConfirm: string;
+    errorPhotoAccess: string;
+    errorUploadPhoto: string;
     headerBack: string;
     errorLoad: string;
     errorSetStatus: string;
@@ -682,7 +709,6 @@ export interface Dict {
     emptyMessage: string;
     actionLabel: string;
     urgent: string;
-    at: string;
   };
   guestsList: {
     headerBack: string;
@@ -704,6 +730,28 @@ export interface Dict {
     checkInLinkDeletedToast: string;
     deleteCheckInMessage: (label: string, propertyName: string) => string;
     viewPropertyLink: string;
+  };
+  connectAirbnb: {
+    title: string;
+    intro: string;
+    oneWayNote: string;
+    step1Title: string;
+    step1Body: string;
+    connectButton: string;
+    opening: string;
+    step2Title: string;
+    step2Body: string;
+    syncNow: string;
+    syncing: string;
+    foundOnAirbnb: (n: number) => string;
+    hide: string;
+    noListings: string;
+    listingFallback: string;
+    footer: string;
+    synced: (properties: number, stays: number, blocks: number) => string;
+    upToDate: string;
+    errorConnect: string;
+    errorSync: string;
   };
   notifications: {
     checkinTitle: (guest: string) => string;
@@ -740,6 +788,11 @@ export const en: Dict = {
     profile: 'Profile',
     back: 'Back',
     guestsCount: (n) => `${n} guest${n === 1 ? '' : 's'}`,
+    date: 'Date',
+    done: 'Done',
+    previousMonth: 'Previous month',
+    nextMonth: 'Next month',
+    pickCheckOut: 'Now tap the check-out day',
   },
   days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   relativeDate: {
@@ -828,6 +881,9 @@ export const en: Dict = {
     back: 'Go back',
   },
   more: {
+    sectionOperations: 'Operations',
+    sectionGuests: 'Guests',
+    sectionAccount: 'Account',
     title: 'More',
     subtitle: 'Everything else, in one place.',
     guests: 'Guests',
@@ -839,7 +895,7 @@ export const en: Dict = {
     cleaningContacts: 'Cleaning contacts',
     cleaningContactsDesc: 'Your staff and enrolled cleaning company accounts',
     connectAirbnb: 'Connect Airbnb',
-    connectAirbnbDesc: 'Import your listings and reservations via Hospitable',
+    connectAirbnbDesc: 'Import your listings and reservations automatically',
     contract: 'Rental contract',
     contractDesc: 'Require guests to sign a contract during online check-in',
     profile: 'Profile',
@@ -987,8 +1043,8 @@ export const en: Dict = {
     shareOther: 'Share another way',
     done: 'Done',
     property: 'Property',
-    checkInDate: 'Check-in (YYYY-MM-DD)',
-    checkOutDate: 'Check-out (YYYY-MM-DD)',
+    checkInDate: 'Check-in',
+    checkOutDate: 'Check-out',
     guestName: 'Guest name (optional)',
     guestNamePlaceholder: 'e.g. Ahmed B.',
     guestCount: 'Number of guests',
@@ -1057,7 +1113,7 @@ export const en: Dict = {
     amountPlaceholder: 'e.g. 150',
     categoryLabel: 'Category',
     dateLabel: 'Date',
-    dateFormatLabel: 'Date (YYYY-MM-DD)',
+    dateFormatLabel: 'Another date',
     dateToday: 'Today',
     dateYesterday: 'Yesterday',
     descriptionLabel: 'Description (optional)',
@@ -1143,11 +1199,15 @@ export const en: Dict = {
     CANCELLED: 'Cancelled',
   },
   dashboardHost: {
+    statArrivingToday: 'Arriving today',
+    statLeavingTomorrow: 'Leaving tomorrow',
+    statToClean: 'To clean',
+    unitShort: (unit) => `Apt ${unit}`,
     greeting: (name) => `Hi ${name}`,
     greetingFallback: 'Your properties',
     subtitle: "Here's what's happening across your properties.",
     emptyTitle: 'Add your first property',
-    emptySubtitle: "Once it's added you can request cleanings and track turnovers here.",
+    emptySubtitle: "Once it's added you can send check-in links and track turnovers here.",
     addProperty: 'Add property',
     quickRequestCleaning: 'Request cleaning',
     quickGuestCheckIn: 'Guest check-in',
@@ -1237,6 +1297,7 @@ export const en: Dict = {
     EXPIRED: 'Check-in link expired',
   },
   calendarHost: {
+    nextTwoWeeks: (n) => (n === 0 ? 'Next 2 weeks · nothing booked' : `Next 2 weeks · ${n} night${n === 1 ? '' : 's'} booked`),
     title: 'Calendar',
     allProperties: 'All properties',
     viewListings: 'Listings',
@@ -1298,6 +1359,17 @@ export const en: Dict = {
     ratePerNight: (rate, currency) => `${rate} ${currency} / night`,
   },
   propertyDetail: {
+    addCoverPhoto: 'Add a cover photo',
+    changeCoverPhoto: 'Change photo',
+    uploadingPhoto: 'Uploading…',
+    addPhoto: 'Add',
+    doorPhotosEmpty: 'Photos of the door or entrance. Guests get them with their access details.',
+    doorPhotosHint: 'Press and hold a photo to remove it.',
+    deleteDoorPhotoTitle: 'Remove this photo?',
+    deleteDoorPhotoMessage: 'Guests will no longer get it with their access details.',
+    deleteDoorPhotoConfirm: 'Remove',
+    errorPhotoAccess: 'ReadyDar needs access to your photos. You can allow it in your phone settings.',
+    errorUploadPhoto: 'Could not save the photo. Please try again.',
     headerBack: 'Back',
     errorLoad: 'Could not load this property.',
     errorSetStatus: 'Could not change the status.',
@@ -1363,7 +1435,7 @@ export const en: Dict = {
     houseRulesTitle: 'House rules',
     doorPhotosTitle: 'Door / access photos',
     automationSettings: 'Automation settings',
-    icalNotice: 'iCal sync and general property photos are managed from the ReadyDar web dashboard for now.',
+    icalNotice: 'Calendar (iCal) links are managed from the ReadyDar website for now.',
     checkInShareMessage: (propertyName, arriving, url) => `Hi! Please complete your online check-in${propertyName ? ` for ${propertyName}` : ''}, arriving ${arriving}: ${url}`,
   },
   bookingsList: {
@@ -1375,7 +1447,6 @@ export const en: Dict = {
     emptyMessage: 'No bookings yet.',
     actionLabel: 'Request a cleaning or service',
     urgent: 'Urgent',
-    at: 'at',
   },
   guestsList: {
     headerBack: 'Back',
@@ -1397,6 +1468,35 @@ export const en: Dict = {
     checkInLinkDeletedToast: 'Check-in link deleted',
     deleteCheckInMessage: (label, propertyName) => `The link for ${label} at ${propertyName} will stop working and can't be recovered. The guest hasn't submitted anything yet, so no guest details are lost.`,
     viewPropertyLink: 'View ID photo, contract & PDF in property →',
+  },
+  connectAirbnb: {
+    title: 'Connect Airbnb',
+    intro: 'Link your Airbnb account once and your listings and reservations come in on their own, instead of being typed in by hand.',
+    oneWayNote: 'This goes one way for now, from Airbnb to ReadyDar. Dates you block or stays you add in ReadyDar are not sent to Airbnb.',
+    step1Title: 'Connect your Airbnb account',
+    step1Body: 'Opens a secure partner page in your browser. Once you have approved access there, come back here and tap "Sync now".',
+    connectButton: 'Connect Airbnb account',
+    opening: 'Opening…',
+    step2Title: 'Import your listings',
+    step2Body: 'Brings in each connected Airbnb listing as a property, with its upcoming reservations and the dates you blocked on Airbnb. New bookings also arrive by themselves; tap this when you want them now.',
+    syncNow: 'Sync now',
+    syncing: 'Syncing…',
+    foundOnAirbnb: (n) => `Found on Airbnb (${n})`,
+    hide: 'Hide',
+    noListings: 'No listings yet. Connect your Airbnb account above first.',
+    listingFallback: 'Airbnb listing',
+    footer: 'Imported properties carry an "Airbnb" tag on the Properties tab. Their name, address and room counts follow Airbnb, so change those on Airbnb. Each new Airbnb reservation gets its own check-in link, ready to send from the property page.',
+    synced: (properties, stays, blocks) => {
+      const parts = [
+        `${properties} new propert${properties === 1 ? 'y' : 'ies'}`,
+        `${stays} new stay${stays === 1 ? '' : 's'}`,
+      ];
+      if (blocks > 0) parts.push(`${blocks} blocked date range${blocks === 1 ? '' : 's'}`);
+      return `Airbnb synced: ${parts.join(', ')}`;
+    },
+    upToDate: 'Everything is already up to date.',
+    errorConnect: 'Could not start the Airbnb connection.',
+    errorSync: 'Could not sync with Airbnb. Connect your Airbnb account first.',
   },
   notifications: {
     checkinTitle: (guest) => `${guest} completed their check-in`,
@@ -1433,6 +1533,11 @@ export const fr: Dict = {
     profile: 'Profil',
     back: 'Retour',
     guestsCount: (n) => `${n} invité${n === 1 ? '' : 's'}`,
+    date: 'Date',
+    done: 'Terminé',
+    previousMonth: 'Mois précédent',
+    nextMonth: 'Mois suivant',
+    pickCheckOut: 'Touchez maintenant le jour du départ',
   },
   days: ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'],
   relativeDate: {
@@ -1521,6 +1626,9 @@ export const fr: Dict = {
     back: 'Retour',
   },
   more: {
+    sectionOperations: 'Opérations',
+    sectionGuests: 'Voyageurs',
+    sectionAccount: 'Compte',
     title: 'Plus',
     subtitle: 'Tout le reste, au même endroit.',
     guests: 'Voyageurs',
@@ -1532,7 +1640,7 @@ export const fr: Dict = {
     cleaningContacts: 'Contacts ménage',
     cleaningContactsDesc: "Votre équipe et les comptes des sociétés de ménage inscrites",
     connectAirbnb: 'Connecter Airbnb',
-    connectAirbnbDesc: 'Importer vos annonces et réservations via Hospitable',
+    connectAirbnbDesc: 'Importer automatiquement vos annonces et réservations',
     contract: 'Contrat de location',
     contractDesc: "Faire signer un contrat aux voyageurs lors de l'enregistrement en ligne",
     profile: 'Profil',
@@ -1680,8 +1788,8 @@ export const fr: Dict = {
     shareOther: 'Partager autrement',
     done: 'Terminé',
     property: 'Propriété',
-    checkInDate: 'Arrivée (AAAA-MM-JJ)',
-    checkOutDate: 'Départ (AAAA-MM-JJ)',
+    checkInDate: 'Arrivée',
+    checkOutDate: 'Départ',
     guestName: 'Nom du client (optionnel)',
     guestNamePlaceholder: 'ex. Ahmed B.',
     guestCount: 'Nombre de personnes',
@@ -1750,7 +1858,7 @@ export const fr: Dict = {
     amountPlaceholder: 'ex. 150',
     categoryLabel: 'Catégorie',
     dateLabel: 'Date',
-    dateFormatLabel: 'Date (AAAA-MM-JJ)',
+    dateFormatLabel: 'Autre date',
     dateToday: "Aujourd'hui",
     dateYesterday: 'Hier',
     descriptionLabel: 'Description (optionnel)',
@@ -1837,11 +1945,15 @@ export const fr: Dict = {
     CANCELLED: 'Annulé',
   },
   dashboardHost: {
+    statArrivingToday: "Arrivées aujourd'hui",
+    statLeavingTomorrow: 'Départs demain',
+    statToClean: 'À nettoyer',
+    unitShort: (unit) => `Appt ${unit}`,
     greeting: (name) => `Bonjour ${name}`,
     greetingFallback: 'Vos logements',
     subtitle: 'Voici ce qui se passe sur vos logements.',
     emptyTitle: 'Ajoutez votre premier logement',
-    emptySubtitle: 'Une fois ajouté, vous pourrez demander des ménages et suivre les rotations ici.',
+    emptySubtitle: 'Une fois ajouté, vous pourrez envoyer des liens de check-in et suivre les rotations ici.',
     addProperty: 'Ajouter un logement',
     quickRequestCleaning: 'Demander un ménage',
     quickGuestCheckIn: 'Check-in voyageur',
@@ -1931,6 +2043,7 @@ export const fr: Dict = {
     EXPIRED: 'Lien de check-in expiré',
   },
   calendarHost: {
+    nextTwoWeeks: (n) => (n === 0 ? '2 prochaines semaines · rien de réservé' : `2 prochaines semaines · ${n} nuit${n === 1 ? '' : 's'} réservée${n === 1 ? '' : 's'}`),
     title: 'Calendrier',
     allProperties: 'Tous les logements',
     viewListings: 'Logements',
@@ -1992,6 +2105,17 @@ export const fr: Dict = {
     ratePerNight: (rate, currency) => `${rate} ${currency} / nuit`,
   },
   propertyDetail: {
+    addCoverPhoto: 'Ajouter une photo de couverture',
+    changeCoverPhoto: 'Changer la photo',
+    uploadingPhoto: 'Envoi…',
+    addPhoto: 'Ajouter',
+    doorPhotosEmpty: "Photos de la porte ou de l'entrée. Les voyageurs les reçoivent avec leurs informations d'accès.",
+    doorPhotosHint: 'Appuyez longuement sur une photo pour la retirer.',
+    deleteDoorPhotoTitle: 'Retirer cette photo ?',
+    deleteDoorPhotoMessage: "Les voyageurs ne la recevront plus avec leurs informations d'accès.",
+    deleteDoorPhotoConfirm: 'Retirer',
+    errorPhotoAccess: "ReadyDar a besoin d'accéder à vos photos. Vous pouvez l'autoriser dans les réglages du téléphone.",
+    errorUploadPhoto: "Impossible d'enregistrer la photo. Réessayez.",
     headerBack: 'Retour',
     errorLoad: 'Impossible de charger ce logement.',
     errorSetStatus: 'Impossible de modifier le statut.',
@@ -2057,7 +2181,7 @@ export const fr: Dict = {
     houseRulesTitle: 'Règlement intérieur',
     doorPhotosTitle: "Photos d'accès / porte",
     automationSettings: "Paramètres d'automatisation",
-    icalNotice: 'La synchronisation iCal et les photos générales du logement sont gérées depuis le tableau de bord web ReadyDar pour le moment.',
+    icalNotice: 'Les liens de calendrier (iCal) se gèrent depuis le site ReadyDar pour le moment.',
     checkInShareMessage: (propertyName, arriving, url) => `Bonjour ! Merci de compléter votre check-in en ligne${propertyName ? ` pour ${propertyName}` : ''}, arrivée ${arriving} : ${url}`,
   },
   bookingsList: {
@@ -2069,7 +2193,6 @@ export const fr: Dict = {
     emptyMessage: 'Aucune réservation pour le moment.',
     actionLabel: 'Demander un ménage ou un service',
     urgent: 'Urgent',
-    at: 'à',
   },
   guestsList: {
     headerBack: 'Retour',
@@ -2091,6 +2214,35 @@ export const fr: Dict = {
     checkInLinkDeletedToast: 'Lien de check-in supprimé',
     deleteCheckInMessage: (label, propertyName) => `Le lien de ${label} à ${propertyName} cessera de fonctionner et ne pourra pas être récupéré. Le voyageur n'a encore rien soumis, aucune donnée n'est donc perdue.`,
     viewPropertyLink: "Voir la pièce d'identité, le contrat et le PDF dans le logement →",
+  },
+  connectAirbnb: {
+    title: 'Connecter Airbnb',
+    intro: 'Reliez votre compte Airbnb une fois : vos annonces et réservations arrivent toutes seules, sans saisie à la main.',
+    oneWayNote: "Pour l'instant, cela va dans un seul sens, d'Airbnb vers ReadyDar. Les dates bloquées ou les séjours ajoutés dans ReadyDar ne sont pas envoyés à Airbnb.",
+    step1Title: 'Connectez votre compte Airbnb',
+    step1Body: "Ouvre une page partenaire sécurisée dans votre navigateur. Une fois l'accès autorisé, revenez ici et touchez « Synchroniser ».",
+    connectButton: 'Connecter le compte Airbnb',
+    opening: 'Ouverture…',
+    step2Title: 'Importez vos annonces',
+    step2Body: "Importe chaque annonce Airbnb connectée comme propriété, avec ses réservations à venir et les dates bloquées sur Airbnb. Les nouvelles réservations arrivent aussi d'elles-mêmes ; touchez ici pour les avoir tout de suite.",
+    syncNow: 'Synchroniser',
+    syncing: 'Synchronisation…',
+    foundOnAirbnb: (n) => `Trouvé sur Airbnb (${n})`,
+    hide: 'Masquer',
+    noListings: "Aucune annonce pour l'instant. Connectez d'abord votre compte Airbnb ci-dessus.",
+    listingFallback: 'Annonce Airbnb',
+    footer: "Les propriétés importées portent l'étiquette « Airbnb » dans l'onglet Propriétés. Leur nom, adresse et nombre de pièces suivent Airbnb : modifiez-les sur Airbnb. Chaque nouvelle réservation Airbnb reçoit son lien de check-in, prêt à envoyer depuis la page de la propriété.",
+    synced: (properties, stays, blocks) => {
+      const parts = [
+        `${properties} nouvelle${properties === 1 ? '' : 's'} propriété${properties === 1 ? '' : 's'}`,
+        `${stays} nouveau${stays === 1 ? '' : 'x'} séjour${stays === 1 ? '' : 's'}`,
+      ];
+      if (blocks > 0) parts.push(`${blocks} période${blocks === 1 ? '' : 's'} bloquée${blocks === 1 ? '' : 's'}`);
+      return `Airbnb synchronisé : ${parts.join(', ')}`;
+    },
+    upToDate: 'Tout est déjà à jour.',
+    errorConnect: 'Impossible de lancer la connexion Airbnb.',
+    errorSync: "Impossible de synchroniser avec Airbnb. Connectez d'abord votre compte Airbnb.",
   },
   notifications: {
     checkinTitle: (guest) => `${guest} a terminé son check-in`,
@@ -2143,6 +2295,11 @@ export const ar: Dict = {
     profile: 'الملف الشخصي',
     back: 'رجوع',
     guestsCount: (n) => arPlural(n, { one: 'ضيف واحد', two: 'ضيفان', few: 'ضيوف', many: 'ضيفًا' }),
+    date: 'التاريخ',
+    done: 'تم',
+    previousMonth: 'الشهر السابق',
+    nextMonth: 'الشهر التالي',
+    pickCheckOut: 'اختر الآن يوم المغادرة',
   },
   // Arabic weekday names carry the definite article — bare «أحد» isn't the
   // day at all, it's the word for "someone", and the rest read like loose
@@ -2236,6 +2393,9 @@ export const ar: Dict = {
     back: 'رجوع',
   },
   more: {
+    sectionOperations: 'العمليات',
+    sectionGuests: 'الضيوف',
+    sectionAccount: 'الحساب',
     title: 'المزيد',
     subtitle: 'كل ما تبقّى، في مكان واحد.',
     guests: 'الضيوف',
@@ -2247,7 +2407,7 @@ export const ar: Dict = {
     cleaningContacts: 'جهات التنظيف',
     cleaningContactsDesc: 'فريقك وحسابات شركات التنظيف المسجّلة',
     connectAirbnb: 'ربط Airbnb',
-    connectAirbnbDesc: 'استيراد إعلاناتك وحجوزاتك عبر Hospitable',
+    connectAirbnbDesc: 'استيراد إعلاناتك وحجوزاتك تلقائيًا',
     contract: 'عقد الإيجار',
     contractDesc: 'إلزام الضيوف بتوقيع عقد أثناء تسجيل الوصول عبر الإنترنت',
     profile: 'الملف الشخصي',
@@ -2394,8 +2554,8 @@ export const ar: Dict = {
     shareOther: 'مشاركة بطريقة أخرى',
     done: 'تم',
     property: 'العقار',
-    checkInDate: 'تاريخ الوصول (سنة-شهر-يوم)',
-    checkOutDate: 'تاريخ المغادرة (سنة-شهر-يوم)',
+    checkInDate: 'تاريخ الوصول',
+    checkOutDate: 'تاريخ المغادرة',
     guestName: 'اسم الضيف (اختياري)',
     guestNamePlaceholder: 'مثال: أحمد ب.',
     guestCount: 'عدد الضيوف',
@@ -2463,7 +2623,7 @@ export const ar: Dict = {
     amountPlaceholder: 'مثال: 150',
     categoryLabel: 'الفئة',
     dateLabel: 'التاريخ',
-    dateFormatLabel: 'التاريخ (سنة-شهر-يوم)',
+    dateFormatLabel: 'تاريخ آخر',
     dateToday: 'اليوم',
     dateYesterday: 'الأمس',
     descriptionLabel: 'الوصف (اختياري)',
@@ -2549,11 +2709,15 @@ export const ar: Dict = {
     CANCELLED: 'ملغى',
   },
   dashboardHost: {
+    statArrivingToday: 'وصول اليوم',
+    statLeavingTomorrow: 'مغادرة غدًا',
+    statToClean: 'للتنظيف',
+    unitShort: (unit) => `شقة ${unit}`,
     greeting: (name) => `مرحبًا ${name}`,
     greetingFallback: 'عقاراتك',
     subtitle: 'إليك آخر مستجدات عقاراتك.',
     emptyTitle: 'أضف عقارك الأول',
-    emptySubtitle: 'بمجرد إضافته يمكنك طلب التنظيف ومتابعة التسليم والاستلام هنا.',
+    emptySubtitle: 'بمجرد إضافته يمكنك إرسال روابط تسجيل الوصول ومتابعة التسليم والاستلام هنا.',
     addProperty: 'إضافة عقار',
     quickRequestCleaning: 'طلب تنظيف',
     quickGuestCheckIn: 'تسجيل وصول ضيف',
@@ -2664,6 +2828,7 @@ export const ar: Dict = {
     EXPIRED: 'انتهت صلاحية رابط تسجيل الوصول',
   },
   calendarHost: {
+    nextTwoWeeks: (n) => (n === 0 ? 'الأسبوعان القادمان · لا حجوزات' : `الأسبوعان القادمان · ليالٍ محجوزة: ${n}`),
     title: 'التقويم',
     allProperties: 'جميع العقارات',
     viewListings: 'القائمة',
@@ -2725,6 +2890,17 @@ export const ar: Dict = {
     ratePerNight: (rate, currency) => `${rate} ${currency === 'MAD' ? 'درهم' : currency} / الليلة`,
   },
   propertyDetail: {
+    addCoverPhoto: 'أضف صورة غلاف',
+    changeCoverPhoto: 'تغيير الصورة',
+    uploadingPhoto: 'جارٍ الرفع…',
+    addPhoto: 'إضافة',
+    doorPhotosEmpty: 'صور الباب أو المدخل. يتلقاها الضيوف مع معلومات الدخول.',
+    doorPhotosHint: 'اضغط مطولًا على صورة لإزالتها.',
+    deleteDoorPhotoTitle: 'إزالة هذه الصورة؟',
+    deleteDoorPhotoMessage: 'لن يتلقاها الضيوف بعد الآن مع معلومات الدخول.',
+    deleteDoorPhotoConfirm: 'إزالة',
+    errorPhotoAccess: 'يحتاج ReadyDar إلى الوصول إلى صورك. يمكنك السماح بذلك من إعدادات الهاتف.',
+    errorUploadPhoto: 'تعذّر حفظ الصورة. حاول مرة أخرى.',
     headerBack: 'رجوع',
     errorLoad: 'تعذّر تحميل هذا العقار.',
     errorSetStatus: 'تعذّر تغيير الحالة.',
@@ -2790,7 +2966,7 @@ export const ar: Dict = {
     houseRulesTitle: 'قواعد المنزل',
     doorPhotosTitle: 'صور الباب / الدخول',
     automationSettings: 'إعدادات الأتمتة',
-    icalNotice: 'مزامنة iCal وصور العقار العامة تُدار حاليًا من لوحة تحكم ReadyDar على الويب.',
+    icalNotice: 'روابط التقويم (iCal) تُدار حاليًا من موقع ReadyDar على الويب.',
     checkInShareMessage: (propertyName, arriving, url) => `مرحبًا! يرجى إكمال تسجيل الوصول عبر الإنترنت${propertyName ? ` لـ ${propertyName}` : ''}، الوصول ${arriving}: ${url}`,
   },
   bookingsList: {
@@ -2802,7 +2978,6 @@ export const ar: Dict = {
     emptyMessage: 'لا توجد حجوزات بعد.',
     actionLabel: 'اطلب تنظيفًا أو خدمة',
     urgent: 'عاجل',
-    at: 'الساعة',
   },
   guestsList: {
     headerBack: 'رجوع',
@@ -2824,6 +2999,32 @@ export const ar: Dict = {
     checkInLinkDeletedToast: 'تم حذف رابط تسجيل الوصول',
     deleteCheckInMessage: (label, propertyName) => `سيتوقف رابط ${label} في ${propertyName} عن العمل ولا يمكن استعادته. لم يقدّم الضيف أي شيء بعد، لذا لن تُفقد أي بيانات.`,
     viewPropertyLink: 'عرض صورة الهوية والعقد وملف PDF في العقار ←',
+  },
+  connectAirbnb: {
+    title: 'ربط Airbnb',
+    intro: 'اربط حسابك على Airbnb مرة واحدة، فتصلك إعلاناتك وحجوزاتك تلقائيًا بدل إدخالها يدويًا.',
+    oneWayNote: 'الربط حاليًا في اتجاه واحد، من Airbnb إلى ReadyDar. التواريخ التي تحجبها أو الإقامات التي تضيفها في ReadyDar لا تُرسل إلى Airbnb.',
+    step1Title: 'اربط حسابك على Airbnb',
+    step1Body: 'تُفتح صفحة شريك آمنة في متصفحك. بعد الموافقة على الوصول هناك، عد إلى هنا واضغط «مزامنة الآن».',
+    connectButton: 'ربط حساب Airbnb',
+    opening: 'جارٍ الفتح…',
+    step2Title: 'استورد إعلاناتك',
+    step2Body: 'يستورد كل إعلان مربوط على Airbnb كعقار، مع حجوزاته القادمة والتواريخ المحجوبة على Airbnb. الحجوزات الجديدة تصل تلقائيًا أيضًا؛ اضغط هنا إن أردتها الآن.',
+    syncNow: 'مزامنة الآن',
+    syncing: 'جارٍ المزامنة…',
+    foundOnAirbnb: (n) => `على Airbnb (${n})`,
+    hide: 'إخفاء',
+    noListings: 'لا توجد إعلانات بعد. اربط حسابك على Airbnb أعلاه أولًا.',
+    listingFallback: 'إعلان Airbnb',
+    footer: 'تحمل العقارات المستوردة وسم «Airbnb» في تبويب العقارات. اسمها وعنوانها وعدد غرفها تتبع Airbnb، فعدّلها هناك. كل حجز جديد على Airbnb يحصل على رابط تسجيل وصول خاص به، جاهز للإرسال من صفحة العقار.',
+    synced: (properties, stays, blocks) => {
+      const parts = [`عقارات جديدة: ${properties}`, `إقامات جديدة: ${stays}`];
+      if (blocks > 0) parts.push(`فترات محجوبة: ${blocks}`);
+      return `تمت مزامنة Airbnb — ${parts.join('، ')}`;
+    },
+    upToDate: 'كل شيء محدّث بالفعل.',
+    errorConnect: 'تعذّر بدء الربط مع Airbnb.',
+    errorSync: 'تعذّرت المزامنة مع Airbnb. اربط حسابك على Airbnb أولًا.',
   },
   notifications: {
     checkinTitle: (guest) => `أكمل ${guest} تسجيل الوصول`,

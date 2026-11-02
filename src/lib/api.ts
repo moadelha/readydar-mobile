@@ -1173,6 +1173,14 @@ export const api = {
       request<Property>('/properties', { method: 'POST', body: payload, token }),
     markReady: (propertyId: string, token: string) =>
       request<Property>(`/properties/${propertyId}/mark-ready`, { method: 'POST', token }),
+    /** Sets or replaces the cover photo (manager+). */
+    uploadCoverPhoto: (propertyId: string, photo: PickedFile, token: string) =>
+      requestForm<unknown>(`/properties/${propertyId}/photo`, {}, { photo }, { token }),
+    /** Adds a door/access photo, sent to the guest with the access details (manager+). */
+    uploadDoorPhoto: (propertyId: string, photo: PickedFile, token: string) =>
+      requestForm<unknown>(`/properties/${propertyId}/door-photos`, {}, { photo }, { token }),
+    deleteDoorPhoto: (propertyId: string, photoId: string, token: string) =>
+      request<unknown>(`/properties/${propertyId}/door-photos/${photoId}`, { method: 'DELETE', token }),
     setStatus: (propertyId: string, status: string | null, token: string) =>
       request<Property>(`/properties/${propertyId}/status`, { method: 'PATCH', body: { status }, token }),
     /**

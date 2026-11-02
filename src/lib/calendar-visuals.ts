@@ -114,6 +114,12 @@ export function dateLocale(lang: 'EN' | 'FR' | 'AR') {
   return lang === 'FR' ? 'fr-FR' : lang === 'AR' ? 'ar-MA' : 'en-GB';
 }
 
+/** Monday-first weekday initials in the given locale — the Calendar tab and the date picker. */
+export function weekdayLetters(locale: string) {
+  // 1 January 2024 was a Monday.
+  return Array.from({ length: 7 }, (_, i) => new Date(2024, 0, 1 + i).toLocaleDateString(locale, { weekday: 'narrow' }));
+}
+
 /** Text colour that reads on a calendar bar of the given colour (dark on the light saffron/yellow bars). */
 export function barTextColor(background: string) {
   return background === colors.accent || background === colors.channel.expedia ? colors.green950 : colors.onPrimary;

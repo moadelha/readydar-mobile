@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, StyleSheet, Pressable, Modal, FlatList, SafeAreaView } from 'react-native';
+import { View, StyleSheet, Pressable, Modal, FlatList, SafeAreaView, ScrollView } from 'react-native';
 import { Text, TextInput } from '@/components/text';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -69,8 +69,17 @@ export function PropertySelect({
   }, [extraOptions, query]);
 
   if (useChips) {
+    // One row that scrolls sideways, edge to edge, rather than chips that
+    // wrap: five properties wrapped to three rows and pushed the calendar
+    // itself half a screen down.
     return (
-      <View style={styles.chipRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.chipScroll}
+        contentContainerStyle={styles.chipRow}
+        keyboardShouldPersistTaps="handled"
+      >
         {extraOptions.map((opt) => (
           <Chip key={opt.value} label={opt.label} active={value === opt.value} onPress={() => onChange(opt.value === '__NONE__' ? null : opt.value)} />
         ))}
@@ -83,7 +92,7 @@ export function PropertySelect({
             onPress={() => onChange(p.id)}
           />
         ))}
-      </View>
+      </ScrollView>
     );
   }
 
@@ -168,7 +177,10 @@ export function PropertySelect({
 }
 
 const styles = StyleSheet.create({
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  // Both callers sit inside the screen's 24pt side padding; bleed past it so
+  // chips scroll in from the edge instead of being clipped mid-screen.
+  chipScroll: { marginHorizontal: -spacing.lg, flexGrow: 0 },
+  chipRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg },
   fieldLabel: { ...typography.bodyMuted, fontWeight: '600', marginBottom: spacing.xs },
   field: {
     flexDirection: 'row',
