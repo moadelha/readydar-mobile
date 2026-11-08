@@ -50,6 +50,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { Dict } from '@/lib/i18n/dictionary';
 import { rtlFlip } from '@/lib/rtl';
+import { checkInCopyMessage } from '@/lib/checkin-message';
 
 type CalendarView = 'LIST' | 'MONTH';
 
@@ -459,7 +460,9 @@ export default function CalendarScreen() {
         session.accessToken,
         parsedGuests() ?? undefined,
       );
-      await Clipboard.setStringAsync(resolveCheckInUrl(checkIn.token));
+      await Clipboard.setStringAsync(
+        checkInCopyMessage(t, lang, { propertyName: event.propertyName, checkIn: event.date }, resolveCheckInUrl(checkIn.token)),
+      );
       toast.show(event.isBlocked ? t.calendarHost.bookingCreatedLinkCopied : t.calendarHost.checkInLinkCreatedCopied, 'success');
       // Reflect it on the open sheet straight away rather than making the
       // host close and reopen to see the link appear.
@@ -532,7 +535,9 @@ export default function CalendarScreen() {
 
   async function handleCopyCheckIn(event: CalendarEvent) {
     if (!event.checkInToken) return;
-    await Clipboard.setStringAsync(resolveCheckInUrl(event.checkInToken));
+    await Clipboard.setStringAsync(
+      checkInCopyMessage(t, lang, { propertyName: event.propertyName, checkIn: event.date }, resolveCheckInUrl(event.checkInToken)),
+    );
     setCopiedEventId(event.id);
     toast.show(t.calendarHost.checkInLinkCopied);
     setTimeout(() => setCopiedEventId((id) => (id === event.id ? null : id)), 2000);
@@ -780,7 +785,7 @@ export default function CalendarScreen() {
       {/* Day overflow — Month view */}
       <Modal visible={!!selectedDay} animationType="fade" transparent onRequestClose={() => setSelectedDay(null)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setSelectedDay(null)}>
-          <Pressable style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onPress={(e) => e.stopPropagation()}>
+          <View style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onStartShouldSetResponder={() => true}>
             <Text style={typography.h3}>
               {selectedDay && parseDateOnly(selectedDay).toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' })}
             </Text>
@@ -811,14 +816,14 @@ export default function CalendarScreen() {
                 </Pressable>
               ))}
             </ScrollView>
-          </Pressable>
+          </View>
         </Pressable>
       </Modal>
 
       {/* Event detail */}
       <Modal visible={!!selectedEvent} animationType="fade" transparent onRequestClose={() => setSelectedEvent(null)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setSelectedEvent(null)}>
-          <Pressable style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onPress={(e) => e.stopPropagation()}>
+          <View style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onStartShouldSetResponder={() => true}>
             {selectedEvent && (
               <>
                 <View style={styles.sheetHeader}>
@@ -967,7 +972,7 @@ export default function CalendarScreen() {
                 />
               </>
             )}
-          </Pressable>
+          </View>
         </Pressable>
       </Modal>
 

@@ -15,6 +15,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { Dict } from '@/lib/i18n/dictionary';
 import { rtlFlip } from '@/lib/rtl';
+import { checkInCopyMessage } from '@/lib/checkin-message';
 
 /**
  * The three sections this screen is built around.
@@ -73,7 +74,7 @@ export default function GuestsScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const toast = useToast();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const SECTIONS = useMemo(() => getSections(t), [t]);
   const [checkIns, setCheckIns] = useState<AllCheckIn[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -156,7 +157,9 @@ export default function GuestsScreen() {
 
   async function handleCopyLink(item: AllCheckIn) {
     const url = resolveCheckInUrl(item.token);
-    await Clipboard.setStringAsync(url);
+    await Clipboard.setStringAsync(
+      checkInCopyMessage(t, lang, { propertyName: item.property.name, checkIn: item.expectedCheckIn }, url),
+    );
     setCopiedId(item.id);
     toast.show(t.guestsList.checkInLinkCopiedToast);
     setTimeout(() => setCopiedId((id) => (id === item.id ? null : id)), 2000);

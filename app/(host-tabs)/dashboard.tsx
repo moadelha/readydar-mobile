@@ -49,6 +49,7 @@ import { useLanguage } from '@/lib/i18n/language-context';
 import { Dict } from '@/lib/i18n/dictionary';
 import { useHostAccess } from '@/lib/access';
 import { rtlFlip } from '@/lib/rtl';
+import { checkInCopyMessage } from '@/lib/checkin-message';
 
 /**
  * How many rows each section shows before the rest go behind "View all".
@@ -588,7 +589,9 @@ export default function HostDashboardScreen() {
   }
 
   async function handleCopyCheckInLink(item: PendingCheckIn) {
-    await Clipboard.setStringAsync(resolveCheckInUrl(item.token));
+    await Clipboard.setStringAsync(
+      checkInCopyMessage(t, lang, { propertyName: item.property.name, checkIn: item.expectedCheckIn }, resolveCheckInUrl(item.token)),
+    );
     setCopiedId(item.id);
     toast.show(t.dashboardHost.checkInLinkCopied);
     setTimeout(() => setCopiedId((id) => (id === item.id ? null : id)), 2000);
@@ -963,7 +966,7 @@ export default function HostDashboardScreen() {
       {/* ------------------------------------------------------------- */}
       <Modal visible={notifOpen} transparent animationType="fade" onRequestClose={() => setNotifOpen(false)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setNotifOpen(false)}>
-          <Pressable style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onPress={(e) => e.stopPropagation()}>
+          <View style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onStartShouldSetResponder={() => true}>
             <View style={styles.notifHeader}>
               <Text style={typography.h2}>{t.dashboardHost.notifications}</Text>
               {unread > 0 && (
@@ -984,7 +987,7 @@ export default function HostDashboardScreen() {
                 </Text>
               </View>
             ) : (
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
                 {notifications.map((item) => {
                   const isUnread = !seenIds.includes(item.id);
                   return (
@@ -1014,7 +1017,7 @@ export default function HostDashboardScreen() {
                 })}
               </ScrollView>
             )}
-          </Pressable>
+          </View>
         </Pressable>
       </Modal>
 
@@ -1028,14 +1031,14 @@ export default function HostDashboardScreen() {
         onRequestClose={() => setOpenCheckIn(null)}
       >
         <Pressable style={styles.sheetBackdrop} onPress={() => setOpenCheckIn(null)}>
-          <Pressable style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onPress={(e) => e.stopPropagation()}>
+          <View style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onStartShouldSetResponder={() => true}>
             {openCheckIn &&
               (() => {
                 const property = propertyById[openCheckIn.propertyId];
                 const status = overview.find((o) => o.property.id === openCheckIn.propertyId)?.status;
                 const time = checkInTimeLabel(property);
                 return (
-                  <ScrollView showsVerticalScrollIndicator={false}>
+                  <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
                     <View style={styles.sheetHeader}>
                       <PropertyThumb photoUrl={propertyCoverUrl(property, 200)} size={64} />
                       <View style={{ flex: 1 }}>
@@ -1183,7 +1186,7 @@ export default function HostDashboardScreen() {
                   </ScrollView>
                 );
               })()}
-          </Pressable>
+          </View>
         </Pressable>
       </Modal>
 
@@ -1197,7 +1200,7 @@ export default function HostDashboardScreen() {
         onRequestClose={() => setOpenCheckout(null)}
       >
         <Pressable style={styles.sheetBackdrop} onPress={() => setOpenCheckout(null)}>
-          <Pressable style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onPress={(e) => e.stopPropagation()}>
+          <View style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onStartShouldSetResponder={() => true}>
             {openCheckout &&
               (() => {
                 const property = propertyById[openCheckout.propertyId];
@@ -1205,7 +1208,7 @@ export default function HostDashboardScreen() {
                 const inTime = checkInTimeLabel(property);
                 const { event, incomingEvent } = openCheckout;
                 return (
-                  <ScrollView showsVerticalScrollIndicator={false}>
+                  <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
                     <View style={styles.sheetHeader}>
                       <PropertyThumb photoUrl={openCheckout.photoUrl} size={64} />
                       <View style={{ flex: 1 }}>
@@ -1348,7 +1351,7 @@ export default function HostDashboardScreen() {
                   </ScrollView>
                 );
               })()}
-          </Pressable>
+          </View>
         </Pressable>
       </Modal>
     </Screen>
@@ -1498,6 +1501,9 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     maxHeight: '88%',
   },
+  // Without flexShrink a ScrollView takes its full content height, overflows
+  // the sheet's maxHeight and can't scroll: the bottom actions were cut off.
+  sheetScroll: { flexShrink: 1 },
   sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
   sheetStatusRow: {
     flexDirection: 'row',

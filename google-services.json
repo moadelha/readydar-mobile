@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "681195180297",
+    "project_id": "com-readydar-mobile",
+    "storage_bucket": "com-readydar-mobile.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:681195180297:android:eceb2540c92138d13283d8",
+        "android_client_info": {
+          "package_name": "com.darclean.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKAGszGYA9wW6FUBly04BqYjqnp2gpjoY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

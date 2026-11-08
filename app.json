@@ -15,6 +15,7 @@
     },
     "android": {
       "package": "com.darclean.mobile",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/adaptive-icon.png"

@@ -36,6 +36,8 @@ export interface Dict {
     pickCheckOut: string;
     /** "1 guest" / "3 guests" — simple two-way plural, same convention the web dictionary uses (no Arabic dual/plural grammar). */
     guestsCount: (n: number) => string;
+    /** What "Copy link" copies: a note to the guest with the check-in link last. See src/lib/checkin-message.ts. */
+    checkInCopyMessage: (propertyName: string | null, arriving: string | null, url: string) => string;
   };
   /** Sun..Sat, matching the backend's dayOfWeek convention (0 = Sunday). */
   days: [string, string, string, string, string, string, string];
@@ -793,6 +795,8 @@ export const en: Dict = {
     previousMonth: 'Previous month',
     nextMonth: 'Next month',
     pickCheckOut: 'Now tap the check-out day',
+    checkInCopyMessage: (p, a, url) =>
+      `Hello! To make your arrival smooth, please complete your online check-in${p ? ` for ${p}` : ''}${a ? ` (arriving ${a})` : ''} using the link below. It only takes a few minutes.\n\n${url}`,
   },
   days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   relativeDate: {
@@ -1241,7 +1245,7 @@ export const en: Dict = {
     errorUpdateProperty: 'Could not update the property.',
     errorTiming: 'Could not save that timing request.',
     errorGuestCount: 'Could not update the number of guests.',
-    checkInLinkCopied: 'Check-in link copied',
+    checkInLinkCopied: 'Check-in message copied — paste it to your guest',
     notifications: 'Notifications',
     markAllRead: 'Mark all read',
     notificationsEmpty: "Nothing new. You'll see it here when a guest completes their check-in.",
@@ -1314,9 +1318,9 @@ export const en: Dict = {
     errorCreateCheckIn: 'Could not create a check-in link for this reservation.',
     errorUpdateReservation: 'Could not update this reservation.',
     errorSaveRate: 'Could not save this rate.',
-    bookingCreatedLinkCopied: 'Booking created — link copied',
-    checkInLinkCreatedCopied: 'Check-in link created and copied',
-    checkInLinkCopied: 'Check-in link copied',
+    bookingCreatedLinkCopied: 'Booking created — check-in message copied',
+    checkInLinkCreatedCopied: 'Check-in link created — message copied',
+    checkInLinkCopied: 'Check-in message copied — paste it to your guest',
     bookedAtRate: (rate) => `Booked at ${rate} MAD/night`,
     markedRealBooking: 'Marked as a real booking',
     savedRate: (rate) => `Saved — ${rate} MAD/night`,
@@ -1464,7 +1468,7 @@ export const en: Dict = {
     nothingHere: 'Nothing here.',
     copyLink: 'Copy link',
     copiedExclaim: 'Copied!',
-    checkInLinkCopiedToast: 'Check-in link copied',
+    checkInLinkCopiedToast: 'Check-in message copied — paste it to your guest',
     checkInLinkDeletedToast: 'Check-in link deleted',
     deleteCheckInMessage: (label, propertyName) => `The link for ${label} at ${propertyName} will stop working and can't be recovered. The guest hasn't submitted anything yet, so no guest details are lost.`,
     viewPropertyLink: 'View ID photo, contract & PDF in property →',
@@ -1538,6 +1542,8 @@ export const fr: Dict = {
     previousMonth: 'Mois précédent',
     nextMonth: 'Mois suivant',
     pickCheckOut: 'Touchez maintenant le jour du départ',
+    checkInCopyMessage: (p, a, url) =>
+      `Bonjour ! Pour faciliter votre arrivée, merci de compléter votre check-in en ligne${p ? ` pour ${p}` : ''}${a ? ` (arrivée le ${a})` : ''} via le lien ci-dessous. Cela ne prend que quelques minutes.\n\n${url}`,
   },
   days: ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'],
   relativeDate: {
@@ -1987,7 +1993,7 @@ export const fr: Dict = {
     errorUpdateProperty: 'Impossible de mettre à jour le logement.',
     errorTiming: 'Impossible d\'enregistrer cette demande d\'horaire.',
     errorGuestCount: 'Impossible de mettre à jour le nombre de voyageurs.',
-    checkInLinkCopied: 'Lien de check-in copié',
+    checkInLinkCopied: 'Message de check-in copié — collez-le à votre voyageur',
     notifications: 'Notifications',
     markAllRead: 'Tout marquer comme lu',
     notificationsEmpty: 'Rien de nouveau. Vous le verrez ici quand un voyageur termine son check-in.',
@@ -2060,9 +2066,9 @@ export const fr: Dict = {
     errorCreateCheckIn: 'Impossible de créer un lien de check-in pour cette réservation.',
     errorUpdateReservation: 'Impossible de mettre à jour cette réservation.',
     errorSaveRate: 'Impossible d\'enregistrer ce tarif.',
-    bookingCreatedLinkCopied: 'Réservation créée — lien copié',
-    checkInLinkCreatedCopied: 'Lien de check-in créé et copié',
-    checkInLinkCopied: 'Lien de check-in copié',
+    bookingCreatedLinkCopied: 'Réservation créée — message de check-in copié',
+    checkInLinkCreatedCopied: 'Lien de check-in créé — message copié',
+    checkInLinkCopied: 'Message de check-in copié — collez-le à votre voyageur',
     bookedAtRate: (rate) => `Réservé à ${rate} MAD/nuit`,
     markedRealBooking: 'Marqué comme réservation réelle',
     savedRate: (rate) => `Enregistré — ${rate} MAD/nuit`,
@@ -2210,7 +2216,7 @@ export const fr: Dict = {
     nothingHere: 'Rien ici.',
     copyLink: 'Copier le lien',
     copiedExclaim: 'Copié !',
-    checkInLinkCopiedToast: 'Lien de check-in copié',
+    checkInLinkCopiedToast: 'Message de check-in copié — collez-le à votre voyageur',
     checkInLinkDeletedToast: 'Lien de check-in supprimé',
     deleteCheckInMessage: (label, propertyName) => `Le lien de ${label} à ${propertyName} cessera de fonctionner et ne pourra pas être récupéré. Le voyageur n'a encore rien soumis, aucune donnée n'est donc perdue.`,
     viewPropertyLink: "Voir la pièce d'identité, le contrat et le PDF dans le logement →",
@@ -2300,6 +2306,8 @@ export const ar: Dict = {
     previousMonth: 'الشهر السابق',
     nextMonth: 'الشهر التالي',
     pickCheckOut: 'اختر الآن يوم المغادرة',
+    checkInCopyMessage: (p, a, url) =>
+      `مرحبًا! لتسهيل وصولك، يرجى إكمال تسجيل الوصول عبر الإنترنت${p ? ` لـ ${p}` : ''}${a ? ` (الوصول ${a})` : ''} من خلال الرابط أدناه. لن يستغرق ذلك سوى بضع دقائق.\n\n${url}`,
   },
   // Arabic weekday names carry the definite article — bare «أحد» isn't the
   // day at all, it's the word for "someone", and the rest read like loose
@@ -2772,7 +2780,7 @@ export const ar: Dict = {
     errorUpdateProperty: 'تعذّر تحديث العقار.',
     errorTiming: 'تعذّر حفظ طلب التوقيت.',
     errorGuestCount: 'تعذّر تحديث عدد الضيوف.',
-    checkInLinkCopied: 'تم نسخ رابط تسجيل الوصول',
+    checkInLinkCopied: 'تم نسخ رسالة تسجيل الوصول — الصقها للضيف',
     notifications: 'الإشعارات',
     markAllRead: 'تعليم الكل كمقروء',
     notificationsEmpty: 'لا جديد. سيظهر هنا عند إتمام أحد الضيوف تسجيل وصوله.',
@@ -2845,9 +2853,9 @@ export const ar: Dict = {
     errorCreateCheckIn: 'تعذّر إنشاء رابط تسجيل وصول لهذا الحجز.',
     errorUpdateReservation: 'تعذّر تحديث هذا الحجز.',
     errorSaveRate: 'تعذّر حفظ هذا السعر.',
-    bookingCreatedLinkCopied: 'تم إنشاء الحجز — تم نسخ الرابط',
-    checkInLinkCreatedCopied: 'تم إنشاء رابط تسجيل الوصول ونسخه',
-    checkInLinkCopied: 'تم نسخ رابط تسجيل الوصول',
+    bookingCreatedLinkCopied: 'تم إنشاء الحجز — تم نسخ رسالة تسجيل الوصول',
+    checkInLinkCreatedCopied: 'تم إنشاء رابط تسجيل الوصول — تم نسخ الرسالة',
+    checkInLinkCopied: 'تم نسخ رسالة تسجيل الوصول — الصقها للضيف',
     bookedAtRate: (rate) => `محجوز بسعر ${rate} درهم/الليلة`,
     markedRealBooking: 'تم وضعه كحجز حقيقي',
     savedRate: (rate) => `تم الحفظ — ${rate} درهم/الليلة`,
@@ -2995,7 +3003,7 @@ export const ar: Dict = {
     nothingHere: 'لا شيء هنا.',
     copyLink: 'نسخ الرابط',
     copiedExclaim: 'تم النسخ!',
-    checkInLinkCopiedToast: 'تم نسخ رابط تسجيل الوصول',
+    checkInLinkCopiedToast: 'تم نسخ رسالة تسجيل الوصول — الصقها للضيف',
     checkInLinkDeletedToast: 'تم حذف رابط تسجيل الوصول',
     deleteCheckInMessage: (label, propertyName) => `سيتوقف رابط ${label} في ${propertyName} عن العمل ولا يمكن استعادته. لم يقدّم الضيف أي شيء بعد، لذا لن تُفقد أي بيانات.`,
     viewPropertyLink: 'عرض صورة الهوية والعقد وملف PDF في العقار ←',
