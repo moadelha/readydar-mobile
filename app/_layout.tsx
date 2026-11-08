@@ -19,6 +19,8 @@ import { IBMPlexSansArabic_600SemiBold } from '@expo-google-fonts/ibm-plex-sans-
 import { IBMPlexMono_500Medium } from '@expo-google-fonts/ibm-plex-mono/500Medium';
 import { colors, isDark } from '@/theme';
 import { ThemeProvider, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { PushNotifications } from '@/components/push-notifications';
+import { pushSupported } from '@/lib/push';
 
 // A shared, consistent push transition — was left at the native default
 // before (fine, but each platform/screen combination could feel slightly
@@ -76,6 +78,7 @@ function RootLayout() {
           <PlanConsoleProvider>
           <ToastProvider>
             <StatusBar style={isDark ? 'light' : 'dark'} />
+            {pushSupported && <PushNotifications />}
             <Stack
               screenOptions={{
                 headerShown: false,

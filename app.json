@@ -2,7 +2,7 @@
   "expo": {
     "name": "ReadyDar",
     "slug": "darclean-mobile",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "darclean",
@@ -27,7 +27,7 @@
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE"
       ],
-      "versionCode": 30
+      "versionCode": 31
     },
     "ios": {
       "supportsTablet": false,
@@ -41,6 +41,13 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#033E35"
+        }
+      ],
       [
         "expo-location",
         {

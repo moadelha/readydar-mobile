@@ -38,6 +38,11 @@ export interface Dict {
     guestsCount: (n: number) => string;
     /** What "Copy link" copies: a note to the guest with the check-in link last. See src/lib/checkin-message.ts. */
     checkInCopyMessage: (propertyName: string | null, arriving: string | null, url: string) => string;
+    /** The line shown before the system's notification permission prompt (src/lib/push.ts). */
+    pushPromptTitle: string;
+    pushPromptBody: string;
+    pushPromptAllow: string;
+    pushPromptNotNow: string;
   };
   /** Sun..Sat, matching the backend's dayOfWeek convention (0 = Sunday). */
   days: [string, string, string, string, string, string, string];
@@ -797,6 +802,10 @@ export const en: Dict = {
     pickCheckOut: 'Now tap the check-out day',
     checkInCopyMessage: (p, a, url) =>
       `Hello! To make your arrival smooth, please complete your online check-in${p ? ` for ${p}` : ''}${a ? ` (arriving ${a})` : ''} using the link below. It only takes a few minutes.\n\n${url}`,
+    pushPromptTitle: 'Stay in the loop',
+    pushPromptBody: 'Get a notification when a guest completes their online check-in or a booking arrives or is cancelled.',
+    pushPromptAllow: 'Turn on',
+    pushPromptNotNow: 'Not now',
   },
   days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   relativeDate: {
@@ -1544,6 +1553,10 @@ export const fr: Dict = {
     pickCheckOut: 'Touchez maintenant le jour du départ',
     checkInCopyMessage: (p, a, url) =>
       `Bonjour ! Pour faciliter votre arrivée, merci de compléter votre check-in en ligne${p ? ` pour ${p}` : ''}${a ? ` (arrivée le ${a})` : ''} via le lien ci-dessous. Cela ne prend que quelques minutes.\n\n${url}`,
+    pushPromptTitle: 'Restez informé',
+    pushPromptBody: "Recevez une notification quand un voyageur termine son check-in en ligne ou quand une réservation arrive ou est annulée.",
+    pushPromptAllow: 'Activer',
+    pushPromptNotNow: 'Plus tard',
   },
   days: ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'],
   relativeDate: {
@@ -2308,6 +2321,10 @@ export const ar: Dict = {
     pickCheckOut: 'اختر الآن يوم المغادرة',
     checkInCopyMessage: (p, a, url) =>
       `مرحبًا! لتسهيل وصولك، يرجى إكمال تسجيل الوصول عبر الإنترنت${p ? ` لـ ${p}` : ''}${a ? ` (الوصول ${a})` : ''} من خلال الرابط أدناه. لن يستغرق ذلك سوى بضع دقائق.\n\n${url}`,
+    pushPromptTitle: 'ابقَ على اطلاع',
+    pushPromptBody: 'استلم إشعارًا عندما يكمل ضيف تسجيل الوصول عبر الإنترنت أو عند وصول حجز أو إلغائه.',
+    pushPromptAllow: 'تفعيل',
+    pushPromptNotNow: 'ليس الآن',
   },
   // Arabic weekday names carry the definite article — bare «أحد» isn't the
   // day at all, it's the word for "someone", and the rest read like loose

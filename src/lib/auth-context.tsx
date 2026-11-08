@@ -11,6 +11,7 @@ import {
   registerForceLogoutHandler,
   registerSessionRefreshHandler,
 } from './api';
+import { unregisterPush } from './push';
 
 interface AuthContextValue {
   session: StoredSession | null;
@@ -129,6 +130,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     if (session) {
+      // Before the session goes: the API needs it to know whose phone this was.
+      await unregisterPush(session.accessToken);
       try {
         await api.auth.logout(session.refreshToken);
       } catch {

@@ -1084,6 +1084,13 @@ export const api = {
     logout: (refreshToken: string) =>
       request<{ success: boolean }>('/auth/logout', { method: 'POST', body: { refreshToken } }),
   },
+  /** Push notifications: this phone's Expo token, saved after sign-in and removed on sign-out (src/lib/push.ts). */
+  notifications: {
+    registerPushToken: (pushToken: string, platform: 'ios' | 'android', token: string) =>
+      request<{ success: boolean }>('/notifications/push-tokens', { method: 'POST', body: { token: pushToken, platform }, token }),
+    removePushToken: (pushToken: string, token: string) =>
+      request<{ success: boolean }>('/notifications/push-tokens/remove', { method: 'POST', body: { token: pushToken }, token }),
+  },
   users: {
     getMe: (token: string) => request<AuthUser>('/users/me', { token }),
     updateProfile: (payload: { email?: string; phone?: string | null }, token: string) =>
