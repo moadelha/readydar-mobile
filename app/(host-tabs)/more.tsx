@@ -24,7 +24,7 @@ export default function MoreScreen() {
   const { t } = useLanguage();
   const { isOwner, isManager, has } = useHostAccess();
   const planStrings = usePlanStrings();
-  const { canMessages } = usePlanConsole();
+  const { canMessages, businessType } = usePlanConsole();
   const ms = useMessagesStrings();
   const rs = useReviewsStrings();
 
@@ -38,8 +38,8 @@ export default function MoreScreen() {
     {
       title: t.more.sectionOperations,
       items: [
-        // On Pro the Messages tab takes Expenses' place on the tab bar — see (host-tabs)/_layout.tsx.
-        { icon: 'receipt-outline', label: t.tabsHost.expenses, description: ms.expensesDesc, path: '/expenses', visible: canMessages && has('EXPENSES') },
+        // On Pro (and for hostels) Expenses isn't a tab — see (host-tabs)/_layout.tsx.
+        { icon: 'receipt-outline', label: t.tabsHost.expenses, description: ms.expensesDesc, path: '/expenses', visible: (canMessages || businessType === 'HOSTEL') && has('EXPENSES') },
         { icon: 'swap-horizontal-outline', label: t.more.turnovers, description: t.more.turnoversDesc, path: '/host/turnovers', visible: has('CALENDAR') },
         { icon: 'call-outline', label: t.more.cleaningContacts, description: t.more.cleaningContactsDesc, path: '/host/cleaning-contacts', visible: isManager },
         { icon: 'clipboard-outline', label: t.more.bookings, description: t.more.bookingsDesc, path: '/host/bookings', visible: has('CALENDAR') },

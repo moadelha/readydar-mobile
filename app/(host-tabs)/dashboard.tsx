@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Linking, Modal, Switch } from 'react-native';
 import { Text } from '@/components/text';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, Redirect } from 'expo-router';
+import { usePlanConsole } from '@/lib/plan-console';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth, ApiError } from '@/lib/auth-context';
@@ -153,7 +154,17 @@ function locationLine(t: Dict, property?: Property | null, fallbackName?: string
   return [city || fallbackName, unit ? t.dashboardHost.unitShort(unit) : null].filter(Boolean).join(' · ');
 }
 
-export default function HostDashboardScreen() {
+/**
+ * Home. Hostel accounts start on the Desk tab instead (Home is about
+ * apartments), so sign-in and the Home tab both land there.
+ */
+export default function HostDashboardRoute() {
+  const { loaded, businessType } = usePlanConsole();
+  if (loaded && businessType === 'HOSTEL') return <Redirect href="/desk" />;
+  return <HostDashboardScreen />;
+}
+
+function HostDashboardScreen() {
   const { session } = useAuth();
   const router = useRouter();
   const toast = useToast();

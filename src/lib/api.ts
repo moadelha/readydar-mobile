@@ -485,6 +485,8 @@ export interface CleaningReport {
 export interface Property {
   id: string;
   name: string;
+  /** IANA zone the property's day is counted in (hostels' front desk). Africa/Casablanca by default. */
+  timezone?: string | null;
   type?: string;
   addressLine: string;
   latitude?: number;
@@ -783,7 +785,54 @@ export interface CalendarEvent {
   earlyCheckInRequested?: boolean;
   lateCheckOutRequested?: boolean;
   timingRequestNote?: string | null;
+  /** Hostels: the room type this stay takes (one room or dorm bed per row). */
+  roomTypeName?: string | null;
+  roomTypeId?: string | null;
+  roomTypeKind?: 'PRIVATE' | 'DORM' | null;
+  /** Hostels: the room / bed names this stay sleeps in, in order. */
+  roomUnits?: string[];
+  /** Hostels: shared by the rows (one per room/bed) of one multi-room booking — see collapseRoomGroups. */
+  groupKey?: string | null;
+  /** Set on a collapsed booking (src/lib/hostel.ts), not by the API: how many rooms/beds it holds. */
+  groupSize?: number;
+  /** Front desk: when the guest was marked arrived / gone (null = not yet). */
+  checkedInAt?: string | null;
+  checkedOutAt?: string | null;
+  /** Registered at the desk as a walk-in. */
+  walkIn?: boolean;
+  /** Channel name for bookings that came through the channel manager ("Hostelworld"…). */
+  channelName?: string | null;
 }
+
+export type HousekeepingStatus = 'CLEAN' | 'DIRTY' | 'INSPECTED' | 'OUT_OF_ORDER';
+
+/** GET /housekeeping — hostels: every room / bed, its status, and what happens in it today. */
+export interface HousekeepingBoard {
+  /** The server's today (YYYY-MM-DD), in the property's zone. */
+  today: string;
+  properties: {
+    propertyId: string;
+    propertyName: string;
+    roomTypes: { id: string; name: string; kind: 'PRIVATE' | 'DORM' }[];
+    units: HousekeepingUnit[];
+    counts: Record<HousekeepingStatus, number>;
+  }[];
+}
+
+export interface HousekeepingUnit {
+  id: string;
+  name: string;
+  roomTypeId: string;
+  status: HousekeepingStatus;
+  /** Who last changed the status, and when. */
+  by: string | null;
+  at: string | null;
+  note: string | null;
+  outOfOrderUntil: string | null;
+  today: { departure: string | null; departed: boolean; arrival: string | null; arrived: boolean; stayover: boolean };
+}
+
+export type StayRef = { reservationId: string } | { checkInId: string };
 
 export interface CreatePropertyPayload {
   type: PropertyType;
@@ -1083,6 +1132,18 @@ export const api = {
       }),
     logout: (refreshToken: string) =>
       request<{ success: boolean }>('/auth/logout', { method: 'POST', body: { refreshToken } }),
+  },
+  /** Hostels: today's rooms and beds (GET /housekeeping) and setting one's status. */
+  housekeeping: {
+    board: (token: string, propertyId?: string) =>
+      request<HousekeepingBoard>(`/housekeeping${propertyId ? `?propertyId=${propertyId}` : ''}`, { token }),
+    setStatus: (unitId: string, body: { status: HousekeepingStatus; note?: string | null; until?: string | null }, token: string) =>
+      request<unknown>(`/housekeeping/units/${unitId}`, { method: 'POST', body, token }),
+  },
+  /** Hostels' front desk: mark a stay arrived / gone (every room of the booking), or undo. */
+  frontDesk: {
+    status: (body: StayRef & { action: 'CHECK_IN' | 'CHECK_OUT' | 'UNDO_CHECK_IN' | 'UNDO_CHECK_OUT' }, token: string) =>
+      request<{ checkedInAt: string | null; checkedOutAt: string | null }>('/front-desk/status', { method: 'POST', body, token }),
   },
   /** Push notifications: this phone's Expo token, saved after sign-in and removed on sign-out (src/lib/push.ts). */
   notifications: {

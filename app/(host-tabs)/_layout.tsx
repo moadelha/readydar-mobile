@@ -5,6 +5,7 @@ import { TabIcon } from '@/components/ui';
 import { useHostAccess } from '@/lib/access';
 import { usePlanConsole } from '@/lib/plan-console';
 import { useMessagesStrings } from '@/lib/i18n/messages-strings';
+import { useHostelStrings } from '@/lib/i18n/hostel-strings';
 
 export default function HostTabsLayout() {
   const { t, lang } = useLanguage();
@@ -18,8 +19,12 @@ export default function HostTabsLayout() {
   // Pro hosts get the guest inbox as a tab. Five tabs is already the most
   // that fit, so for them Expenses moves into More (see more.tsx) and
   // Messages takes its place.
-  const { canMessages, unreadThreads } = usePlanConsole();
+  const { canMessages, unreadThreads, businessType } = usePlanConsole();
   const ms = useMessagesStrings();
+  const hs = useHostelStrings();
+  // Hostels and guesthouses run on the desk: Desk and Rooms replace Home and
+  // Properties (one property, rooms inside it). Expenses sits in More, as on Pro.
+  const isHostel = businessType === 'HOSTEL';
 
   return (
     <Tabs
@@ -32,9 +37,26 @@ export default function HostTabsLayout() {
       }}
     >
       <Tabs.Screen
+        name="desk"
+        options={{
+          title: hs.tabDesk,
+          href: isHostel && canCalendar ? undefined : null,
+          tabBarIcon: ({ focused, size }) => <TabIcon name="today-outline" focused={focused} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="housekeeping"
+        options={{
+          title: hs.tabHousekeeping,
+          href: isHostel && canCalendar ? undefined : null,
+          tabBarIcon: ({ focused, size }) => <TabIcon name="bed-outline" focused={focused} size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="dashboard"
         options={{
           title: t.tabsHost.home,
+          href: isHostel ? null : undefined,
           tabBarIcon: ({ focused, size }) => <TabIcon name="home-outline" focused={focused} size={size} />,
         }}
       />
@@ -50,7 +72,7 @@ export default function HostTabsLayout() {
         name="properties"
         options={{
           title: t.tabsHost.properties,
-          href: canCalendar ? undefined : null,
+          href: canCalendar && !isHostel ? undefined : null,
           tabBarIcon: ({ focused, size }) => <TabIcon name="business-outline" focused={focused} size={size} />,
         }}
       />
@@ -58,7 +80,7 @@ export default function HostTabsLayout() {
         name="expenses"
         options={{
           title: t.tabsHost.expenses,
-          href: canExpenses && !canMessages ? undefined : null,
+          href: canExpenses && !canMessages && !isHostel ? undefined : null,
           tabBarIcon: ({ focused, size }) => <TabIcon name="receipt-outline" focused={focused} size={size} />,
         }}
       />
