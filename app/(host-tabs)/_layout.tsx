@@ -56,7 +56,8 @@ export default function HostTabsLayout() {
         name="dashboard"
         options={{
           title: t.tabsHost.home,
-          href: isHostel ? null : undefined,
+          // Hostels start on Desk; a co-host without Calendar access has no Desk and keeps Home.
+          href: isHostel && canCalendar ? null : undefined,
           tabBarIcon: ({ focused, size }) => <TabIcon name="home-outline" focused={focused} size={size} />,
         }}
       />

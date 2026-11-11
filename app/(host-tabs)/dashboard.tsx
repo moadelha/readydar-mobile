@@ -160,7 +160,10 @@ function locationLine(t: Dict, property?: Property | null, fallbackName?: string
  */
 export default function HostDashboardRoute() {
   const { loaded, businessType } = usePlanConsole();
-  if (loaded && businessType === 'HOSTEL') return <Redirect href="/desk" />;
+  const { has } = useHostAccess();
+  // Only when the Desk tab is there for them: a hostel co-host without
+  // Calendar access has no Desk (the front-desk API refuses them) and keeps Home.
+  if (loaded && businessType === 'HOSTEL' && has('CALENDAR')) return <Redirect href="/desk" />;
   return <HostDashboardScreen />;
 }
 

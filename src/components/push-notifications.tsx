@@ -39,6 +39,10 @@ export function PushNotifications() {
     const id = response.notification.request.identifier;
     if (handled.current === id) return;
     handled.current = id;
+    // Handled once: without clearing, the same tap is still "the last
+    // response" on the next launch and would open that screen again.
+    Notifications.clearLastNotificationResponse();
+    if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
     const url = response.notification.request.content.data?.url;
     if (typeof url !== 'string' || !url.startsWith('/')) return;
     // A beat after start-up, so the launch redirect to Home lands first and

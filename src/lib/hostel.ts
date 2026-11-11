@@ -1,4 +1,5 @@
 import type { CalendarEvent, StayRef } from './api';
+import { todayIso } from './calendar-visuals';
 
 /**
  * Hostels: helpers shared by the Desk and Housekeeping tabs. Same rules as
@@ -17,7 +18,12 @@ export function propertyDay(timeZone?: string | null) {
   try {
     return format(timeZone || 'Africa/Casablanca');
   } catch {
-    return format('Africa/Casablanca');
+    try {
+      return format('Africa/Casablanca');
+    } catch {
+      // No time-zone data on this phone's JS engine: its own date is the best we have.
+      return todayIso();
+    }
   }
 }
 
