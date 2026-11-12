@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Linking, Modal, Switch } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Linking, Modal } from 'react-native';
 import { Text } from '@/components/text';
 import { useRouter, useFocusEffect, Redirect } from 'expo-router';
 import { usePlanConsole } from '@/lib/plan-console';
@@ -51,6 +51,8 @@ import { Dict } from '@/lib/i18n/dictionary';
 import { useHostAccess } from '@/lib/access';
 import { rtlFlip } from '@/lib/rtl';
 import { checkInCopyMessage } from '@/lib/checkin-message';
+import { TimeRequestRow, shiftTime, timeSlots } from '@/components/time-request';
+import { formatClock } from '@/lib/dates';
 
 /**
  * How many rows each section shows before the rest go behind "View all".
@@ -556,15 +558,25 @@ function HostDashboardScreen() {
    * broken — with the list refreshed underneath and the switch rolled back
    * if the call fails.
    */
-  async function handleTiming(item: PendingCheckIn, field: 'earlyCheckInRequested' | 'lateCheckOutRequested', value: boolean) {
+  async function handleTiming(item: PendingCheckIn, kind: 'early' | 'late', time: string | null) {
     if (!session) return;
-    setOpenCheckIn((prev) => (prev && prev.id === item.id ? { ...prev, [field]: value } : prev));
+    // The time the guest asked for, and the yes/no flag kept in step with it —
+    // the same two fields the web calendar edits, so both always agree.
+    const patch =
+      kind === 'early'
+        ? { earlyCheckInTime: time, earlyCheckInRequested: !!time }
+        : { lateCheckOutTime: time, lateCheckOutRequested: !!time };
+    const before =
+      kind === 'early'
+        ? { earlyCheckInTime: item.earlyCheckInTime ?? null, earlyCheckInRequested: !!item.earlyCheckInRequested }
+        : { lateCheckOutTime: item.lateCheckOutTime ?? null, lateCheckOutRequested: !!item.lateCheckOutRequested };
+    setOpenCheckIn((prev) => (prev && prev.id === item.id ? { ...prev, ...patch } : prev));
     setTimingBusy(true);
     try {
-      await api.properties.setCheckInTiming(item.id, { [field]: value }, session.accessToken);
-      setPendingCheckIns((prev) => prev.map((c) => (c.id === item.id ? { ...c, [field]: value } : c)));
+      await api.properties.setCheckInTiming(item.id, patch, session.accessToken);
+      setPendingCheckIns((prev) => prev.map((c) => (c.id === item.id ? { ...c, ...patch } : c)));
     } catch (err) {
-      setOpenCheckIn((prev) => (prev && prev.id === item.id ? { ...prev, [field]: !value } : prev));
+      setOpenCheckIn((prev) => (prev && prev.id === item.id ? { ...prev, ...before } : prev));
       setError(err instanceof ApiError ? err.message : t.dashboardHost.errorTiming);
     } finally {
       setTimingBusy(false);
@@ -1135,31 +1147,36 @@ function HostDashboardScreen() {
                       {t.dashboardHost.timingRequestsSubtitle}
                     </Text>
 
-                    <View style={styles.switchRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={typography.body}>{t.dashboardHost.earlyCheckIn}</Text>
-                        <Text style={typography.caption}>{time ? t.dashboardHost.arrivingBefore(time) : t.dashboardHost.arrivingBeforeUsual}</Text>
-                      </View>
-                      <Switch
-                        value={!!openCheckIn.earlyCheckInRequested}
-                        disabled={timingBusy}
-                        onValueChange={(v) => handleTiming(openCheckIn, 'earlyCheckInRequested', v)}
-                        trackColor={{ true: colors.primary }}
-                      />
-                    </View>
-
-                    <View style={styles.switchRow}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={typography.body}>{t.dashboardHost.lateCheckout}</Text>
-                        <Text style={typography.caption}>{t.dashboardHost.leavingAfterUsual}</Text>
-                      </View>
-                      <Switch
-                        value={!!openCheckIn.lateCheckOutRequested}
-                        disabled={timingBusy}
-                        onValueChange={(v) => handleTiming(openCheckIn, 'lateCheckOutRequested', v)}
-                        trackColor={{ true: colors.primary }}
-                      />
-                    </View>
+                    {(() => {
+                      // Early: from 06:00 to just before the property's usual
+                      // check-in; late: from just after its usual checkout.
+                      const stdIn = property?.checkInTime?.trim() || '15:00';
+                      const stdOut = property?.checkOutTime?.trim() || '11:00';
+                      return (
+                        <>
+                          <TimeRequestRow
+                            label={t.dashboardHost.earlyCheckIn}
+                            hint={time ? t.dashboardHost.arrivingBefore(time) : t.dashboardHost.arrivingBeforeUsual}
+                            value={openCheckIn.earlyCheckInTime}
+                            slots={timeSlots('06:00', shiftTime(stdIn, -30), openCheckIn.earlyCheckInTime)}
+                            notAsked={t.dashboardHost.notAsked}
+                            clearLabel={t.dashboardHost.noTimeRequest}
+                            disabled={timingBusy}
+                            onChange={(v) => handleTiming(openCheckIn, 'early', v)}
+                          />
+                          <TimeRequestRow
+                            label={t.dashboardHost.lateCheckout}
+                            hint={t.dashboardHost.leavingAfterUsual}
+                            value={openCheckIn.lateCheckOutTime}
+                            slots={timeSlots(shiftTime(stdOut, 30), '23:30', openCheckIn.lateCheckOutTime)}
+                            notAsked={t.dashboardHost.notAsked}
+                            clearLabel={t.dashboardHost.noTimeRequest}
+                            disabled={timingBusy}
+                            onChange={(v) => handleTiming(openCheckIn, 'late', v)}
+                          />
+                        </>
+                      );
+                    })()}
 
                     {openCheckIn.timingRequestNote ? (
                       <Text style={[typography.caption, { marginTop: spacing.xs }]}>
@@ -1257,7 +1274,11 @@ function HostDashboardScreen() {
                         value={t.common.guestsCount(event.guestCount || 1)}
                       />
                       {event.lateCheckOutRequested && (
-                        <SheetFact icon="time-outline" label={t.dashboardHost.lateCheckoutRequested} value={t.dashboardHost.yes} />
+                        <SheetFact
+                          icon="time-outline"
+                          label={t.dashboardHost.lateCheckoutRequested}
+                          value={event.lateCheckOutTime ? formatClock(event.lateCheckOutTime, lang) : t.dashboardHost.yes}
+                        />
                       )}
                     </View>
 
@@ -1282,7 +1303,11 @@ function HostDashboardScreen() {
                             value={t.common.guestsCount(incomingEvent.guestCount || 1)}
                           />
                           {incomingEvent.earlyCheckInRequested && (
-                            <SheetFact icon="time-outline" label={t.dashboardHost.earlyCheckInRequested} value={t.dashboardHost.yes} />
+                            <SheetFact
+                              icon="time-outline"
+                              label={t.dashboardHost.earlyCheckInRequested}
+                              value={incomingEvent.earlyCheckInTime ? formatClock(incomingEvent.earlyCheckInTime, lang) : t.dashboardHost.yes}
+                            />
                           )}
                         </View>
                         {incomingEvent.timingRequestNote ? (
@@ -1358,7 +1383,7 @@ function HostDashboardScreen() {
                       onPress={() => {
                         const id = openCheckout.propertyId;
                         setOpenCheckout(null);
-                        router.push({ pathname: '/calendar', params: { propertyId: id } });
+                        router.push({ pathname: '/calendar', params: { propertyId: id, at: String(Date.now()) } });
                       }}
                       style={{ marginTop: spacing.sm }}
                     />
@@ -1548,14 +1573,5 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginTop: spacing.md,
-    paddingTop: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
   },
 });

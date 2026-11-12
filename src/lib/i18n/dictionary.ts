@@ -504,6 +504,9 @@ export interface Dict {
     markedReady: (name: string) => string;
     errorLoad: string;
     errorUpdateProperty: string;
+    /** Timing request rows: no time asked for, and the button that clears one. */
+    notAsked: string;
+    noTimeRequest: string;
     errorTiming: string;
     errorGuestCount: string;
     checkInLinkCopied: string;
@@ -1252,6 +1255,8 @@ export const en: Dict = {
     markedReady: (name) => `${name} marked ready`,
     errorLoad: 'Could not load your dashboard.',
     errorUpdateProperty: 'Could not update the property.',
+    notAsked: 'Not asked',
+    noTimeRequest: 'No request',
     errorTiming: 'Could not save that timing request.',
     errorGuestCount: 'Could not update the number of guests.',
     checkInLinkCopied: 'Check-in message copied — paste it to your guest',
@@ -2004,6 +2009,8 @@ export const fr: Dict = {
     markedReady: (name) => `${name} marqué prêt`,
     errorLoad: 'Impossible de charger votre tableau de bord.',
     errorUpdateProperty: 'Impossible de mettre à jour le logement.',
+    notAsked: 'Pas demandé',
+    noTimeRequest: 'Aucune demande',
     errorTiming: 'Impossible d\'enregistrer cette demande d\'horaire.',
     errorGuestCount: 'Impossible de mettre à jour le nombre de voyageurs.',
     checkInLinkCopied: 'Message de check-in copié — collez-le à votre voyageur',
@@ -2795,6 +2802,8 @@ export const ar: Dict = {
     markedReady: (name) => `تم وضع ${name} كجاهز`,
     errorLoad: 'تعذّر تحميل لوحة التحكم.',
     errorUpdateProperty: 'تعذّر تحديث العقار.',
+    notAsked: 'لم يُطلب',
+    noTimeRequest: 'بدون طلب',
     errorTiming: 'تعذّر حفظ طلب التوقيت.',
     errorGuestCount: 'تعذّر تحديث عدد الضيوف.',
     checkInLinkCopied: 'تم نسخ رسالة تسجيل الوصول — الصقها للضيف',

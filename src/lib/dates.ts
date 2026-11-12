@@ -30,3 +30,11 @@ export function formatJobSlot(scheduledDate: string, scheduledTime: string | nul
   const day = formatDay(scheduledDate, lang, { utc: true });
   return scheduledTime ? `${day} · ${scheduledTime}` : day;
 }
+
+/** A "HH:mm" time of day as the app's language writes it — "11:00" / "11:00 AM". */
+export function formatClock(hhmm: string, lang: Lang) {
+  const [h, m] = hhmm.split(':').map(Number);
+  if (!Number.isFinite(h)) return hhmm;
+  const d = new Date(2024, 0, 1, h, Number.isFinite(m) ? m : 0);
+  return d.toLocaleTimeString(dateLocale(lang), { hour: 'numeric', minute: '2-digit' });
+}

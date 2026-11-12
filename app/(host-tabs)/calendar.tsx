@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Modal, Linking } from 'react-native';
 import { Text } from '@/components/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -117,7 +117,7 @@ export default function CalendarScreen() {
   // — pre-select that property and land straight on Month view, which is
   // what actually reads as "this property's calendar" rather than the
   // all-properties list.
-  const { propertyId: initialPropertyId } = useLocalSearchParams<{ propertyId?: string }>();
+  const { propertyId: initialPropertyId, at: requestedAt } = useLocalSearchParams<{ propertyId?: string; at?: string }>();
 
   const [view, setView] = useState<CalendarView>(initialPropertyId ? 'MONTH' : 'LIST');
   const [monthCursor, setMonthCursor] = useState(() => {
@@ -126,6 +126,17 @@ export default function CalendarScreen() {
   });
   const [properties, setProperties] = useState<Property[]>([]);
   const [propertyFilter, setPropertyFilter] = useState<string | null>(initialPropertyId ?? null);
+  // The Calendar tab stays mounted once visited, so the initial state above
+  // only covers the first visit: a later "See the property's calendar" sent
+  // the param but the screen kept showing every property. Apply each request
+  // (`at` makes the same property asked twice a new request too).
+  useEffect(() => {
+    if (!initialPropertyId) return;
+    setPropertyFilter(initialPropertyId);
+    setView('MONTH');
+    const d = new Date();
+    setMonthCursor(new Date(d.getFullYear(), d.getMonth(), 1));
+  }, [initialPropertyId, requestedAt]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [listEvents, setListEvents] = useState<CalendarEvent[]>([]);
   const [statusOverview, setStatusOverview] = useState<PropertyStatusItem[]>([]);

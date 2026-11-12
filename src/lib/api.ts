@@ -575,6 +575,9 @@ export interface GuestCheckIn {
   lateCheckOutRequested?: boolean;
   /** Free text attached to either timing request — "flight lands 11am", etc. */
   timingRequestNote?: string | null;
+  /** The time the guest asked for, "HH:mm" in the property's local time (null = none). */
+  earlyCheckInTime?: string | null;
+  lateCheckOutTime?: string | null;
   submittedAt?: string | null;
   expiresAt?: string | null;
   nightlyRate?: string | null;
@@ -657,6 +660,9 @@ export interface PendingCheckIn {
   earlyCheckInRequested?: boolean;
   lateCheckOutRequested?: boolean;
   timingRequestNote?: string | null;
+  /** The time the guest asked for, "HH:mm" in the property's local time (null = none). */
+  earlyCheckInTime?: string | null;
+  lateCheckOutTime?: string | null;
   /** Backfilled from Hospitable/Airbnb's own reservation data as soon as a booking syncs — present even before the guest has filled in the online check-in form. See HospitableReservationSyncService. */
   guestPhone?: string | null;
   property: { id: string; name: string };
@@ -785,6 +791,9 @@ export interface CalendarEvent {
   earlyCheckInRequested?: boolean;
   lateCheckOutRequested?: boolean;
   timingRequestNote?: string | null;
+  /** The time the guest asked for, "HH:mm" in the property's local time (null = none). */
+  earlyCheckInTime?: string | null;
+  lateCheckOutTime?: string | null;
   /** Hostels: the room type this stay takes (one room or dorm bed per row). */
   roomTypeName?: string | null;
   roomTypeId?: string | null;
@@ -1301,7 +1310,14 @@ export const api = {
      */
     setCheckInTiming: (
       checkInId: string,
-      payload: { earlyCheckInRequested?: boolean; lateCheckOutRequested?: boolean; timingRequestNote?: string | null },
+      payload: {
+        earlyCheckInRequested?: boolean;
+        lateCheckOutRequested?: boolean;
+        /** "HH:mm" asked for; null clears it. The API keeps the flags in step with these. */
+        earlyCheckInTime?: string | null;
+        lateCheckOutTime?: string | null;
+        timingRequestNote?: string | null;
+      },
       token: string,
     ) =>
       request<GuestCheckIn>(`/properties/checkins/${checkInId}/timing-request`, {
