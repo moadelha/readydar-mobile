@@ -231,6 +231,11 @@ export interface Dict {
     areaPlaceholder: string;
     uploading: string;
     uploadingCount: (n: number) => string;
+    /** Photos that failed to upload after retries; kept on the phone with a Retry button. */
+    notSentCount: (n: number) => string;
+    retryUpload: string;
+    locationFixTitle: string;
+    locationFixBody: string;
     takePhoto: string;
     burstHint: string;
     noPhotosYet: string;
@@ -983,6 +988,10 @@ export const en: Dict = {
     areaPlaceholder: 'e.g. Kitchen, Bathroom 1, Bedroom 2',
     uploading: 'Uploading…',
     uploadingCount: (n: number) => `Uploading ${n} photo${n === 1 ? '' : 's'}…`,
+    notSentCount: (n) => `${n} photo${n === 1 ? '' : 's'} not sent yet`,
+    retryUpload: 'Retry',
+    locationFixTitle: 'Finding your location',
+    locationFixBody: "We couldn't get your location. Step outside or near a window, check that location is on, and try again.",
     takePhoto: 'Take photo',
     burstHint: 'The camera reopens after each shot so you can take several of this area. Press back when you are done.',
     noPhotosYet: 'No photos yet — tap “Take photo” above to start.',
@@ -1736,6 +1745,10 @@ export const fr: Dict = {
     areaPlaceholder: 'ex. Cuisine, Salle de bain 1, Chambre 2',
     uploading: 'Envoi…',
     uploadingCount: (n: number) => `Envoi de ${n} photo${n === 1 ? '' : 's'}…`,
+    notSentCount: (n) => `${n} photo${n === 1 ? '' : 's'} pas encore envoyée${n === 1 ? '' : 's'}`,
+    retryUpload: 'Réessayer',
+    locationFixTitle: 'Localisation en cours',
+    locationFixBody: "Impossible d'obtenir votre position. Approchez-vous d'une fenêtre, vérifiez que la localisation est activée, puis réessayez.",
     takePhoto: 'Prendre une photo',
     burstHint: "L'appareil photo se rouvre après chaque photo pour en prendre plusieurs de cette zone. Appuyez sur retour quand vous avez terminé.",
     noPhotosYet: 'Aucune photo pour le moment — appuyez sur « Prendre une photo » ci-dessus pour commencer.',
@@ -2511,6 +2524,10 @@ export const ar: Dict = {
     areaPlaceholder: 'مثل: المطبخ، الحمام 1، غرفة النوم 2',
     uploading: 'جارٍ الرفع…',
     uploadingCount: (n: number) => `جارٍ رفع ${arPlural(n, { one: 'صورة واحدة', two: 'صورتين', few: 'صور', many: 'صورة' })}…`,
+    notSentCount: (n) => `لم تُرسل ${n} صورة بعد`,
+    retryUpload: 'إعادة المحاولة',
+    locationFixTitle: 'تحديد موقعك',
+    locationFixBody: 'تعذّر تحديد موقعك. اقترب من نافذة، وتأكد من تفعيل الموقع، ثم حاول مرة أخرى.',
     takePhoto: 'التقاط صورة',
     burstHint: 'تُفتح الكاميرا من جديد بعد كل صورة لتلتقط عدة صور لهذه المنطقة. اضغط رجوع عند الانتهاء.',
     noPhotosYet: 'لا توجد صور بعد — اضغط على «التقاط صورة» أعلاه للبدء.',

@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, ScrollView, Image, Pressable, Alert, Share, PixelRatio } from 'react-native';
 import { Text } from '@/components/text';
 import { useLocalSearchParams, useFocusEffect, Stack } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import * as Clipboard from 'expo-clipboard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import {
   api,
@@ -68,6 +69,41 @@ function groupBySection(photos: CleaningReportPhoto[]): { section: string; photo
  * locks (no more add/remove) and this screen switches to showing the
  * verification link and a PDF share action instead.
  */
+type Fix = { latitude: number; longitude: number; accuracy?: number };
+/** A photo taken and waiting to go up, with the area and position of its burst. */
+type Shot = { reportId: string; section: string; uri: string; capturedAt: string; fix: Fix };
+
+/** Where a burst's area and position are kept while the camera is open (see the recovery effect). */
+const burstKey = (reportId: string) => `darclean_cleaning_burst_${reportId}`;
+
+/**
+ * Where the phone is: a fix from the last two minutes if the phone has one
+ * (instant), else a fresh one — given up on after 15 seconds rather than
+ * leaving the host staring at a frozen button.
+ */
+async function currentFix(): Promise<Fix | null> {
+  const toFix = (p: Location.LocationObject): Fix => ({
+    latitude: p.coords.latitude,
+    longitude: p.coords.longitude,
+    accuracy: p.coords.accuracy ?? undefined,
+  });
+  try {
+    const last = await Location.getLastKnownPositionAsync({ maxAge: 2 * 60 * 1000, requiredAccuracy: 150 });
+    if (last) return toFix(last);
+  } catch {
+    // fall through to a fresh fix
+  }
+  try {
+    const fresh = await Promise.race([
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 15_000)),
+    ]);
+    return fresh ? toFix(fresh) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function CleaningReportDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
@@ -77,7 +113,12 @@ export default function CleaningReportDetailScreen() {
   const [report, setReport] = useState<CleaningReport | null>(null);
   const [sectionInput, setSectionInput] = useState('');
   /** Shots still uploading in the background — the camera doesn't wait for them, but "Mark complete" does. */
+  /** Photos waiting to go up, or going up now. */
   const [pendingUploads, setPendingUploads] = useState(0);
+  /** Photos that still failed after retries — kept here so they can be sent again. */
+  const [failedShots, setFailedShots] = useState<Shot[]>([]);
+  const queue = useRef<Shot[]>([]);
+  const draining = useRef(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [isSharingPdf, setIsSharingPdf] = useState(false);
@@ -156,44 +197,105 @@ export default function CleaningReportDetailScreen() {
   }, [session, report?.propertyId]);
 
   /**
-   * Uploads one shot with its own GPS fix. Runs in the background while the
-   * camera is already reopened for the next shot, so each photo still goes
-   * up on its own, right after it was taken (see the screen comment below).
+   * Sends queued photos one at a time, oldest first. One at a time on
+   * purpose: several full-size photos racing over a phone connection all
+   * crawl, and a burst of eight used to leave eight half-finished uploads.
+   * A network failure is retried twice (2 s, then 5 s later); a refusal
+   * from the server (report completed, too many photos…) isn't. What still
+   * fails stays in `failedShots` with a Retry button — never lost silently.
+   * The report reloads once the queue is empty, not after every photo.
    */
-  async function uploadShot(reportId: string, section: string, uri: string, capturedAt: string) {
-    if (!session) return;
-    setPendingUploads((n) => n + 1);
+  async function drainQueue() {
+    if (draining.current || !session) return;
+    draining.current = true;
     try {
-      const pos = await Location.getCurrentPositionAsync({});
-      const file: PickedFile = { uri, name: 'photo.jpg', type: 'image/jpeg' };
-      const uploaded = await api.cleaningReports.uploadPhoto(
-        reportId,
-        {
-          section,
-          capturedAt,
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          accuracyMeters: pos.coords.accuracy ?? undefined,
-        },
-        file,
-        session.accessToken,
-      );
-      if (uploaded.timestampSuspicious) {
-        toast.show(t.cleaningReports.clockDriftWarning, 'info');
+      while (queue.current.length) {
+        const shot = queue.current[0];
+        let sent = false;
+        let lastError: unknown = null;
+        for (let attempt = 0; attempt < 3 && !sent; attempt++) {
+          if (attempt) await new Promise((r) => setTimeout(r, attempt === 1 ? 2000 : 5000));
+          try {
+            const file: PickedFile = { uri: shot.uri, name: 'photo.jpg', type: 'image/jpeg' };
+            const uploaded = await api.cleaningReports.uploadPhoto(
+              shot.reportId,
+              {
+                section: shot.section,
+                capturedAt: shot.capturedAt,
+                latitude: shot.fix.latitude,
+                longitude: shot.fix.longitude,
+                accuracyMeters: shot.fix.accuracy,
+              },
+              file,
+              session.accessToken,
+            );
+            sent = true;
+            if (uploaded.timestampSuspicious) toast.show(t.cleaningReports.clockDriftWarning, 'info');
+          } catch (err) {
+            lastError = err;
+            if (err instanceof ApiError && err.status >= 400 && err.status < 500) break;
+          }
+        }
+        queue.current.shift();
+        setPendingUploads((n) => n - 1);
+        if (!sent) {
+          setFailedShots((prev) => [...prev, shot]);
+          setError(lastError instanceof ApiError ? lastError.message : t.cleaningReports.uploadError);
+        }
       }
-      await load();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : t.cleaningReports.uploadError);
     } finally {
-      setPendingUploads((n) => n - 1);
+      draining.current = false;
     }
+    await load();
   }
+
+  function enqueue(shots: Shot[]) {
+    if (!shots.length) return;
+    queue.current.push(...shots);
+    setPendingUploads((n) => n + shots.length);
+    void drainQueue();
+  }
+
+  function retryFailed() {
+    const shots = failedShots;
+    setFailedShots([]);
+    setError(null);
+    enqueue(shots);
+  }
+
+  /**
+   * Android can close the app while the camera is open (low memory). The
+   * photo then comes back on the next start instead of to the burst loop —
+   * it used to be dropped. It's picked up here, with the area and position
+   * saved when that burst began.
+   */
+  const recovered = useRef(false);
+  useEffect(() => {
+    if (!report || recovered.current) return;
+    recovered.current = true;
+    (async () => {
+      const pending = await ImagePicker.getPendingResultAsync().catch(() => null);
+      if (!pending || !('assets' in pending) || pending.canceled || !pending.assets?.length) return;
+      const saved = await AsyncStorage.getItem(burstKey(report.id)).catch(() => null);
+      if (!saved) return;
+      const { section, fix } = JSON.parse(saved) as { section: string; fix: Fix };
+      enqueue(pending.assets.map((a) => ({ reportId: report.id, section, uri: a.uri, capturedAt: new Date().toISOString(), fix })));
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report?.id]);
 
   /**
    * Burst capture for one area: the camera reopens by itself after every
    * shot, so a host can take several photos of the same room without
    * tapping "Take photo" again each time. Backing out of the camera ends
    * the burst — then they name the next area and go again.
+   *
+   * The position is found once, here, while the app is on screen. It used
+   * to be asked for after every shot — by then the camera was open again,
+   * the app was in the background, and with "while using the app" location
+   * Android held or failed the request: the first photo went up, the rest
+   * waited until the burst ended, or never went. One burst is one area, so
+   * one position serves all its photos.
    */
   async function handleAddPhoto() {
     if (!session || !report) return;
@@ -212,11 +314,19 @@ export default function CleaningReportDetailScreen() {
     }
 
     setError(null);
-    while (true) {
-      const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-      if (result.canceled || !result.assets[0]) break;
-      void uploadShot(report.id, section, result.assets[0].uri, new Date().toISOString());
+    const fix = await currentFix();
+    if (!fix) {
+      Alert.alert(t.cleaningReports.locationFixTitle, t.cleaningReports.locationFixBody);
+      return;
     }
+    await AsyncStorage.setItem(burstKey(report.id), JSON.stringify({ section, fix })).catch(() => {});
+    while (true) {
+      // 0.5: about half the bytes of 0.7, still sharp enough to show damage.
+      const result = await ImagePicker.launchCameraAsync({ quality: 0.5 });
+      if (result.canceled || !result.assets[0]) break;
+      enqueue([{ reportId: report.id, section, uri: result.assets[0].uri, capturedAt: new Date().toISOString(), fix }]);
+    }
+    await AsyncStorage.removeItem(burstKey(report.id)).catch(() => {});
   }
 
   function handleRemovePhoto(photo: CleaningReportPhoto) {
@@ -368,6 +478,17 @@ export default function CleaningReportDetailScreen() {
             <Text style={[typography.caption, { marginTop: spacing.xs }]}>
               {pendingUploads > 0 ? t.cleaningReports.uploadingCount(pendingUploads) : t.cleaningReports.burstHint}
             </Text>
+            {failedShots.length > 0 && pendingUploads === 0 && (
+              <View style={styles.failedRow}>
+                <Ionicons name="cloud-offline-outline" size={16} color={colors.warning} />
+                <Text style={[typography.caption, { flex: 1, color: colors.warning }]}>
+                  {t.cleaningReports.notSentCount(failedShots.length)}
+                </Text>
+                <Pressable onPress={retryFailed} hitSlop={8} accessibilityRole="button">
+                  <Text style={styles.retryText}>{t.cleaningReports.retryUpload}</Text>
+                </Pressable>
+              </View>
+            )}
           </Card>
         )}
 
@@ -463,6 +584,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.successBg,
   },
   nextGuestLabel: { ...typography.caption, color: colors.primary, fontWeight: '600', marginBottom: 1 },
+  failedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm },
+  retryText: { fontSize: 13, fontWeight: '600', color: colors.green700 },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
   photoWrap: { position: 'relative' },
   photo: { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: radius.sm, backgroundColor: colors.border },
