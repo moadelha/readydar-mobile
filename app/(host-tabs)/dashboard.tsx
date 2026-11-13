@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Linking, Modal } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Linking, Modal, Switch } from 'react-native';
 import { Text } from '@/components/text';
 import { useRouter, useFocusEffect, Redirect } from 'expo-router';
 import { usePlanConsole } from '@/lib/plan-console';
@@ -583,6 +583,22 @@ function HostDashboardScreen() {
     }
   }
 
+  /** The yes/no version, for an API that doesn't take times yet (see the time rows' fallback). */
+  async function handleTimingFlag(item: PendingCheckIn, field: 'earlyCheckInRequested' | 'lateCheckOutRequested', value: boolean) {
+    if (!session) return;
+    setOpenCheckIn((prev) => (prev && prev.id === item.id ? { ...prev, [field]: value } : prev));
+    setTimingBusy(true);
+    try {
+      await api.properties.setCheckInTiming(item.id, { [field]: value }, session.accessToken);
+      setPendingCheckIns((prev) => prev.map((c) => (c.id === item.id ? { ...c, [field]: value } : c)));
+    } catch (err) {
+      setOpenCheckIn((prev) => (prev && prev.id === item.id ? { ...prev, [field]: !value } : prev));
+      setError(err instanceof ApiError ? err.message : t.dashboardHost.errorTiming);
+    } finally {
+      setTimingBusy(false);
+    }
+  }
+
   /**
    * Corrects the party size on a pending check-in.
    *
@@ -1147,18 +1163,60 @@ function HostDashboardScreen() {
                       {t.dashboardHost.timingRequestsSubtitle}
                     </Text>
 
-                    {(() => {
+                    {!('earlyCheckInTime' in openCheckIn) ? (
+                      // An API without the time fields (they come back as null
+                      // once it has them) refuses them outright: keep the
+                      // yes/no switches until then.
+                      <>
+                        <View style={styles.switchRow}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={typography.body}>{t.dashboardHost.earlyCheckIn}</Text>
+                            <Text style={typography.caption}>{time ? t.dashboardHost.arrivingBefore(time) : t.dashboardHost.arrivingBeforeUsual}</Text>
+                          </View>
+                          <Switch
+                            value={!!openCheckIn.earlyCheckInRequested}
+                            disabled={timingBusy}
+                            onValueChange={(v) => handleTimingFlag(openCheckIn, 'earlyCheckInRequested', v)}
+                            trackColor={{ true: colors.primary }}
+                          />
+                        </View>
+                        <View style={styles.switchRow}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={typography.body}>{t.dashboardHost.lateCheckout}</Text>
+                            <Text style={typography.caption}>{t.dashboardHost.leavingAfterUsual}</Text>
+                          </View>
+                          <Switch
+                            value={!!openCheckIn.lateCheckOutRequested}
+                            disabled={timingBusy}
+                            onValueChange={(v) => handleTimingFlag(openCheckIn, 'lateCheckOutRequested', v)}
+                            trackColor={{ true: colors.primary }}
+                          />
+                        </View>
+                      </>
+                    ) : (() => {
                       // Early: from 06:00 to just before the property's usual
                       // check-in; late: from just after its usual checkout.
                       const stdIn = property?.checkInTime?.trim() || '15:00';
                       const stdOut = property?.checkOutTime?.trim() || '11:00';
+                      // A property with unusual standard times (check-out at
+                      // 23:00) would leave one choice or none: then offer the
+                      // usual range instead.
+                      const atLeast4 = (slots: string[], fallback: string[]) => (slots.length >= 4 ? slots : fallback);
+                      const earlySlots = atLeast4(
+                        timeSlots('06:00', shiftTime(stdIn, -30), openCheckIn.earlyCheckInTime),
+                        timeSlots('06:00', '14:30', openCheckIn.earlyCheckInTime),
+                      );
+                      const lateSlots = atLeast4(
+                        timeSlots(shiftTime(stdOut, 30), '23:30', openCheckIn.lateCheckOutTime),
+                        timeSlots('11:30', '23:30', openCheckIn.lateCheckOutTime),
+                      );
                       return (
                         <>
                           <TimeRequestRow
                             label={t.dashboardHost.earlyCheckIn}
                             hint={time ? t.dashboardHost.arrivingBefore(time) : t.dashboardHost.arrivingBeforeUsual}
                             value={openCheckIn.earlyCheckInTime}
-                            slots={timeSlots('06:00', shiftTime(stdIn, -30), openCheckIn.earlyCheckInTime)}
+                            slots={earlySlots}
                             notAsked={t.dashboardHost.notAsked}
                             clearLabel={t.dashboardHost.noTimeRequest}
                             disabled={timingBusy}
@@ -1168,7 +1226,7 @@ function HostDashboardScreen() {
                             label={t.dashboardHost.lateCheckout}
                             hint={t.dashboardHost.leavingAfterUsual}
                             value={openCheckIn.lateCheckOutTime}
-                            slots={timeSlots(shiftTime(stdOut, 30), '23:30', openCheckIn.lateCheckOutTime)}
+                            slots={lateSlots}
                             notAsked={t.dashboardHost.notAsked}
                             clearLabel={t.dashboardHost.noTimeRequest}
                             disabled={timingBusy}
@@ -1554,6 +1612,15 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   sheetFacts: { marginTop: spacing.md, gap: spacing.sm },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
   fact: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   factIcon: {
     width: 30,
