@@ -33,7 +33,7 @@ import {
   UPCOMING_CHECKIN_WINDOW_MS,
 } from '@/lib/status';
 import { stayLabel } from '@/lib/checkin-groups';
-import { todayIso, addDaysIso } from '@/lib/calendar-visuals';
+import { todayIso, addDaysIso, dateLocale } from '@/lib/calendar-visuals';
 import { addDismissed, clearDismissed, pruneDismissed } from '@/lib/dismissed';
 import {
   buildNotifications,
@@ -53,6 +53,7 @@ import { rtlFlip } from '@/lib/rtl';
 import { checkInCopyMessage } from '@/lib/checkin-message';
 import { TimeRequestRow, shiftTime, timeSlots } from '@/components/time-request';
 import { formatClock } from '@/lib/dates';
+import type { Lang } from '@/lib/i18n/language-context';
 
 /**
  * How many rows each section shows before the rest go behind "View all".
@@ -97,21 +98,22 @@ function daysAway(iso: string) {
 }
 
 /** The short pill that sits on a check-in's photo: "Today", "Tomorrow", or the date. */
-function arrivalBadge(iso: string, t: Dict): { label: string; tone: 'primary' | 'accent' | 'danger' } {
+function arrivalBadge(iso: string, t: Dict, lang: Lang): { label: string; tone: 'primary' | 'accent' | 'danger' } {
   const days = daysAway(iso);
   if (days < 0) return { label: t.relativeDate.overdue, tone: 'danger' };
   if (days === 0) return { label: t.relativeDate.today, tone: 'primary' };
   if (days === 1) return { label: t.relativeDate.tomorrow, tone: 'accent' };
   return {
-    label: new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+    label: new Date(iso).toLocaleDateString(dateLocale(lang), { day: 'numeric', month: 'short' }),
     tone: 'accent',
   };
 }
 
 /** "Today · Sat 13 Sep" — relative wording first, with the real date attached. */
-function arrivalPhrase(iso: string, t: Dict) {
+function arrivalPhrase(iso: string, t: Dict, lang: Lang) {
   const days = daysAway(iso);
-  const date = new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  // The app's language, not the phone's (a French card read "Demain · Tue, Nov 17").
+  const date = new Date(iso).toLocaleDateString(dateLocale(lang), { weekday: 'short', day: 'numeric', month: 'short' });
   if (days === 0) return t.relativeDate.todayAt(date);
   if (days === 1) return t.relativeDate.tomorrowAt(date);
   if (days === -1) return t.relativeDate.yesterdayAt(date);
@@ -128,25 +130,17 @@ function arrivalPhrase(iso: string, t: Dict) {
  * setting is the real answer, and properties that haven't set one simply
  * don't show a time.
  */
-function checkInTimeLabel(property?: Property | null): string | null {
+function checkInTimeLabel(property: Property | null | undefined, lang: Lang): string | null {
   const raw = property?.checkInTime?.trim();
-  if (!raw) return null;
-  const [h, m] = raw.split(':').map(Number);
-  if (!Number.isFinite(h)) return raw;
-  const date = new Date();
-  date.setHours(h, Number.isFinite(m) ? m : 0, 0, 0);
-  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  // In the app's language, not the phone's: a French host on an English
+  // phone used to read "Arrivée 3:00 PM".
+  return raw ? formatClock(raw, lang) : null;
 }
 
 /** Same as `checkInTimeLabel` but for the property's configured checkout time. */
-function checkOutTimeLabel(property?: Property | null): string | null {
+function checkOutTimeLabel(property: Property | null | undefined, lang: Lang): string | null {
   const raw = property?.checkOutTime?.trim();
-  if (!raw) return null;
-  const [h, m] = raw.split(':').map(Number);
-  if (!Number.isFinite(h)) return raw;
-  const date = new Date();
-  date.setHours(h, Number.isFinite(m) ? m : 0, 0, 0);
-  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return raw ? formatClock(raw, lang) : null;
 }
 
 /** "City Center · Apartment 3" — the unit number only when the property has one. */
@@ -650,7 +644,7 @@ function HostDashboardScreen() {
       // as YYYY-MM-DD) stored as UTC midnight, so formatting it in the
       // device's own zone names the previous day for anyone west of
       // Greenwich — and this string goes straight into the guest's WhatsApp.
-      const arriving = new Date(item.expectedCheckIn).toLocaleDateString(undefined, {
+      const arriving = new Date(item.expectedCheckIn).toLocaleDateString(dateLocale(lang), {
         weekday: 'long',
         day: 'numeric',
         month: 'long',
@@ -816,12 +810,12 @@ function HostDashboardScreen() {
             ) : (
               upcomingCheckIns.slice(0, CHECKIN_LIMIT).map((c, index) => {
                 const property = propertyById[c.propertyId];
-                const time = checkInTimeLabel(property);
+                const time = checkInTimeLabel(property, lang);
                 return (
                   <Reveal key={c.id} delay={100 + index * 30}>
                     <PropertyRow
                       photoUrl={propertyCoverUrl(property, 160)}
-                      topBadge={arrivalBadge(c.expectedCheckIn, t)}
+                      topBadge={arrivalBadge(c.expectedCheckIn, t, lang)}
                       title={guestLabel(c, t)}
                       subtitle={`${c.property.name}${locationLine(t, property) ? ` · ${locationLine(t, property)}` : ''}`}
                       meta={[
@@ -1078,7 +1072,7 @@ function HostDashboardScreen() {
               (() => {
                 const property = propertyById[openCheckIn.propertyId];
                 const status = overview.find((o) => o.property.id === openCheckIn.propertyId)?.status;
-                const time = checkInTimeLabel(property);
+                const time = checkInTimeLabel(property, lang);
                 return (
                   <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
                     <View style={styles.sheetHeader}>
@@ -1110,12 +1104,12 @@ function HostDashboardScreen() {
                       <SheetFact
                         icon="log-in-outline"
                         label={t.dashboardHost.sheetArrives}
-                        value={`${arrivalPhrase(openCheckIn.expectedCheckIn, t)}${time ? ` · ${time}` : ''}`}
+                        value={`${arrivalPhrase(openCheckIn.expectedCheckIn, t, lang)}${time ? ` · ${time}` : ''}`}
                       />
                       <SheetFact
                         icon="log-out-outline"
                         label={t.dashboardHost.sheetLeaves}
-                        value={new Date(openCheckIn.expectedCheckOut).toLocaleDateString(undefined, {
+                        value={new Date(openCheckIn.expectedCheckOut).toLocaleDateString(dateLocale(lang), {
                           weekday: 'short',
                           day: 'numeric',
                           month: 'short',
@@ -1293,8 +1287,8 @@ function HostDashboardScreen() {
             {openCheckout &&
               (() => {
                 const property = propertyById[openCheckout.propertyId];
-                const outTime = checkOutTimeLabel(property);
-                const inTime = checkInTimeLabel(property);
+                const outTime = checkOutTimeLabel(property, lang);
+                const inTime = checkInTimeLabel(property, lang);
                 const { event, incomingEvent } = openCheckout;
                 return (
                   <ScrollView showsVerticalScrollIndicator={false} style={styles.sheetScroll}>
@@ -1324,7 +1318,7 @@ function HostDashboardScreen() {
                       <SheetFact
                         icon="log-out-outline"
                         label={t.dashboardHost.checkoutTag}
-                        value={`${arrivalPhrase(event.endDate, t)}${outTime ? ` · ${outTime}` : ''}`}
+                        value={`${arrivalPhrase(event.endDate, t, lang)}${outTime ? ` · ${outTime}` : ''}`}
                       />
                       <SheetFact
                         icon="people-outline"
@@ -1353,7 +1347,7 @@ function HostDashboardScreen() {
                           <SheetFact
                             icon="log-in-outline"
                             label={t.dashboardHost.sheetArrives}
-                            value={`${arrivalPhrase(incomingEvent.date, t)}${inTime ? ` · ${inTime}` : ''}`}
+                            value={`${arrivalPhrase(incomingEvent.date, t, lang)}${inTime ? ` · ${inTime}` : ''}`}
                           />
                           <SheetFact
                             icon="people-outline"
@@ -1388,7 +1382,7 @@ function HostDashboardScreen() {
                             <SheetFact
                               icon="log-in-outline"
                               label={t.dashboardHost.nextGuestArrives}
-                              value={arrivalPhrase(followUp.next.date, t)}
+                              value={arrivalPhrase(followUp.next.date, t, lang)}
                             />
                             <SheetFact
                               icon="people-outline"

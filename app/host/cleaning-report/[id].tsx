@@ -26,16 +26,13 @@ import { todayIso, addDaysIso } from '@/lib/calendar-visuals';
 import { colors, radius, spacing, typography } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
+import type { Lang } from '@/lib/i18n/language-context';
+import { formatClock } from '@/lib/dates';
 
 /** Same formatting dashboard.tsx's checkout sheet uses for a property's configured check-in time (e.g. "3:00 PM"). Airbnb/Hospitable gives a check-in *date*, not a time — the time shown is the property's own expected check-in time, same as everywhere else in the app that shows one. */
-function checkInTimeLabel(checkInTime?: string | null): string | null {
+function checkInTimeLabel(checkInTime: string | null | undefined, lang: Lang): string | null {
   const raw = checkInTime?.trim();
-  if (!raw) return null;
-  const [h, m] = raw.split(':').map(Number);
-  if (!Number.isFinite(h)) return raw;
-  const date = new Date();
-  date.setHours(h, Number.isFinite(m) ? m : 0, 0, 0);
-  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return raw ? formatClock(raw, lang) : null;
 }
 
 /**
@@ -108,7 +105,7 @@ export default function CleaningReportDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const toast = useToast();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   const [report, setReport] = useState<CleaningReport | null>(null);
   const [sectionInput, setSectionInput] = useState('');
@@ -186,7 +183,7 @@ export default function CleaningReportDetailScreen() {
         const next = events
           .filter((e) => e.propertyId === report.propertyId && e.kind === 'GUEST_STAY' && !e.isBlocked)
           .sort((a, b) => a.date.localeCompare(b.date))[0];
-        setNextGuest(next ? { event: next, checkInTime: checkInTimeLabel(property.checkInTime) } : null);
+        setNextGuest(next ? { event: next, checkInTime: checkInTimeLabel(property.checkInTime, lang) } : null);
       })
       .catch(() => {
         if (!cancelled) setNextGuest(null);

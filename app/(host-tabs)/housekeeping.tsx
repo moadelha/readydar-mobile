@@ -184,13 +184,15 @@ export default function HousekeepingScreen() {
                         const tone = STATUS_COLOR[u.status];
                         const lines = todayLines(u);
                         return (
-                          <Pressable
-                            key={u.id}
-                            onPress={() => setOpen({ unit: u, label })}
-                            style={({ pressed }) => [styles.row, i > 0 && styles.divider, pressed && { backgroundColor: colors.surface2 }]}
-                            accessibilityRole="button"
-                          >
-                            <View style={{ flex: 1, minWidth: 0 }}>
+                          // Two tap areas side by side — the room (opens its sheet) and
+                          // "Mark clean" — not a button inside a button, which the web
+                          // build refuses and screen readers read as one control.
+                          <View key={u.id} style={[styles.row, i > 0 && styles.divider]}>
+                            <Pressable
+                              onPress={() => setOpen({ unit: u, label })}
+                              style={({ pressed }) => [styles.rowMain, pressed && { opacity: 0.6 }]}
+                              accessibilityRole="button"
+                            >
                               <View style={styles.titleRow}>
                                 <Text style={styles.unitName} numberOfLines={1}>
                                   {label}
@@ -205,7 +207,7 @@ export default function HousekeepingScreen() {
                                 </Text>
                               ))}
                               {u.by && u.at && <Text style={styles.byLine}>{s.byAt(u.by, time(u.at))}</Text>}
-                            </View>
+                            </Pressable>
                             {u.status === 'DIRTY' && (
                               <Pressable
                                 onPress={() => setStatus(u, 'CLEAN')}
@@ -218,7 +220,7 @@ export default function HousekeepingScreen() {
                                 <Text style={styles.cleanText}>{s.markClean}</Text>
                               </Pressable>
                             )}
-                          </Pressable>
+                          </View>
                         );
                       })}
                     </View>
@@ -315,6 +317,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, minHeight: 60 },
+  rowMain: { flex: 1, minWidth: 0, alignSelf: 'stretch', justifyContent: 'center' },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   unitName: { fontSize: 16, lineHeight: 22, fontWeight: '600', color: colors.ink, flexShrink: 1 },
   pill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.sm },

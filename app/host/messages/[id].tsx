@@ -21,6 +21,8 @@ import { usePlanConsole } from '@/lib/plan-console';
 import { useToast } from '@/lib/toast';
 import { useMessagesStrings, providerName } from '@/lib/i18n/messages-strings';
 import { colors, radius, spacing, typography } from '@/theme';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { dateLocale } from '@/lib/calendar-visuals';
 
 /** While the conversation is open — no push yet, so a guest's reply appears within this. */
 const THREAD_POLL_MS = 10_000;
@@ -311,6 +313,7 @@ export default function ConversationScreen() {
 
 function Bubble({ msg, onOpenImage }: { msg: GuestMessage; onOpenImage: (url: string) => void }) {
   const m = useMessagesStrings();
+  const locale = dateLocale(useLanguage().lang);
   if (msg.sender === 'SYSTEM') {
     return <Text style={styles.systemBubble}>{msg.body}</Text>;
   }
@@ -333,7 +336,7 @@ function Bubble({ msg, onOpenImage }: { msg: GuestMessage; onOpenImage: (url: st
         )}
         <Text style={[styles.bubbleMeta, mine && { color: 'rgba(255,255,255,0.75)' }]}>
           {mine && msg.sentByName ? `${msg.sentByName} · ` : ''}
-          {new Date(msg.sentAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+          {new Date(msg.sentAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}
         </Text>
       </View>
     </View>

@@ -10,6 +10,8 @@ import { api, GuestThread } from '@/lib/api';
 import { usePlanConsole } from '@/lib/plan-console';
 import { useMessagesStrings, providerName } from '@/lib/i18n/messages-strings';
 import { colors, radius, spacing, typography } from '@/theme';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { dateLocale } from '@/lib/calendar-visuals';
 
 type StatusFilter = 'all' | 'unread' | 'open';
 
@@ -135,6 +137,7 @@ export default function MessagesScreen() {
 
 function ThreadRow({ thread, onPress }: { thread: GuestThread; onPress: () => void }) {
   const m = useMessagesStrings();
+  const locale = dateLocale(useLanguage().lang);
   const unread = thread.unreadCount > 0;
   const preview = thread.lastMessagePreview
     ? `${thread.lastMessageSender === 'HOST' ? `${m.you}: ` : ''}${thread.lastMessagePreview}`
@@ -148,11 +151,11 @@ function ThreadRow({ thread, onPress }: { thread: GuestThread; onPress: () => vo
           <Text style={[styles.guestName, unread && styles.guestNameUnread]} numberOfLines={1}>
             {thread.guestName || m.guest}
           </Text>
-          {thread.lastMessageAt && <Text style={[styles.time, unread && styles.timeUnread]}>{fmtShort(thread.lastMessageAt)}</Text>}
+          {thread.lastMessageAt && <Text style={[styles.time, unread && styles.timeUnread]}>{fmtShort(thread.lastMessageAt, locale)}</Text>}
         </View>
         <Text style={typography.caption} numberOfLines={1}>
           {providerName(thread.provider)} · {thread.property.name}
-          {thread.reservation ? ` · ${fmtDay(thread.reservation.checkIn)} – ${fmtDay(thread.reservation.checkOut)}` : ''}
+          {thread.reservation ? ` · ${fmtDay(thread.reservation.checkIn, locale)} – ${fmtDay(thread.reservation.checkOut, locale)}` : ''}
         </Text>
         <View style={styles.rowBottom}>
           <Text style={[styles.preview, unread && styles.previewUnread]} numberOfLines={1}>
@@ -172,17 +175,17 @@ function ThreadRow({ thread, onPress }: { thread: GuestThread; onPress: () => vo
 }
 
 /** Calendar date of a stay — stored as UTC midnight, so formatted in UTC. */
-function fmtDay(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
+function fmtDay(iso: string, locale: string) {
+  return new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
 
 /** Today → time; this year → day + month; older → full date. Same rule as the web inbox. */
-function fmtShort(iso: string) {
+function fmtShort(iso: string, locale: string) {
   const d = new Date(iso);
   const now = new Date();
-  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  if (d.getFullYear() === now.getFullYear()) return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: '2-digit' });
+  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  if (d.getFullYear() === now.getFullYear()) return d.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: '2-digit' });
 }
 
 const styles = StyleSheet.create({

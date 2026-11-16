@@ -1,5 +1,15 @@
 import { GuestCheckIn } from './api';
-import { Dict } from './i18n/dictionary';
+import { Dict, fr, ar } from './i18n/dictionary';
+
+/**
+ * The app language's date locale, read off the strings object these helpers
+ * already receive (it is one of the three dictionaries) — so their callers
+ * don't all need a language argument. Dates used to follow the phone's
+ * language: "Nov 17 – Nov 21" in a French app on an English phone.
+ */
+function localeOf(t: Dict) {
+  return t === fr ? 'fr-FR' : t === ar ? 'ar-MA' : 'en-GB';
+}
 
 /**
  * How the app classifies and buckets check-ins for the Guests screen and the
@@ -103,7 +113,7 @@ function monthLabel(key: string, offset: number, t: Dict) {
   if (offset === 1) return t.relativeDate.nextMonth;
   if (offset === -1) return t.relativeDate.lastMonth;
   const [y, m] = key.split('-').map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  return new Date(y, m - 1, 1).toLocaleDateString(localeOf(t), { month: 'long', year: 'numeric' });
 }
 
 /** "12 – 16 Sep · 4 nights" for a stay. */
@@ -118,7 +128,7 @@ export function stayLabel(item: { expectedCheckIn: string; expectedCheckOut: str
         (24 * 60 * 60 * 1000),
     ),
   );
-  const fmt = (d: Date) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  const fmt = (d: Date) => d.toLocaleDateString(localeOf(t), { day: 'numeric', month: 'short' });
   if (nights <= 0) return fmt(start);
   return `${fmt(start)} – ${fmt(end)} · ${t.calendarHost.nightsCount(nights)}`;
 }
