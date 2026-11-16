@@ -1163,6 +1163,9 @@ export const api = {
   },
   users: {
     getMe: (token: string) => request<AuthUser>('/users/me', { token }),
+    /** Starts account deletion (support completes it within 30 days) — see DeleteAccountLink. */
+    requestDeletion: (token: string) =>
+      request<{ requestedAt: string; alreadyRequested: boolean }>('/users/me/deletion-request', { method: 'POST', token }),
     updateProfile: (payload: { email?: string; phone?: string | null }, token: string) =>
       request<AuthUser>('/users/me/profile', { method: 'PATCH', body: payload, token }),
     changePassword: (payload: { currentPassword: string; newPassword: string }, token: string) =>

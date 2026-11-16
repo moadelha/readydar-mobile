@@ -42,6 +42,13 @@ export interface Dict {
     pushPromptTitle: string;
     pushPromptBody: string;
     pushPromptAllow: string;
+    deleteAccount: string;
+    deleteAccountTitle: string;
+    deleteAccountBody: string;
+    deleteAccountConfirm: string;
+    deleteAccountSentTitle: string;
+    deleteAccountSentBody: (date: string) => string;
+    deleteAccountError: string;
     pushPromptNotNow: string;
   };
   /** Sun..Sat, matching the backend's dayOfWeek convention (0 = Sunday). */
@@ -813,6 +820,13 @@ export const en: Dict = {
     pushPromptTitle: 'Stay in the loop',
     pushPromptBody: 'Get a notification when a guest completes their online check-in or a booking arrives or is cancelled.',
     pushPromptAllow: 'Turn on',
+    deleteAccount: 'Delete account',
+    deleteAccountTitle: 'Delete your account?',
+    deleteAccountBody: 'We will close your ReadyDar account and delete your data within 30 days: your profile, properties, calendars, guest check-ins, reports and photos. Payment records the law requires us to keep are kept. This cannot be undone.',
+    deleteAccountConfirm: 'Delete my account',
+    deleteAccountSentTitle: 'Request received',
+    deleteAccountSentBody: (date) => `We received your deletion request on ${date}. Your account is closed and your data deleted within 30 days, and we will email you when it is done.`,
+    deleteAccountError: 'Could not send your request. Please try again, or email support@readydar.com.',
     pushPromptNotNow: 'Not now',
   },
   days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
@@ -1570,6 +1584,13 @@ export const fr: Dict = {
     pushPromptTitle: 'Restez informé',
     pushPromptBody: "Recevez une notification quand un voyageur termine son check-in en ligne ou quand une réservation arrive ou est annulée.",
     pushPromptAllow: 'Activer',
+    deleteAccount: 'Supprimer le compte',
+    deleteAccountTitle: 'Supprimer votre compte ?',
+    deleteAccountBody: "Nous fermerons votre compte ReadyDar et supprimerons vos données sous 30 jours : profil, logements, calendriers, check-ins des voyageurs, rapports et photos. Les justificatifs de paiement que la loi nous oblige à garder sont conservés. C'est irréversible.",
+    deleteAccountConfirm: 'Supprimer mon compte',
+    deleteAccountSentTitle: 'Demande reçue',
+    deleteAccountSentBody: (date) => `Nous avons reçu votre demande de suppression le ${date}. Votre compte est fermé et vos données supprimées sous 30 jours ; nous vous enverrons un e-mail une fois que c'est fait.`,
+    deleteAccountError: "Impossible d'envoyer votre demande. Réessayez ou écrivez à support@readydar.com.",
     pushPromptNotNow: 'Plus tard',
   },
   days: ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'],
@@ -2344,6 +2365,13 @@ export const ar: Dict = {
     pushPromptTitle: 'ابقَ على اطلاع',
     pushPromptBody: 'استلم إشعارًا عندما يكمل ضيف تسجيل الوصول عبر الإنترنت أو عند وصول حجز أو إلغائه.',
     pushPromptAllow: 'تفعيل',
+    deleteAccount: 'حذف الحساب',
+    deleteAccountTitle: 'حذف حسابك؟',
+    deleteAccountBody: 'سنغلق حسابك على ReadyDar ونحذف بياناتك خلال 30 يومًا: الملف الشخصي والعقارات والتقويمات وتسجيلات وصول الضيوف والتقارير والصور. نحتفظ فقط بسجلات الدفع التي يلزمنا القانون بالاحتفاظ بها. لا يمكن التراجع عن ذلك.',
+    deleteAccountConfirm: 'حذف حسابي',
+    deleteAccountSentTitle: 'تم استلام الطلب',
+    deleteAccountSentBody: (date) => `استلمنا طلب حذف حسابك بتاريخ ${date}. سيُغلق حسابك وتُحذف بياناتك خلال 30 يومًا، وسنراسلك بالبريد الإلكتروني عند الانتهاء.`,
+    deleteAccountError: 'تعذّر إرسال طلبك. حاول مرة أخرى أو راسل support@readydar.com.',
     pushPromptNotNow: 'ليس الآن',
   },
   // Arabic weekday names carry the definite article — bare «أحد» isn't the

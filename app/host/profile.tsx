@@ -9,6 +9,7 @@ import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LegalLinks } from '@/components/legal-links';
+import { DeleteAccountLink } from '@/components/delete-account';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { useHostAccess } from '@/lib/access';
 import { rtlFlip } from '@/lib/rtl';
@@ -134,6 +135,7 @@ export default function HostProfileScreen() {
         <Card style={{ marginTop: spacing.md }}>
           <Button label={t.common.logOut} onPress={() => logout()} variant="danger" />
         </Card>
+        <DeleteAccountLink />
 
         <LegalLinks />
       </ScrollView>

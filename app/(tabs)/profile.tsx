@@ -10,6 +10,7 @@ import { Button } from '@/components/Button';
 import { colors, spacing, typography, radius } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LegalLinks } from '@/components/legal-links';
+import { DeleteAccountLink } from '@/components/delete-account';
 import { useLanguage } from '@/lib/i18n/language-context';
 
 export default function ProfileScreen() {
@@ -122,6 +123,7 @@ export default function ProfileScreen() {
           <View style={{ height: spacing.sm }} />
           <Button label={t.profileCleaner.logOut} onPress={() => logout()} variant="danger" />
         </Card>
+        <DeleteAccountLink />
 
         <LegalLinks />
       </ScrollView>
