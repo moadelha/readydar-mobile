@@ -236,6 +236,21 @@ export interface Dict {
     checkInAt: (time: string) => string;
     areaLabel: string;
     areaPlaceholder: string;
+    /** The room tiles: tap one to photograph that room. */
+    roomsTitle: string;
+    roomsHint: string;
+    roomsDone: (done: number, total: number) => string;
+    /** `n` numbers the room when the property has several (Bedroom 2); null when there is one. */
+    roomNames: {
+      bedroom: (n: number | null) => string;
+      bathroom: (n: number | null) => string;
+      kitchen: string;
+      living: string;
+      entrance: string;
+      outdoor: string;
+    };
+    otherRoom: string;
+    otherRoomGo: string;
     uploading: string;
     uploadingCount: (n: number) => string;
     /** Photos that failed to upload after retries; kept on the phone with a Retry button. */
@@ -642,6 +657,13 @@ export interface Dict {
     ratePerNight: (rate: number, currency: string) => string;
   };
   propertyDetail: {
+    /** The page's three tabs. */
+    tabs: { overview: string; checkIns: string; info: string };
+    upcomingStays: string;
+    seeAllStays: string;
+    noUpcomingStays: string;
+    propertyCalendar: string;
+    settingsA11y: string;
     addCoverPhoto: string;
     changeCoverPhoto: string;
     uploadingPhoto: string;
@@ -1000,6 +1022,19 @@ export const en: Dict = {
     checkInAt: (time: string) => `check-in ${time}`,
     areaLabel: 'Area',
     areaPlaceholder: 'e.g. Kitchen, Bathroom 1, Bedroom 2',
+    roomsTitle: 'Rooms',
+    roomsHint: 'Tap a room to photograph it. The camera reopens after each shot; press back when the room is done.',
+    roomsDone: (done, total) => `${done} of ${total} rooms done`,
+    roomNames: {
+      bedroom: (n) => (n ? `Bedroom ${n}` : 'Bedroom'),
+      bathroom: (n) => (n ? `Bathroom ${n}` : 'Bathroom'),
+      kitchen: 'Kitchen',
+      living: 'Living room',
+      entrance: 'Entrance',
+      outdoor: 'Terrace',
+    },
+    otherRoom: 'Other',
+    otherRoomGo: 'Take photos',
     uploading: 'Uploading…',
     uploadingCount: (n: number) => `Uploading ${n} photo${n === 1 ? '' : 's'}…`,
     notSentCount: (n) => `${n} photo${n === 1 ? '' : 's'} not sent yet`,
@@ -1008,7 +1043,7 @@ export const en: Dict = {
     locationFixBody: "We couldn't get your location. Step outside or near a window, check that location is on, and try again.",
     takePhoto: 'Take photo',
     burstHint: 'The camera reopens after each shot so you can take several of this area. Press back when you are done.',
-    noPhotosYet: 'No photos yet — tap “Take photo” above to start.',
+    noPhotosYet: 'No photos yet — tap a room above to start.',
     nameAreaTitle: 'Name this area',
     nameAreaBody: 'Enter what area this photo is of (e.g. Kitchen) before taking the photo.',
     locationNeededTitle: 'Location needed',
@@ -1400,6 +1435,12 @@ export const en: Dict = {
     ratePerNight: (rate, currency) => `${rate} ${currency} / night`,
   },
   propertyDetail: {
+    tabs: { overview: 'Overview', checkIns: 'Check-ins', info: 'Details' },
+    upcomingStays: 'Upcoming stays',
+    seeAllStays: 'See all',
+    noUpcomingStays: 'No upcoming stays with a check-in link yet.',
+    propertyCalendar: 'Property calendar',
+    settingsA11y: 'Property settings',
     addCoverPhoto: 'Add a cover photo',
     changeCoverPhoto: 'Change photo',
     uploadingPhoto: 'Uploading…',
@@ -1764,6 +1805,19 @@ export const fr: Dict = {
     checkInAt: (time: string) => `arrivée ${time}`,
     areaLabel: 'Zone',
     areaPlaceholder: 'ex. Cuisine, Salle de bain 1, Chambre 2',
+    roomsTitle: 'Pièces',
+    roomsHint: "Touchez une pièce pour la photographier. L'appareil se rouvre après chaque photo ; appuyez sur retour quand la pièce est faite.",
+    roomsDone: (done, total) => `${done} pièces sur ${total}`,
+    roomNames: {
+      bedroom: (n) => (n ? `Chambre ${n}` : 'Chambre'),
+      bathroom: (n) => (n ? `Salle de bain ${n}` : 'Salle de bain'),
+      kitchen: 'Cuisine',
+      living: 'Salon',
+      entrance: 'Entrée',
+      outdoor: 'Terrasse',
+    },
+    otherRoom: 'Autre',
+    otherRoomGo: 'Prendre les photos',
     uploading: 'Envoi…',
     uploadingCount: (n: number) => `Envoi de ${n} photo${n === 1 ? '' : 's'}…`,
     notSentCount: (n) => `${n} photo${n === 1 ? '' : 's'} pas encore envoyée${n === 1 ? '' : 's'}`,
@@ -1772,7 +1826,7 @@ export const fr: Dict = {
     locationFixBody: "Impossible d'obtenir votre position. Approchez-vous d'une fenêtre, vérifiez que la localisation est activée, puis réessayez.",
     takePhoto: 'Prendre une photo',
     burstHint: "L'appareil photo se rouvre après chaque photo pour en prendre plusieurs de cette zone. Appuyez sur retour quand vous avez terminé.",
-    noPhotosYet: 'Aucune photo pour le moment — appuyez sur « Prendre une photo » ci-dessus pour commencer.',
+    noPhotosYet: 'Aucune photo pour le moment — touchez une pièce ci-dessus pour commencer.',
     nameAreaTitle: 'Nommez cette zone',
     nameAreaBody: 'Indiquez de quelle zone il s’agit (ex. Cuisine) avant de prendre la photo.',
     locationNeededTitle: 'Localisation requise',
@@ -2165,6 +2219,12 @@ export const fr: Dict = {
     ratePerNight: (rate, currency) => `${rate} ${currency} / nuit`,
   },
   propertyDetail: {
+    tabs: { overview: 'Aperçu', checkIns: 'Check-ins', info: 'Infos' },
+    upcomingStays: 'Prochains séjours',
+    seeAllStays: 'Tout voir',
+    noUpcomingStays: 'Aucun séjour à venir avec un lien de check-in.',
+    propertyCalendar: 'Calendrier du logement',
+    settingsA11y: 'Réglages du logement',
     addCoverPhoto: 'Ajouter une photo de couverture',
     changeCoverPhoto: 'Changer la photo',
     uploadingPhoto: 'Envoi…',
@@ -2550,6 +2610,19 @@ export const ar: Dict = {
     checkInAt: (time: string) => `تسجيل الوصول ${time}`,
     areaLabel: 'المنطقة',
     areaPlaceholder: 'مثل: المطبخ، الحمام 1، غرفة النوم 2',
+    roomsTitle: 'الغرف',
+    roomsHint: 'المس غرفة لتصويرها. تُفتح الكاميرا من جديد بعد كل صورة؛ اضغط رجوع عند الانتهاء من الغرفة.',
+    roomsDone: (done, total) => `${done} من ${total} غرف`,
+    roomNames: {
+      bedroom: (n) => (n ? `غرفة النوم ${n}` : 'غرفة النوم'),
+      bathroom: (n) => (n ? `الحمام ${n}` : 'الحمام'),
+      kitchen: 'المطبخ',
+      living: 'الصالون',
+      entrance: 'المدخل',
+      outdoor: 'التراس',
+    },
+    otherRoom: 'مكان آخر',
+    otherRoomGo: 'التقاط الصور',
     uploading: 'جارٍ الرفع…',
     uploadingCount: (n: number) => `جارٍ رفع ${arPlural(n, { one: 'صورة واحدة', two: 'صورتين', few: 'صور', many: 'صورة' })}…`,
     notSentCount: (n) => `لم تُرسل ${n} صورة بعد`,
@@ -2558,7 +2631,7 @@ export const ar: Dict = {
     locationFixBody: 'تعذّر تحديد موقعك. اقترب من نافذة، وتأكد من تفعيل الموقع، ثم حاول مرة أخرى.',
     takePhoto: 'التقاط صورة',
     burstHint: 'تُفتح الكاميرا من جديد بعد كل صورة لتلتقط عدة صور لهذه المنطقة. اضغط رجوع عند الانتهاء.',
-    noPhotosYet: 'لا توجد صور بعد — اضغط على «التقاط صورة» أعلاه للبدء.',
+    noPhotosYet: 'لا توجد صور بعد — المس غرفة أعلاه للبدء.',
     nameAreaTitle: 'سمِّ هذه المنطقة',
     nameAreaBody: 'أدخل اسم المنطقة التي تصوّرها (مثل المطبخ) قبل التقاط الصورة.',
     locationNeededTitle: 'مطلوب تحديد الموقع',
@@ -2969,6 +3042,12 @@ export const ar: Dict = {
     ratePerNight: (rate, currency) => `${rate} ${currency === 'MAD' ? 'درهم' : currency} / الليلة`,
   },
   propertyDetail: {
+    tabs: { overview: 'نظرة عامة', checkIns: 'تسجيلات الوصول', info: 'التفاصيل' },
+    upcomingStays: 'الإقامات القادمة',
+    seeAllStays: 'عرض الكل',
+    noUpcomingStays: 'لا توجد إقامات قادمة برابط تسجيل وصول بعد.',
+    propertyCalendar: 'تقويم العقار',
+    settingsA11y: 'إعدادات العقار',
     addCoverPhoto: 'أضف صورة غلاف',
     changeCoverPhoto: 'تغيير الصورة',
     uploadingPhoto: 'جارٍ الرفع…',

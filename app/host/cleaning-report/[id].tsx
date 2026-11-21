@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, Pressable, Alert, Share, PixelRatio } from 'react-native';
+import { useCallback, useEffect, useRef, useState, type ComponentProps } from 'react';
+import { View, StyleSheet, ScrollView, Image, Pressable, Alert, Share, PixelRatio, useWindowDimensions } from 'react-native';
 import { Text } from '@/components/text';
 import { useLocalSearchParams, useFocusEffect, Stack } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -22,12 +22,39 @@ import { Screen, Card, LoadingScreen, StatusBadge, TextField, ErrorBanner, Photo
 import { Button } from '@/components/Button';
 import { downloadAndShare } from '@/lib/files';
 import { useToast } from '@/lib/toast';
-import { todayIso, addDaysIso } from '@/lib/calendar-visuals';
+import { todayIso, addDaysIso, dateLocale } from '@/lib/calendar-visuals';
 import { colors, radius, spacing, typography } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useLanguage } from '@/lib/i18n/language-context';
 import type { Lang } from '@/lib/i18n/language-context';
+import type { Dict } from '@/lib/i18n/dictionary';
 import { formatClock } from '@/lib/dates';
+
+type RoomIcon = ComponentProps<typeof MaterialCommunityIcons>['name'];
+type Room = { section: string; icon: RoomIcon };
+
+/**
+ * The rooms to photograph, as picture tiles — one per bedroom and bathroom
+ * the property has, then the shared rooms. Picking a tile replaces typing an
+ * area name: quicker for everyone, and usable by a cleaner who doesn't read
+ * (the icon says the room). The room's name in the app's language becomes
+ * the photo's section, which is what the PDF and the web viewer group by.
+ */
+function buildRooms(bedrooms: number, bathrooms: number, names: Dict['cleaningReports']['roomNames']): Room[] {
+  const numbered = (count: number) => {
+    const c = Math.min(Math.max(1, Math.round(count) || 1), 8);
+    return c === 1 ? [null] : Array.from({ length: c }, (_, i) => i + 1);
+  };
+  return [
+    ...numbered(bedrooms).map((n) => ({ section: names.bedroom(n), icon: 'bed-outline' as RoomIcon })),
+    ...numbered(bathrooms).map((n) => ({ section: names.bathroom(n), icon: 'shower' as RoomIcon })),
+    { section: names.kitchen, icon: 'stove' },
+    { section: names.living, icon: 'sofa-outline' },
+    { section: names.entrance, icon: 'door-open' },
+    { section: names.outdoor, icon: 'flower-outline' },
+  ];
+}
 
 /** Same formatting dashboard.tsx's checkout sheet uses for a property's configured check-in time (e.g. "3:00 PM"). Airbnb/Hospitable gives a check-in *date*, not a time — the time shown is the property's own expected check-in time, same as everywhere else in the app that shows one. */
 function checkInTimeLabel(checkInTime: string | null | undefined, lang: Lang): string | null {
@@ -107,8 +134,15 @@ export default function CleaningReportDetailScreen() {
   const toast = useToast();
   const { t, lang } = useLanguage();
 
+  const { width: windowWidth } = useWindowDimensions();
   const [report, setReport] = useState<CleaningReport | null>(null);
   const [sectionInput, setSectionInput] = useState('');
+  /** The "Other" tile's name field, open or not. */
+  const [otherOpen, setOtherOpen] = useState(false);
+  /** Bedroom and bathroom counts, for the room tiles. One of each until the property loads (or if it can't be read). */
+  const [roomCounts, setRoomCounts] = useState({ bedrooms: 1, bathrooms: 1 });
+  /** Set while a burst is getting its location fix, so a second tap doesn't start another. */
+  const [startingBurst, setStartingBurst] = useState(false);
   /** Shots still uploading in the background — the camera doesn't wait for them, but "Mark complete" does. */
   /** Photos waiting to go up, or going up now. */
   const [pendingUploads, setPendingUploads] = useState(0);
@@ -174,8 +208,16 @@ export default function CleaningReportDetailScreen() {
   useEffect(() => {
     if (!session || !report) return;
     let cancelled = false;
+    // Read on its own so the room tiles still get the right number of
+    // bedrooms when the calendar call below is refused.
+    const propertyCall = api.properties.getOne(report.propertyId, session.accessToken);
+    propertyCall
+      .then((p) => {
+        if (!cancelled) setRoomCounts({ bedrooms: p.bedrooms ?? 1, bathrooms: p.bathrooms ?? 1 });
+      })
+      .catch(() => {});
     Promise.all([
-      api.properties.getOne(report.propertyId, session.accessToken),
+      propertyCall,
       api.properties.getCalendar(todayIso(), addDaysIso(todayIso(), 30), session.accessToken),
     ])
       .then(([property, events]) => {
@@ -294,27 +336,31 @@ export default function CleaningReportDetailScreen() {
    * waited until the burst ended, or never went. One burst is one area, so
    * one position serves all its photos.
    */
-  async function handleAddPhoto() {
-    if (!session || !report) return;
-    const section = sectionInput.trim();
+  async function startBurst(section: string) {
+    if (!session || !report || startingBurst) return;
     if (!section) {
       Alert.alert(t.cleaningReports.nameAreaTitle, t.cleaningReports.nameAreaBody);
       return;
     }
 
-    // Asked up front (not after the first shot) so the burst isn't
-    // interrupted by a permission dialog between photos.
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(t.cleaningReports.locationNeededTitle, t.cleaningReports.locationNeededBody);
-      return;
-    }
-
-    setError(null);
-    const fix = await currentFix();
-    if (!fix) {
-      Alert.alert(t.cleaningReports.locationFixTitle, t.cleaningReports.locationFixBody);
-      return;
+    setStartingBurst(true);
+    let fix: Fix | null = null;
+    try {
+      // Asked up front (not after the first shot) so the burst isn't
+      // interrupted by a permission dialog between photos.
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(t.cleaningReports.locationNeededTitle, t.cleaningReports.locationNeededBody);
+        return;
+      }
+      setError(null);
+      fix = await currentFix();
+      if (!fix) {
+        Alert.alert(t.cleaningReports.locationFixTitle, t.cleaningReports.locationFixBody);
+        return;
+      }
+    } finally {
+      setStartingBurst(false);
     }
     await AsyncStorage.setItem(burstKey(report.id), JSON.stringify({ section, fix })).catch(() => {});
     while (true) {
@@ -413,6 +459,11 @@ export default function CleaningReportDetailScreen() {
   const isInProgress = report.status === 'IN_PROGRESS';
   const sections = groupBySection(report.photos ?? []);
   const photoCount = report.photos?.length ?? 0;
+  const photoCountBySection = new Map(sections.map((s) => [s.section, s.photos.length]));
+  const rooms = buildRooms(roomCounts.bedrooms, roomCounts.bathrooms, t.cleaningReports.roomNames);
+  const roomsDone = rooms.filter((r) => photoCountBySection.has(r.section)).length;
+  // Three tiles to a row across the content width (24 padding each side, 8 between).
+  const tileWidth = Math.floor((windowWidth - spacing.lg * 2 - spacing.sm * 2) / 3);
 
   return (
     <Screen>
@@ -450,7 +501,7 @@ export default function CleaningReportDetailScreen() {
                 {nextGuest.event.title || t.cleaningReports.guestStay}
               </Text>
               <Text style={typography.bodyMuted}>
-                {new Date(nextGuest.event.date).toLocaleDateString(undefined, {
+                {new Date(nextGuest.event.date).toLocaleDateString(dateLocale(lang), {
                   weekday: 'short',
                   day: 'numeric',
                   month: 'short',
@@ -464,16 +515,79 @@ export default function CleaningReportDetailScreen() {
         {error && <ErrorBanner message={error} />}
 
         {isInProgress && (
-          <Card style={{ marginTop: spacing.md }}>
-            <TextField
-              label={t.cleaningReports.areaLabel}
-              placeholder={t.cleaningReports.areaPlaceholder}
-              value={sectionInput}
-              onChangeText={setSectionInput}
-            />
-            <Button label={t.cleaningReports.takePhoto} onPress={handleAddPhoto} variant="outline" />
-            <Text style={[typography.caption, { marginTop: spacing.xs }]}>
-              {pendingUploads > 0 ? t.cleaningReports.uploadingCount(pendingUploads) : t.cleaningReports.burstHint}
+          <View style={{ marginTop: spacing.lg }}>
+            <View style={styles.roomsHeader}>
+              <Text style={typography.label}>{t.cleaningReports.roomsTitle}</Text>
+              <Text style={[typography.caption, typography.number]}>
+                {t.cleaningReports.roomsDone(roomsDone, rooms.length)}
+              </Text>
+            </View>
+            <View
+              style={styles.progressRow}
+              accessible
+              accessibilityLabel={t.cleaningReports.roomsDone(roomsDone, rooms.length)}
+            >
+              {rooms.map((r) => (
+                <View key={r.section} style={[styles.progressSeg, photoCountBySection.has(r.section) && styles.progressSegDone]} />
+              ))}
+            </View>
+            <View style={styles.roomGrid}>
+              {[...rooms, null].map((room) => {
+                const count = room ? photoCountBySection.get(room.section) ?? 0 : 0;
+                const done = count > 0;
+                const label = room ? room.section : t.cleaningReports.otherRoom;
+                return (
+                  <Pressable
+                    key={room?.section ?? '__other'}
+                    onPress={() => (room ? startBurst(room.section) : setOtherOpen((o) => !o))}
+                    disabled={startingBurst}
+                    style={({ pressed }) => [
+                      styles.roomTile,
+                      { width: tileWidth },
+                      done && styles.roomTileDone,
+                      !room && styles.roomTileOther,
+                      pressed && { backgroundColor: colors.surface2 },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={done ? `${label}, ${t.cleaningReports.photoCount(count)}` : label}
+                  >
+                    <MaterialCommunityIcons
+                      name={room ? room.icon : 'pencil-outline'}
+                      size={34}
+                      color={done ? colors.success : colors.ink}
+                    />
+                    <Text style={styles.roomLabel} numberOfLines={2}>
+                      {label}
+                    </Text>
+                    <View style={[styles.roomBadge, done && styles.roomBadgeDone]}>
+                      {done ? (
+                        <Text style={styles.roomBadgeCount}>{count}</Text>
+                      ) : (
+                        <Ionicons name="camera-outline" size={13} color={colors.inkMuted} />
+                      )}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {otherOpen && (
+              <Card style={{ marginTop: spacing.sm }}>
+                <TextField
+                  label={t.cleaningReports.areaLabel}
+                  placeholder={t.cleaningReports.areaPlaceholder}
+                  value={sectionInput}
+                  onChangeText={setSectionInput}
+                />
+                <Button
+                  label={t.cleaningReports.otherRoomGo}
+                  onPress={() => startBurst(sectionInput.trim())}
+                  variant="outline"
+                  disabled={startingBurst}
+                />
+              </Card>
+            )}
+            <Text style={[typography.caption, { marginTop: spacing.sm }]}>
+              {pendingUploads > 0 ? t.cleaningReports.uploadingCount(pendingUploads) : t.cleaningReports.roomsHint}
             </Text>
             {failedShots.length > 0 && pendingUploads === 0 && (
               <View style={styles.failedRow}>
@@ -486,7 +600,7 @@ export default function CleaningReportDetailScreen() {
                 </Pressable>
               </View>
             )}
-          </Card>
+          </View>
         )}
 
         {sections.length === 0 ? (
@@ -534,7 +648,6 @@ export default function CleaningReportDetailScreen() {
             onPress={handleComplete}
             loading={isCompleting}
             disabled={photoCount === 0 || pendingUploads > 0}
-            variant="outline"
             style={{ marginTop: spacing.lg }}
           />
         )}
@@ -582,6 +695,39 @@ const styles = StyleSheet.create({
   },
   nextGuestLabel: { ...typography.caption, color: colors.primary, fontWeight: '600', marginBottom: 1 },
   failedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.sm },
+  roomsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  progressRow: { flexDirection: 'row', gap: 4, marginTop: spacing.sm },
+  progressSeg: { flex: 1, height: 6, borderRadius: radius.full, backgroundColor: colors.border },
+  progressSegDone: { backgroundColor: colors.success },
+  roomGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md },
+  roomTile: {
+    height: 104,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 6,
+  },
+  roomTileDone: { borderWidth: 2, borderColor: colors.success },
+  roomTileOther: { borderStyle: 'dashed' },
+  roomLabel: { fontSize: 12, lineHeight: 15, fontWeight: '500', color: colors.ink, textAlign: 'center' },
+  roomBadge: {
+    position: 'absolute',
+    top: 6,
+    end: 6,
+    minWidth: 22,
+    height: 22,
+    borderRadius: radius.full,
+    paddingHorizontal: 5,
+    backgroundColor: colors.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roomBadgeDone: { backgroundColor: colors.success },
+  roomBadgeCount: { fontSize: 12, fontWeight: '600', color: colors.onPrimary, ...typography.number },
   retryText: { fontSize: 13, fontWeight: '600', color: colors.green700 },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
   photoWrap: { position: 'relative' },

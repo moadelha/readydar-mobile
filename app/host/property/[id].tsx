@@ -37,7 +37,6 @@ import { PROPERTY_STATUS_TONE, PropertyStatus } from '@/lib/status';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { useHostAccess } from '@/lib/access';
 import { ChannelMark } from '@/components/channel-mark';
-import { useLargeTitle } from '@/lib/large-title';
 import * as ImagePicker from 'expo-image-picker';
 
 /**
@@ -54,7 +53,9 @@ const SETTABLE_STATUSES: PropertyStatus[] = ['OCCUPIED', 'NEEDS_CLEANING', 'IN_P
  * if the two drift apart the server crops to one shape and the view draws
  * another, and the picture goes soft again.
  */
-const COVER_HEIGHT = 170;
+const COVER_HEIGHT = 232;
+
+type Tab = 'overview' | 'checkins' | 'info';
 
 /** Dot and label colour for each check-in's status in the compact rows. */
 const STAY_TONE: Record<string, string> = {
@@ -98,7 +99,6 @@ function DoorPhotoThumb({ uri, onPress, onLongPress }: { uri: string; onPress: (
 }
 
 export default function PropertyDetailScreen() {
-  const largeTitle = useLargeTitle();
   // `checkin` is optional and only ever set when something linked straight to
   // one — Home's notification bell, today. It opens that check-in's month
   // group and scrolls to it, so a host who taps "Sarah completed their
@@ -138,6 +138,8 @@ export default function PropertyDetailScreen() {
   const [deleteBusyId, setDeleteBusyId] = useState<string | null>(null);
   /** Explicitly-toggled month groups; absent means "use the default" (nearest month open). */
   const [openCheckInMonths, setOpenCheckInMonths] = useState<Record<string, boolean>>({});
+  /** Which tab is showing. A link to one check-in opens straight on the check-ins. */
+  const [tab, setTab] = useState<Tab>(focusCheckInId ? 'checkins' : 'overview');
 
   const scrollRef = useRef<ScrollView>(null);
   /**
@@ -233,6 +235,24 @@ export default function PropertyDetailScreen() {
       load();
     }, [load]),
   );
+
+  /** The next stays with a check-in link, soonest first — the Overview tab shows three. */
+  const upcomingStays = useMemo(
+    () =>
+      checkIns
+        .filter((c) => bucketOf(c) !== 'EXPIRED' && new Date(c.expectedCheckOut).getTime() >= Date.now() - 86_400_000)
+        .sort((a, b) => a.expectedCheckIn.localeCompare(b.expectedCheckIn))
+        .slice(0, 3),
+    [checkIns],
+  );
+
+  /** Opens one stay on the Check-ins tab, with its month unfolded. */
+  function openStay(c: GuestCheckIn) {
+    const group = checkInMonths.find((g) => g.items.some((x) => x.id === c.id));
+    if (group) setOpenCheckInMonths((prev) => ({ ...prev, [group.key]: true }));
+    setOpenRowId(c.id);
+    setTab('checkins');
+  }
 
   /** This property's check-in links bucketed by the month the stay starts in. */
   const checkInMonths = useMemo(() => groupByMonth(checkIns, (c) => c.expectedCheckIn, t), [checkIns, t]);
@@ -548,7 +568,7 @@ export default function PropertyDetailScreen() {
    */
   const heroWidthPx = Math.min(
     2000,
-    PixelRatio.getPixelSizeForLayoutSize(windowWidth - spacing.lg * 2),
+    PixelRatio.getPixelSizeForLayoutSize(windowWidth),
   );
   const coverUrl = propertyCoverUrl(property, heroWidthPx, {
     height: PixelRatio.getPixelSizeForLayoutSize(COVER_HEIGHT),
@@ -558,81 +578,113 @@ export default function PropertyDetailScreen() {
 
   return (
     <Screen>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: largeTitle.headerTitle(property.name),
-          headerBackTitle: t.propertyDetail.headerBack,
-          // Settings (rate, welcome message, access codes, turnover alerts)
-          // are all @MinHostRole('MANAGER') on the API.
-          headerRight: !isManager ? undefined : () => (
-            <Pressable onPress={() => router.push(`/host/property-settings/${property.id}`)} hitSlop={8}>
-              <Ionicons name="settings-outline" size={22} color={colors.primary} />
-            </Pressable>
-          ),
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         ref={scrollRef}
-        {...largeTitle.scrollProps}
         contentContainerStyle={[styles.container, { paddingBottom: spacing.xl * 2 + insets.bottom }]}
       >
-        {/* The cover photo (imported from Airbnb, or added here) — so the
-            page opens on the place itself rather than a wall of text.
-            Without one, managers get a quiet box to add it; anyone else
-            just starts at the name. */}
-        {coverUrl ? (
-          <View>
+        {/* The place itself first, edge to edge (imported from Airbnb, or
+            added here). Without one, managers get a quiet panel to add it.
+            Back and settings float over it in place of a header bar. */}
+        <View style={styles.hero}>
+          {coverUrl ? (
             <Image source={{ uri: coverUrl }} style={styles.cover} />
+          ) : (
+            <Pressable
+              onPress={() => handleAddPhoto('cover')}
+              disabled={!isManager || photoBusy !== null}
+              style={({ pressed }) => [styles.cover, styles.coverEmpty, pressed && { opacity: 0.8 }]}
+              accessibilityRole={isManager ? 'button' : undefined}
+            >
+              <Ionicons name={isManager ? 'image-outline' : 'home-outline'} size={26} color={colors.inkFaint} />
+              {isManager && (
+                <Text style={styles.coverEmptyText}>
+                  {photoBusy === 'cover' ? t.propertyDetail.uploadingPhoto : t.propertyDetail.addCoverPhoto}
+                </Text>
+              )}
+            </Pressable>
+          )}
+          <View style={styles.heroBar}>
+            <Pressable
+              onPress={() => router.back()}
+              style={styles.heroButton}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={t.propertyDetail.headerBack}
+            >
+              <Ionicons name="arrow-back" size={20} color={colors.ink} style={rtlFlip} />
+            </Pressable>
+            {/* Settings (rate, welcome message, access codes, turnover alerts)
+                are all @MinHostRole('MANAGER') on the API. */}
             {isManager && (
               <Pressable
-                onPress={() => handleAddPhoto('cover')}
-                disabled={photoBusy !== null}
-                style={styles.coverChange}
+                onPress={() => router.push(`/host/property-settings/${property.id}`)}
+                style={styles.heroButton}
+                hitSlop={6}
                 accessibilityRole="button"
+                accessibilityLabel={t.propertyDetail.settingsA11y}
               >
-                <Ionicons name="camera-outline" size={14} color={colors.ink} />
-                <Text style={styles.coverChangeText}>
-                  {photoBusy === 'cover' ? t.propertyDetail.uploadingPhoto : t.propertyDetail.changeCoverPhoto}
-                </Text>
+                <Ionicons name="settings-outline" size={20} color={colors.ink} />
               </Pressable>
             )}
           </View>
-        ) : isManager ? (
-          <Pressable
-            onPress={() => handleAddPhoto('cover')}
-            disabled={photoBusy !== null}
-            style={({ pressed }) => [styles.coverEmpty, pressed && { backgroundColor: colors.surface2 }]}
-            accessibilityRole="button"
-          >
-            <Ionicons name="image-outline" size={22} color={colors.inkFaint} />
-            <Text style={styles.coverEmptyText}>
-              {photoBusy === 'cover' ? t.propertyDetail.uploadingPhoto : t.propertyDetail.addCoverPhoto}
-            </Text>
-          </Pressable>
-        ) : null}
-        <Text style={typography.h1} {...largeTitle.titleProps}>{property.name}</Text>
+          {coverUrl && isManager && (
+            <Pressable
+              onPress={() => handleAddPhoto('cover')}
+              disabled={photoBusy !== null}
+              style={styles.coverChange}
+              accessibilityRole="button"
+            >
+              <Ionicons name="camera-outline" size={14} color={colors.ink} />
+              <Text style={styles.coverChangeText}>
+                {photoBusy === 'cover' ? t.propertyDetail.uploadingPhoto : t.propertyDetail.changeCoverPhoto}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+
+        <View style={styles.titleRow}>
+          <Text style={[typography.h1, styles.title]}>{property.name}</Text>
+          <StatusBadge
+            label={t.propertyStatus[effectiveStatus] ?? effectiveStatus}
+            tone={PROPERTY_STATUS_TONE[effectiveStatus] ?? 'neutral'}
+          />
+        </View>
         <View style={styles.metaRow}>
           <Ionicons name="location-outline" size={13} color={colors.inkFaint} />
-          <Text style={typography.bodyMuted}>
+          <Text style={[typography.bodyMuted, { flex: 1 }]}>
             {property.addressLine}, {property.city.name}
           </Text>
         </View>
-        <Text style={typography.caption}>
+        <Text style={[typography.caption, { marginTop: 2 }]}>
           {t.propertiesList.bedBathGuests(property.bedrooms, property.bathrooms, property.maxGuests)}
+          {property.nightlyRate
+            ? `  ·  ${t.propertiesList.ratePerNight(Math.round(Number(property.nightlyRate)), property.currency ?? 'MAD')}`
+            : ''}
         </Text>
-        {property.nightlyRate && <Text style={styles.rate}>{t.propertiesList.ratePerNight(Math.round(Number(property.nightlyRate)), property.currency ?? 'MAD')}</Text>}
 
-        {property.hospitableListingId && (
-          <View style={styles.syncNotice}>
-            <Ionicons name="link-outline" size={14} color={colors.primary} />
-            <Text style={[typography.caption, { flex: 1 }]}>
-              {t.propertyDetail.syncNotice}
-            </Text>
-          </View>
-        )}
+        <View style={styles.tabs} accessibilityRole="tablist">
+          {([
+            ['overview', t.propertyDetail.tabs.overview],
+            ...(canCheckins ? [['checkins', t.propertyDetail.tabs.checkIns]] : []),
+            ['info', t.propertyDetail.tabs.info],
+          ] as [Tab, string][]).map(([key, label]) => (
+            <Pressable
+              key={key}
+              onPress={() => setTab(key)}
+              style={[styles.tab, tab === key && styles.tabActive]}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: tab === key }}
+            >
+              <Text style={[styles.tabText, tab === key && styles.tabTextActive]}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
 
         {error && <ErrorBanner message={error} onRetry={load} />}
+
+        {tab === 'overview' && (
+        <>
 
         {/* Status, and a way to set it by hand.
 
@@ -645,13 +697,7 @@ export default function PropertyDetailScreen() {
             override is called out on screen rather than left silent, and
             why "Back to automatic" is always offered. */}
         <View style={styles.statusCard}>
-          <View style={styles.statusHeaderRow}>
-            <Text style={styles.statusLabel}>{t.propertyDetail.statusLabel}</Text>
-            <StatusBadge
-              label={t.propertyStatus[effectiveStatus] ?? effectiveStatus}
-              tone={PROPERTY_STATUS_TONE[effectiveStatus] ?? 'neutral'}
-            />
-          </View>
+          <Text style={styles.statusLabel}>{t.propertyDetail.statusLabel}</Text>
           <View style={styles.statusChips}>
             {SETTABLE_STATUSES.map((s) => (
               <Pressable
@@ -697,7 +743,65 @@ export default function PropertyDetailScreen() {
           />
         )}
 
-        {(canExpenses || canCleaningReports) && (
+        {canCheckins && (
+          <>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={typography.label}>{t.propertyDetail.upcomingStays}</Text>
+              {checkIns.length > 0 && (
+                <Pressable onPress={() => setTab('checkins')} hitSlop={8} accessibilityRole="button">
+                  <Text style={styles.newLinkText}>{`${t.propertyDetail.seeAllStays} ${lang === 'AR' ? '←' : '→'}`}</Text>
+                </Pressable>
+              )}
+            </View>
+            {upcomingStays.length === 0 ? (
+              <Card>
+                <Text style={typography.bodyMuted}>{t.propertyDetail.noUpcomingStays}</Text>
+              </Card>
+            ) : (
+              <View style={styles.stayList}>
+                {upcomingStays.map((c, i) => {
+                  const name = c.guestFirstName
+                    ? `${c.guestFirstName} ${c.guestLastName ?? ''}`.trim()
+                    : c.guestNameHint || t.propertyDetail.guestFallback;
+                  const start = new Date(c.expectedCheckIn);
+                  const end = new Date(c.expectedCheckOut);
+                  const nights = Math.max(0, Math.round((end.getTime() - start.getTime()) / 86_400_000));
+                  const meta = [
+                    nights > 0 ? t.calendarHost.nightsCount(nights) : null,
+                    c.guestCount > 1 ? t.common.guestsCount(c.guestCount) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ');
+                  const shown = c.status === 'SUBMITTED' ? 'SUBMITTED' : 'PENDING';
+                  return (
+                    <Pressable
+                      key={c.id}
+                      onPress={() => openStay(c)}
+                      style={({ pressed }) => [styles.stayRow, i > 0 && styles.stayDivider, pressed && { backgroundColor: colors.surface2 }]}
+                      accessibilityRole="button"
+                    >
+                      <View style={styles.dateBlock}>
+                        <Text style={styles.dateDay}>{start.getUTCDate()}</Text>
+                        <Text style={styles.dateWeekday}>
+                          {start.toLocaleDateString(dateLocale, { month: 'short', timeZone: 'UTC' })}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={styles.stayName} numberOfLines={1}>{name}</Text>
+                        {!!meta && <Text style={styles.stayMeta} numberOfLines={1}>{meta}</Text>}
+                      </View>
+                      <Text style={[styles.statusText, { color: STAY_TONE[shown] }]}>
+                        {t.propertyDetail.checkInStatusShort[shown]}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </>
+        )}
+
+        {(
         <View style={styles.actionList}>
           {[
             canExpenses && {
@@ -705,6 +809,12 @@ export default function PropertyDetailScreen() {
               icon: 'receipt-outline' as const,
               label: t.propertyDetail.logExpense,
               onPress: () => router.push({ pathname: '/host/expense/new', params: { propertyId: property.id } }),
+            },
+            {
+              key: 'calendar',
+              icon: 'calendar-outline' as const,
+              label: t.propertyDetail.propertyCalendar,
+              onPress: () => router.push({ pathname: '/calendar', params: { propertyId: property.id, at: String(Date.now()) } }),
             },
             canCleaningReports && {
               key: 'reports',
@@ -732,7 +842,10 @@ export default function PropertyDetailScreen() {
         </View>
         )}
 
-        {canCheckins && (
+        </>
+        )}
+
+        {canCheckins && tab === 'checkins' && (
         <>
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeading}>{t.propertyDetail.guestCheckIns}</Text>
@@ -1067,6 +1180,8 @@ export default function PropertyDetailScreen() {
         </>
         )}
 
+        {tab === 'info' && (
+        <>
         {(property.checkInTime || property.checkOutTime) && (
           <>
             <Text style={styles.sectionTitle}>{t.propertyDetail.checkInOutTitle}</Text>
@@ -1157,6 +1272,8 @@ export default function PropertyDetailScreen() {
             {t.propertyDetail.icalNotice}
           </Text>
         </View>
+        </>
+        )}
       </ScrollView>
 
       <PhotoViewerModal uri={viewerUrl} onClose={() => setViewerUrl(null)} />
@@ -1175,7 +1292,40 @@ const styles = StyleSheet.create({
    * so on a phone with a gesture bar the last control on a pushed screen
    * ends up sitting on the system back key.
    */
-  container: { padding: spacing.lg, paddingTop: spacing.xl },
+  container: { padding: spacing.lg, paddingTop: 0 },
+  /** Pulled out to the screen edges, past the page padding. */
+  hero: { marginHorizontal: -spacing.lg, marginBottom: spacing.md },
+  heroBar: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.md,
+    right: spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  heroButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  title: { flex: 1, fontSize: 24, lineHeight: 30 },
+  tabs: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+    marginTop: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  tab: { paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: 'transparent', marginBottom: -1 },
+  tabActive: { borderBottomColor: colors.primary },
+  tabText: { fontSize: 14, fontWeight: '500', color: colors.inkMuted },
+  tabTextActive: { color: colors.ink, fontWeight: '600' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: spacing.xs },
   rate: { marginTop: spacing.xs, color: colors.primary, fontWeight: '600', fontSize: 13 },
   syncNotice: {
@@ -1267,14 +1417,12 @@ const styles = StyleSheet.create({
   cover: {
     width: '100%',
     height: COVER_HEIGHT,
-    borderRadius: radius.md,
-    marginBottom: spacing.md,
     backgroundColor: colors.surface2,
   },
   coverChange: {
     position: 'absolute',
-    right: spacing.sm,
-    bottom: spacing.md + spacing.sm,
+    right: spacing.md,
+    bottom: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -1285,15 +1433,9 @@ const styles = StyleSheet.create({
   },
   coverChangeText: { fontSize: 13, fontWeight: '500', color: colors.ink },
   coverEmpty: {
-    height: 120,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.lineStrong,
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
-    marginBottom: spacing.md,
   },
   coverEmptyText: { fontSize: 14, fontWeight: '500', color: colors.inkMuted },
   addPhotoTile: {
