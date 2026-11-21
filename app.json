@@ -37,7 +37,8 @@
         "NSCameraUsageDescription": "ReadyDar uses your camera to take cleaning-report photos, photos of your property and its door, and photos you send to guests.",
         "NSPhotoLibraryUsageDescription": "ReadyDar lets you choose photos of your property, its door, and photos to send to guests.",
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "2"
     },
     "plugins": [
       "expo-router",
