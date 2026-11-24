@@ -10,6 +10,7 @@ import { ReviewCard, TrendChip } from '@/components/review-card';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, GuestReview, GuestReviewPropertyOverview, ReviewInsightState, ReviewTranslation, resolveThumbnailUrl } from '@/lib/api';
 import { usePlanConsole } from '@/lib/plan-console';
+import { useHostAccess } from '@/lib/access';
 import { useReviewsStrings } from '@/lib/i18n/reviews-strings';
 import { useReviewInsightsStrings } from '@/lib/i18n/review-insights-strings';
 import { useLanguage } from '@/lib/i18n/language-context';
@@ -34,10 +35,13 @@ export default function ReviewPropertyScreen() {
   const router = useRouter();
   const r = useReviewsStrings();
   const s = useReviewInsightsStrings();
-  const { lang } = useLanguage();
+  const { t, lang } = useLanguage();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { canMessages } = usePlanConsole();
+  const { isPro } = usePlanConsole();
+  const { has } = useHostAccess();
+  // What the API checks: replying is Pro, and replying or running the AI needs the Reviews permission.
+  const mayReply = isPro && has('REVIEWS');
   const token = session?.accessToken;
 
   const [property, setProperty] = useState<GuestReviewPropertyOverview | null>(null);
@@ -51,14 +55,22 @@ export default function ReviewPropertyScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const reviewsY = useRef(0);
   const alive = useRef(true);
-  useEffect(() => () => {
-    alive.current = false;
+  const polling = useRef(false);
+  /** The property and language on screen: a slower answer for another one is dropped. */
+  const showing = useRef('');
+  showing.current = `${id}:${lang}`;
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
   }, []);
 
   const loadInsight = useCallback(async () => {
     if (!token || !id) return null;
     const st = await api.guestReviews.insight(id, lang, token).catch(() => null);
-    if (alive.current) setState(st);
+    // A failed check keeps what's on screen.
+    if (st && alive.current && showing.current === `${id}:${lang}`) setState(st);
     return st;
   }, [token, id, lang]);
 
@@ -78,7 +90,7 @@ export default function ReviewPropertyScreen() {
       if (st?.running) void poll();
 
       // Pro: translate what isn't yet (up to 20; stored ones are reused, no AI).
-      const onDemand = st ? st.onDemand ?? st.onPlan : false;
+      const onDemand = !!st?.available && has('REVIEWS') && (st.onDemand ?? st.onPlan);
       const todo = mine.filter((x) => x.translation == null && hasText(x)).slice(0, 20);
       if (onDemand && todo.length) {
         const done = await api.guestReviews.translate(todo.map((x) => x.id), lang, token).catch(() => null);
@@ -101,12 +113,17 @@ export default function ReviewPropertyScreen() {
 
   /** Waits for a background analysis: checks every 4 s, gives up after 3 minutes. */
   async function poll() {
+    if (polling.current) return;
+    polling.current = true;
     setAnalysing(true);
     for (let i = 0; i < 45 && alive.current; i++) {
       await new Promise((res) => setTimeout(res, 4000));
       const st = await loadInsight();
-      if (st && !st.running) break;
+      if (!st || st.running) continue;
+      if (st.error && alive.current) setError(s.analysisError);
+      break;
     }
+    polling.current = false;
     if (alive.current) setAnalysing(false);
   }
 
@@ -147,7 +164,9 @@ export default function ReviewPropertyScreen() {
 
   const insight = state?.insight ?? null;
   const onPlan = !!state?.onPlan;
-  const onDemand = state ? state.onDemand ?? state.onPlan : false;
+  // `available` also means the AI is set up; `otherLanguage` translating is open to every paid plan.
+  const canRunAi = !!state?.available && has('REVIEWS');
+  const onDemand = canRunAi && (state?.onDemand ?? state?.onPlan ?? false);
   const score = stats.score90 ?? stats.overall;
   const photo = property?.photoUrl ? resolveThumbnailUrl(property.photoUrl, PixelRatio.getPixelSizeForLayoutSize(width)) : null;
   const name = property?.name ?? reviews[0]?.property.name ?? '';
@@ -185,7 +204,7 @@ export default function ReviewPropertyScreen() {
             style={[styles.back, { top: insets.top + spacing.sm }]}
             hitSlop={6}
             accessibilityRole="button"
-            accessibilityLabel={r.cancel}
+            accessibilityLabel={t.common.back}
           >
             <Ionicons name="arrow-back" size={20} color={colors.ink} style={rtlFlip} />
           </Pressable>
@@ -274,7 +293,7 @@ export default function ReviewPropertyScreen() {
                 <>
                   <Text style={styles.summary}>{insight.summary}</Text>
                   {!!updatedLine && <Text style={typography.caption}>{updatedLine}</Text>}
-                  {state?.otherLanguage && (
+                  {state?.otherLanguage && canRunAi && (
                     <Button label={analysing ? s.updating : s.translateAnalysis} onPress={analyse} loading={analysing} variant="outline" style={{ marginTop: spacing.sm }} />
                   )}
                 </>
@@ -376,8 +395,8 @@ export default function ReviewPropertyScreen() {
                   review={item}
                   token={token!}
                   showProperty={false}
-                  canReply={canMessages && !!item.canReply}
-                  canReviewGuest={canMessages && !!item.canReviewGuest}
+                  canReply={mayReply && !!item.canReply}
+                  canReviewGuest={mayReply && !!item.canReviewGuest}
                   onPatch={(patch) => setReviews((prev) => prev?.map((x) => (x.id === item.id ? { ...x, ...patch } : x)) ?? prev)}
                 />
               ))

@@ -19,6 +19,10 @@ const en = {
     resent: 'Sent. Check your inbox and spam folder.',
     resendError: "Couldn't send it. Try again in a minute.",
     otherEmail: 'Use another email',
+    nameRequired: 'Enter your first and last name.',
+    emailInvalid: 'Enter a valid email address.',
+    passwordRule: 'Password: at least 8 characters, with an uppercase letter, a lowercase letter, and a number or symbol.',
+    tooMany: 'Too many tries. Wait a minute and try again.',
     hostsOnly: 'This app is for hosts. Other accounts sign in on the ReadyDar website.',
     locked: 'Too many attempts. This account is locked for 15 minutes; reset your password to unlock it now.',
     subtitle: 'Calendar, check-ins and cleaning for all your properties, in one place.',
@@ -120,7 +124,7 @@ const en = {
   },
   select: { title: 'Choose a property', search: 'Search' },
   photoSaveError: 'Could not save the photo. Try again.',
-  planIosNote: 'Your plan and what it includes.',
+  a11y: { close: 'Close', clear: 'Clear', showPassword: 'Show password', hidePassword: 'Hide password', remove: 'Remove', hide: 'Hide', fewer: 'One fewer', more: 'One more' },
 };
 
 type SetupStrings = typeof en;
@@ -138,6 +142,10 @@ const fr: SetupStrings = {
     resent: 'Envoyé. Regardez aussi dans vos spams.',
     resendError: "Impossible de l'envoyer. Réessayez dans une minute.",
     otherEmail: 'Utiliser une autre adresse',
+    nameRequired: 'Indiquez votre prénom et votre nom.',
+    emailInvalid: 'Indiquez une adresse e-mail valide.',
+    passwordRule: 'Mot de passe : au moins 8 caractères, avec une majuscule, une minuscule, et un chiffre ou un symbole.',
+    tooMany: "Trop d'essais. Attendez une minute et réessayez.",
     hostsOnly: "Cette app est réservée aux hôtes. Les autres comptes se connectent sur le site ReadyDar.",
     locked: 'Trop de tentatives. Ce compte est bloqué 15 minutes ; réinitialisez votre mot de passe pour le débloquer tout de suite.',
     subtitle: 'Calendrier, check-in et ménage de tous vos logements, au même endroit.',
@@ -239,7 +247,7 @@ const fr: SetupStrings = {
   },
   select: { title: 'Choisir un logement', search: 'Rechercher' },
   photoSaveError: "Impossible d'enregistrer la photo. Réessayez.",
-  planIosNote: "Votre formule et ce qu'elle comprend.",
+  a11y: { close: 'Fermer', clear: 'Effacer', showPassword: 'Afficher le mot de passe', hidePassword: 'Masquer le mot de passe', remove: 'Retirer', hide: 'Masquer', fewer: 'Un de moins', more: 'Un de plus' },
 };
 
 const ar: SetupStrings = {
@@ -255,6 +263,10 @@ const ar: SetupStrings = {
     resent: 'تم الإرسال. تحقق أيضًا من الرسائل غير المرغوب فيها.',
     resendError: 'تعذّر الإرسال. حاول بعد دقيقة.',
     otherEmail: 'استخدام بريد آخر',
+    nameRequired: 'أدخل اسمك الأول واسم العائلة.',
+    emailInvalid: 'أدخل بريدًا إلكترونيًا صالحًا.',
+    passwordRule: 'كلمة المرور: 8 أحرف على الأقل، مع حرف كبير وحرف صغير ورقم أو رمز.',
+    tooMany: 'محاولات كثيرة. انتظر دقيقة ثم حاول مجددًا.',
     hostsOnly: 'هذا التطبيق مخصص للمضيفين. الحسابات الأخرى تسجّل الدخول من موقع ReadyDar.',
     locked: 'محاولات كثيرة. الحساب مقفل لمدة 15 دقيقة؛ أعد تعيين كلمة المرور لفتحه الآن.',
     subtitle: 'التقويم وتسجيل الوصول والتنظيف لكل عقاراتك في مكان واحد.',
@@ -356,7 +368,7 @@ const ar: SetupStrings = {
   },
   select: { title: 'اختر عقارًا', search: 'بحث' },
   photoSaveError: 'تعذّر حفظ الصورة. حاول مرة أخرى.',
-  planIosNote: 'باقتك وما تتضمنه.',
+  a11y: { close: 'إغلاق', clear: 'مسح', showPassword: 'إظهار كلمة المرور', hidePassword: 'إخفاء كلمة المرور', remove: 'إزالة', hide: 'إخفاء', fewer: 'أقل بواحد', more: 'أكثر بواحد' },
 };
 
 const STRINGS = { EN: en, FR: fr, AR: ar };
@@ -370,6 +382,7 @@ export function useSetupStrings(): SetupStrings {
 export function authErrorMessage(err: unknown, s: SetupStrings, fallback: string): string {
   if (!(err instanceof ApiError)) return fallback;
   if (err.message === 'HOSTS_ONLY') return s.auth.hostsOnly;
+  if (err.status === 429) return s.auth.tooMany;
   if (/locked/i.test(err.message)) return s.auth.locked;
   return s.auth.server[err.message] ?? fallback;
 }

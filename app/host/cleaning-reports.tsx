@@ -116,7 +116,7 @@ export default function CleaningReportsScreen() {
             </Text>
           )}
         </View>
-        <Pressable onPress={handleStartNew} style={styles.addButton} disabled={isCreating} hitSlop={8}>
+        <Pressable onPress={handleStartNew} style={styles.addButton} disabled={isCreating} hitSlop={8} accessibilityRole="button" accessibilityLabel={t.cleaningReports.startAction}>
           <Ionicons name="add" size={22} color={colors.onPrimary} />
         </Pressable>
       </View>

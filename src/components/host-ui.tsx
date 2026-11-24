@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, StyleSheet, Image, Pressable, Modal } from 'react-native';
 import { Text } from '@/components/text';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useSetupStrings } from '@/lib/i18n/setup-strings';
 import { colors, elevation, radius, spacing, typography } from '@/theme';
 import { AnimatedPressable } from './ui';
 import { rtlFlip } from '@/lib/rtl';
@@ -209,6 +210,7 @@ export function PropertyRow({
   onDismiss?: () => void;
   showChevron?: boolean;
 }) {
+  const { a11y } = useSetupStrings();
   const body = (
     <View style={styles.row}>
       <View>
@@ -253,7 +255,7 @@ export function PropertyRow({
       {onDismiss && (
         // Generous hitSlop: a deliberately small mark sitting on a row that
         // is itself tappable.
-        <Pressable onPress={onDismiss} hitSlop={12} style={styles.dismiss}>
+        <Pressable onPress={onDismiss} hitSlop={12} style={styles.dismiss} accessibilityRole="button" accessibilityLabel={a11y.hide}>
           <Ionicons name="close" size={15} color={colors.inkFaint} />
         </Pressable>
       )}

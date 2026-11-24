@@ -383,6 +383,7 @@ export function TextField({
   style,
   ...props
 }: TextInputProps & { label: string; isPassword?: boolean }) {
+  const { a11y } = useSetupStrings();
   const [hidden, setHidden] = useState(true);
   const [focused, setFocused] = useState(false);
   const actuallySecure = isPassword ? hidden : secureTextEntry;
@@ -407,7 +408,7 @@ export function TextField({
           style={[styles.input, isPassword && styles.inputWithIcon, style]}
         />
         {isPassword && (
-          <Pressable onPress={() => setHidden((h) => !h)} hitSlop={10} style={styles.eyeButton}>
+          <Pressable onPress={() => setHidden((h) => !h)} hitSlop={10} style={styles.eyeButton} accessibilityRole="button" accessibilityLabel={hidden ? a11y.showPassword : a11y.hidePassword}>
             <Ionicons name={hidden ? 'eye-outline' : 'eye-off-outline'} size={19} color={colors.inkFaint} />
           </Pressable>
         )}
@@ -551,7 +552,7 @@ export function PhotoViewerModal({
               <Ionicons name="share-outline" size={22} color={colors.onPrimary} />
             )}
           </Pressable>
-          <Pressable onPress={onClose} hitSlop={12} style={styles.viewerActionButton}>
+          <Pressable onPress={onClose} hitSlop={12} style={styles.viewerActionButton} accessibilityRole="button" accessibilityLabel={strings.a11y.close}>
             <Ionicons name="close" size={26} color={colors.onPrimary} />
           </Pressable>
         </View>

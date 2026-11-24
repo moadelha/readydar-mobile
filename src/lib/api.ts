@@ -63,7 +63,7 @@ export class ApiError extends Error {
 export type HostAccessRole = 'OWNER' | 'MANAGER' | 'STAFF';
 
 /** Mirrors the backend's HostTeamPermission enum — what a STAFF co-host has been granted. */
-export type HostTeamPermission = 'REPORTS' | 'CALENDAR' | 'CHECKINS' | 'EXPENSES' | 'CLEANING_REPORTS' | 'MESSAGES';
+export type HostTeamPermission = 'REPORTS' | 'CALENDAR' | 'CHECKINS' | 'EXPENSES' | 'CLEANING_REPORTS' | 'MESSAGES' | 'REVIEWS' | 'INVOICES';
 
 export interface AuthUser {
   id: string;
@@ -128,7 +128,9 @@ export async function clearStoredSession() {
 
 // --- Silent token refresh ----------------------------------------------------
 
-let refreshInFlight: Promise<string | null> | null = null;
+/** `rejected`: the API said the refresh token is no good, so the session is over. Neither: it couldn't be asked. */
+type RefreshResult = { token: string | null; rejected: boolean };
+let refreshInFlight: Promise<RefreshResult> | null = null;
 let onForceLogout: (() => void) | null = null;
 let onSessionRefreshed: ((session: StoredSession) => void) | null = null;
 
@@ -159,12 +161,12 @@ export function registerSessionRefreshHandler(handler: (session: StoredSession) 
   onSessionRefreshed = handler;
 }
 
-async function refreshAccessToken(): Promise<string | null> {
+async function refreshAccessToken(): Promise<RefreshResult> {
   if (refreshInFlight) return refreshInFlight;
 
   refreshInFlight = (async () => {
     const stored = await readStoredSession();
-    if (!stored?.refreshToken) return null;
+    if (!stored?.refreshToken) return { token: null, rejected: true };
 
     try {
       const res = await fetch(`${API_URL}/auth/refresh`, {
@@ -172,7 +174,9 @@ async function refreshAccessToken(): Promise<string | null> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken: stored.refreshToken }),
       });
-      if (!res.ok) return null;
+      // Only a 4xx about the token itself ends the session. A 5xx (an API
+      // restart while deploying) or a 429 used to sign the host out.
+      if (!res.ok) return { token: null, rejected: [400, 401, 403].includes(res.status) };
 
       const data = await res.json();
       const next: StoredSession = {
@@ -182,9 +186,9 @@ async function refreshAccessToken(): Promise<string | null> {
       };
       await writeStoredSession(next);
       onSessionRefreshed?.(next);
-      return next.accessToken;
+      return { token: next.accessToken, rejected: false };
     } catch {
-      return null;
+      return { token: null, rejected: false };
     }
   })();
 
@@ -212,10 +216,13 @@ async function request<T>(path: string, options: RequestOptions = {}, isRetry = 
   });
 
   if (res.status === 401 && options.token && !isRetry && !path.startsWith('/auth/')) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      return request<T>(path, { ...options, token: newToken }, true);
+    const refreshed = await refreshAccessToken();
+    if (refreshed.token) {
+      return request<T>(path, { ...options, token: refreshed.token }, true);
     }
+    // Couldn't ask (API restarting, no network): stay signed in. Not an
+    // ApiError, so screens show their own "couldn't load" line.
+    if (!refreshed.rejected) throw new TypeError('Network request failed');
     await clearStoredSession();
     onForceLogout?.();
   }
@@ -265,10 +272,13 @@ async function requestForm<T>(
   });
 
   if (res.status === 401 && options.token && !isRetry) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      return requestForm<T>(path, fields, files, { ...options, token: newToken }, true);
+    const refreshed = await refreshAccessToken();
+    if (refreshed.token) {
+      return requestForm<T>(path, fields, files, { ...options, token: refreshed.token }, true);
     }
+    // Couldn't ask (API restarting, no network): stay signed in. Not an
+    // ApiError, so screens show their own "couldn't load" line.
+    if (!refreshed.rejected) throw new TypeError('Network request failed');
     await clearStoredSession();
     onForceLogout?.();
   }
@@ -878,6 +888,8 @@ export interface CreatePropertyPayload {
   wifiInfo?: string;
   nightlyRate?: number;
   currency?: string;
+  /** ISO 3166-1 alpha-2. */
+  country?: string;
   timezone?: string;
   googleMapsUrl?: string;
   gateCode?: string;
@@ -1063,6 +1075,12 @@ export interface GuestReviewPropertyOverview {
   averageRating: number | null;
   /** Newer API only; the app works these out from the reviews when absent. */
   city?: string;
+  score90?: number | null;
+  scorePrev90?: number | null;
+  rated90?: number;
+  topRated90?: number;
+  reviews30?: number;
+  unanswered?: number;
   insight?: {
     language: string;
     generatedAt: string;
@@ -1155,6 +1173,8 @@ export const api = {
       lastName: string;
       role: 'HOST';
       phone?: string;
+      /** Picks the pricing zone; the API falls back to the network's country. */
+      country?: string;
       acceptedTerms: boolean;
     }) =>
       // No session: the account can't sign in until its email is confirmed.

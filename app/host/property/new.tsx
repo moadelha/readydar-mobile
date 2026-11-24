@@ -11,27 +11,9 @@ import { colors, radius, spacing, typography } from '@/theme';
 import { useLargeTitle } from '@/lib/large-title';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { useSetupStrings } from '@/lib/i18n/setup-strings';
+import { currencyForCountry, defaultCountry, phoneTimezone } from '@/lib/where';
 
 const TYPES: PropertyType[] = ['APARTMENT', 'VILLA', 'RIAD', 'STUDIO', 'HOUSE', 'OTHER'];
-const CURRENCIES = ['MAD', 'EUR', 'USD', 'GBP'];
-
-/** The phone's time zone, as the website's form sends it. */
-function phoneTimezone(): string | undefined {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-/** A first guess from where the phone is; the host can pick another. */
-function guessCurrency(tz: string | undefined) {
-  if (!tz || tz === 'Africa/Casablanca' || tz === 'Africa/El_Aaiun') return 'MAD';
-  if (tz === 'Europe/London') return 'GBP';
-  if (tz.startsWith('Europe/')) return 'EUR';
-  return tz.startsWith('America/') ? 'USD' : 'EUR';
-}
-
 /** A city's name in the app's language. */
 function cityLabel(c: City, lang: string) {
   return (lang === 'AR' ? c.nameAr : lang === 'FR' ? c.nameFr : null) || c.name;
@@ -48,7 +30,7 @@ export default function AddPropertyScreen() {
   const router = useRouter();
   const { t, lang } = useLanguage();
   const s = useSetupStrings().addProperty;
-  const [timezone] = useState(phoneTimezone);
+  const [country] = useState(defaultCountry);
   const [cities, setCities] = useState<City[]>([]);
   const [type, setType] = useState<PropertyType>('APARTMENT');
   const [name, setName] = useState('');
@@ -58,7 +40,7 @@ export default function AddPropertyScreen() {
   const [bedrooms, setBedrooms] = useState('1');
   const [bathrooms, setBathrooms] = useState('1');
   const [maxGuests, setMaxGuests] = useState('2');
-  const [currency, setCurrency] = useState(() => guessCurrency(timezone));
+  const [currency, setCurrency] = useState(() => currencyForCountry(country));
   const [nightlyRate, setNightlyRate] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,7 +77,8 @@ export default function AddPropertyScreen() {
           maxGuests: Math.max(1, Math.round(Number(maxGuests)) || 1),
           nightlyRate: rate > 0 ? rate : undefined,
           currency,
-          timezone,
+          country,
+          timezone: phoneTimezone(),
         },
         session.accessToken,
       );
@@ -157,7 +140,7 @@ export default function AddPropertyScreen() {
             </View>
             <Text style={styles.label}>{s.currency}</Text>
             <View style={[styles.chipRow, { marginBottom: spacing.md }]}>
-              {CURRENCIES.map((c) => (
+              {[...new Set([currencyForCountry(country), 'MAD', 'EUR', 'USD', 'GBP'])].map((c) => (
                 <Chip key={c} label={c} active={currency === c} onPress={() => setCurrency(c)} />
               ))}
             </View>

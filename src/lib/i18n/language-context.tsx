@@ -11,6 +11,17 @@ export type Lang = 'EN' | 'FR' | 'AR';
 const DICTS: Record<Lang, Dict> = { EN: en, FR: fr, AR: ar };
 const STORAGE_KEY = 'darclean_lang';
 const RTL_RELOAD_KEY = 'darclean_rtl_reload';
+/** Set at sign-up: save this phone's language on the account at the first sign-in. */
+const NEW_ACCOUNT_KEY = 'darclean_lang_new_account';
+
+/**
+ * A new account's language is French until told otherwise, so someone who
+ * signed up in English landed in French at their first sign-in. Called once
+ * the account exists; it can't be saved there before signing in.
+ */
+export async function keepLanguageForNewAccount(lang: Lang) {
+  await AsyncStorage.multiSet([[STORAGE_KEY, lang], [NEW_ACCOUNT_KEY, lang]]).catch(() => {});
+}
 
 /**
  * Arabic runs the whole app right-to-left: rows, margins, text and the
@@ -85,6 +96,23 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       }
     });
   }, [isLoading, session?.user?.preferredLanguage]);
+
+  const token = session?.accessToken;
+  const userId = session?.user?.id;
+  useEffect(() => {
+    if (!token) return;
+    (async () => {
+      const wanted = await AsyncStorage.getItem(NEW_ACCOUNT_KEY).catch(() => null);
+      if (!wanted || !DICTS[wanted as Lang]) return;
+      await api.users.updateLanguage(wanted as Lang, token);
+      await AsyncStorage.removeItem(NEW_ACCOUNT_KEY);
+      updateSessionUser({ preferredLanguage: wanted as Lang });
+    })().catch(() => {
+      // Tried again at the next start.
+    });
+    // Once per signed-in user, not on every token refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const setLang = useCallback(
     (next: Lang) => {

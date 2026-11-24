@@ -49,6 +49,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { Dict } from '@/lib/i18n/dictionary';
 import { FirstRun } from '@/components/first-run';
+import { useSetupStrings } from '@/lib/i18n/setup-strings';
 import { useHostAccess } from '@/lib/access';
 import { rtlFlip } from '@/lib/rtl';
 import { checkInCopyMessage } from '@/lib/checkin-message';
@@ -184,6 +185,7 @@ function HostDashboardScreen() {
   const canCheckins = has('CHECKINS');
 
   const [overview, setOverview] = useState<PropertyStatusItem[]>([]);
+  const { a11y } = useSetupStrings();
   const [todayEvents, setTodayEvents] = useState<CalendarEvent[]>([]);
   const [tomorrowEvents, setTomorrowEvents] = useState<CalendarEvent[]>([]);
   const [pendingCheckIns, setPendingCheckIns] = useState<PendingCheckIn[]>([]);
@@ -831,6 +833,8 @@ function HostDashboardScreen() {
                           </Pressable>
                           <Pressable
                             style={styles.shareButton}
+                            accessibilityRole="button"
+                            accessibilityLabel="WhatsApp"
                             disabled={busyId === c.id}
                             onPress={() => handleShareCheckInLink(c)}
                           >
@@ -1003,7 +1007,7 @@ function HostDashboardScreen() {
                   <Text style={styles.notifMarkAll}>{t.dashboardHost.markAllRead}</Text>
                 </Pressable>
               )}
-              <Pressable onPress={() => setNotifOpen(false)} hitSlop={12}>
+              <Pressable onPress={() => setNotifOpen(false)} hitSlop={12} accessibilityRole="button" accessibilityLabel={a11y.close}>
                 <Ionicons name="close" size={22} color={colors.inkFaint} />
               </Pressable>
             </View>
@@ -1081,7 +1085,7 @@ function HostDashboardScreen() {
                           <Text style={typography.caption}>{locationLine(t, property)}</Text>
                         ) : null}
                       </View>
-                      <Pressable onPress={() => setOpenCheckIn(null)} hitSlop={12}>
+                      <Pressable onPress={() => setOpenCheckIn(null)} hitSlop={12} accessibilityRole="button" accessibilityLabel={a11y.close}>
                         <Ionicons name="close" size={22} color={colors.inkFaint} />
                       </Pressable>
                     </View>
@@ -1127,6 +1131,8 @@ function HostDashboardScreen() {
                             style={styles.stepperButton}
                             disabled={guestBusy || (openCheckIn.guestCount || 1) <= 1}
                             onPress={() => handleGuestCount(openCheckIn, (openCheckIn.guestCount || 1) - 1)}
+                            accessibilityRole="button"
+                            accessibilityLabel={a11y.fewer}
                           >
                             <Ionicons
                               name="remove"
@@ -1138,6 +1144,8 @@ function HostDashboardScreen() {
                             style={styles.stepperButton}
                             disabled={guestBusy || (openCheckIn.guestCount || 1) >= 30}
                             onPress={() => handleGuestCount(openCheckIn, (openCheckIn.guestCount || 1) + 1)}
+                            accessibilityRole="button"
+                            accessibilityLabel={a11y.more}
                           >
                             <Ionicons name="add" size={16} color={colors.primary} />
                           </Pressable>
@@ -1295,7 +1303,7 @@ function HostDashboardScreen() {
                           <Text style={typography.caption}>{openCheckout.location}</Text>
                         ) : null}
                       </View>
-                      <Pressable onPress={() => setOpenCheckout(null)} hitSlop={12}>
+                      <Pressable onPress={() => setOpenCheckout(null)} hitSlop={12} accessibilityRole="button" accessibilityLabel={a11y.close}>
                         <Ionicons name="close" size={22} color={colors.inkFaint} />
                       </Pressable>
                     </View>

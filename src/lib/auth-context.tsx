@@ -25,6 +25,7 @@ interface AuthContextValue {
     firstName: string;
     lastName: string;
     phone?: string;
+    country?: string;
     acceptedTerms: boolean;
   }) => Promise<void>;
   logout: () => Promise<void>;
@@ -110,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       firstName: string;
       lastName: string;
       phone?: string;
+      country?: string;
       acceptedTerms: boolean;
     }) => {
       await api.auth.register({ ...payload, role: 'HOST' });

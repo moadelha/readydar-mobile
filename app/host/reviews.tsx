@@ -9,11 +9,12 @@ import { ReviewCard, TrendChip, TrendText } from '@/components/review-card';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, GuestReview, GuestReviewPropertyOverview, ReviewAiAvailability, resolveThumbnailUrl } from '@/lib/api';
 import { usePlanConsole } from '@/lib/plan-console';
+import { useHostAccess } from '@/lib/access';
 import { useReviewsStrings } from '@/lib/i18n/reviews-strings';
 import { useReviewInsightsStrings } from '@/lib/i18n/review-insights-strings';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { formatDay } from '@/lib/dates';
-import { scoreStats, formatScore, ScoreStats } from '@/lib/review-stats';
+import { scoreStats, overallStats, propertyStats, formatScore, REVIEWS_LISTED, ScoreStats } from '@/lib/review-stats';
 import { rtlFlip } from '@/lib/rtl';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -59,7 +60,10 @@ export default function ReviewsScreen() {
   const { lang } = useLanguage();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { canMessages } = usePlanConsole();
+  const { isPro } = usePlanConsole();
+  const { has } = useHostAccess();
+  // What the API checks: replying is Pro and needs the Reviews permission.
+  const mayReply = isPro && has('REVIEWS');
   const token = session?.accessToken;
 
   const [overview, setOverview] = useState<GuestReviewPropertyOverview[] | null>(null);
@@ -143,10 +147,10 @@ export default function ReviewsScreen() {
     setReviews((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   }
 
-  const all = useMemo(() => scoreStats(reviews), [reviews]);
+  const all = useMemo(() => overallStats(scoreStats(reviews), overview ?? [], reviews.length), [reviews, overview]);
   const perProperty = useMemo(() => {
     const map: Record<string, ScoreStats> = {};
-    for (const p of overview ?? []) map[p.id] = scoreStats(reviews.filter((x) => x.propertyId === p.id));
+    for (const p of overview ?? []) map[p.id] = propertyStats(scoreStats(reviews.filter((x) => x.propertyId === p.id)), p);
     return map;
   }, [overview, reviews]);
 
@@ -192,7 +196,9 @@ export default function ReviewsScreen() {
 
   const reviewed = overview.filter((p) => p.reviewCount > 0);
   const slippingCount = reviewed.filter((p) => (perProperty[p.id]?.trend ?? 0) < -0.05).length;
-  const unanswered = reviews.filter((x) => x.canReply && !x.responseText);
+  // Counted only for someone who can answer them: the band led to reviews with no Reply button.
+  const unanswered = mayReply ? reviews.filter((x) => x.canReply && !x.responseText) : [];
+  const unansweredCount = mayReply && reviews.length >= REVIEWS_LISTED ? Math.max(unanswered.length, reviewed.reduce((n, p) => n + (p.unanswered ?? 0), 0)) : unanswered.length;
 
   const sorted = [...reviewed].sort((a, b) => {
     const A = perProperty[a.id];
@@ -266,7 +272,7 @@ export default function ReviewsScreen() {
                   <View style={styles.replyIcon}>
                     <Ionicons name="chatbubble-outline" size={15} color={colors.onPrimary} />
                   </View>
-                  <Text style={styles.replyText}>{s.awaitingReply(unanswered.length)}</Text>
+                  <Text style={styles.replyText}>{s.awaitingReply(unansweredCount)}</Text>
                   <Ionicons name="chevron-forward" size={18} color={colors.green700} style={rtlFlip} />
                 </Pressable>
               )}
@@ -418,7 +424,7 @@ export default function ReviewsScreen() {
                 {(
                   [
                     ['all', s.all],
-                    ['toAnswer', `${s.toAnswer}${unanswered.length ? ` · ${unanswered.length}` : ''}`],
+                    ...(mayReply ? [['toAnswer', `${s.toAnswer}${unanswered.length ? ` · ${unanswered.length}` : ''}`]] : []),
                   ] as ['all' | 'toAnswer', string][]
                 ).map(([key, label]) => (
                   <Pressable
@@ -443,8 +449,8 @@ export default function ReviewsScreen() {
                     key={item.id}
                     review={item}
                     token={token!}
-                    canReply={canMessages && !!item.canReply}
-                    canReviewGuest={canMessages && !!item.canReviewGuest}
+                    canReply={mayReply && !!item.canReply}
+                    canReviewGuest={mayReply && !!item.canReviewGuest}
                     onPatch={(patch) => patchReview(item.id, patch)}
                   />
                 ))

@@ -8,14 +8,15 @@ import { AuthShell, authStyles } from '@/components/auth-shell';
 import { ConfirmEmail } from '@/components/confirm-email';
 import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
-import { useLanguage } from '@/lib/i18n/language-context';
+import { useLanguage, keepLanguageForNewAccount } from '@/lib/i18n/language-context';
 import { authErrorMessage, useSetupStrings } from '@/lib/i18n/setup-strings';
 import { WEB_URL } from '@/lib/api';
+import { guessCountry } from '@/lib/where';
 
 /** Creates a host account, then waits on "check your email": it can't sign in until the address is confirmed. */
 export default function RegisterScreen() {
   const { register } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const s = useSetupStrings();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -32,6 +33,12 @@ export default function RegisterScreen() {
 
   async function handleSubmit() {
     setError(null);
+    // The API's own rules, checked here so the message names the field.
+    if (!firstName.trim() || !lastName.trim()) return setError(s.auth.nameRequired);
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setError(s.auth.emailInvalid);
+    if (password.length < 8 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/[\d\W]/.test(password)) {
+      return setError(s.auth.passwordRule);
+    }
     if (!acceptedTerms) {
       setError(t.register.termsRequired);
       return;
@@ -44,8 +51,10 @@ export default function RegisterScreen() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phone: phone.trim() || undefined,
+        country: guessCountry(),
         acceptedTerms,
       });
+      await keepLanguageForNewAccount(lang);
       setSent(true);
     } catch (err) {
       setError(authErrorMessage(err, s, t.register.genericError));

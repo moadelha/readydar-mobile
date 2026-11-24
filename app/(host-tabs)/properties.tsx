@@ -60,7 +60,7 @@ export default function PropertiesScreen() {
           </Pressable>
         )}
         {isManager && (
-          <Pressable onPress={() => router.push('/host/property/new')} style={styles.addButton}>
+          <Pressable onPress={() => router.push('/host/property/new')} style={styles.addButton} hitSlop={4} accessibilityRole="button" accessibilityLabel={t.dashboardHost.addProperty}>
             <Ionicons name="add" size={22} color={colors.onPrimary} />
           </Pressable>
         )}

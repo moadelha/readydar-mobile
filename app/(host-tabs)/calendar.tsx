@@ -601,11 +601,11 @@ export default function CalendarScreen() {
 
       {view === 'MONTH' && (
         <View style={styles.monthNav}>
-          <Pressable hitSlop={10} onPress={() => setMonthCursor(new Date(year, month - 1, 1))}>
+          <Pressable hitSlop={12} onPress={() => setMonthCursor(new Date(year, month - 1, 1))} accessibilityRole="button" accessibilityLabel={t.common.previousMonth}>
             <Ionicons name="chevron-back" size={20} color={colors.ink} style={rtlFlip} />
           </Pressable>
           <Text style={typography.h3}>{monthLabel}</Text>
-          <Pressable hitSlop={10} onPress={() => setMonthCursor(new Date(year, month + 1, 1))}>
+          <Pressable hitSlop={12} onPress={() => setMonthCursor(new Date(year, month + 1, 1))} accessibilityRole="button" accessibilityLabel={t.common.nextMonth}>
             <Ionicons name="chevron-forward" size={20} color={colors.ink} style={rtlFlip} />
           </Pressable>
         </View>

@@ -1,4 +1,4 @@
-import type { GuestReview } from './api';
+import type { GuestReview, GuestReviewPropertyOverview } from './api';
 
 /**
  * Figures for the Reviews pages, worked out on the phone from the guests'
@@ -135,4 +135,43 @@ export function formatScore(n: number, lang: string, digits = 2) {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   });
+}
+
+/** The API lists at most this many reviews across all properties. */
+export const REVIEWS_LISTED = 300;
+
+/** One property's figures: the API's own when it gives them (it counts every review, not just the listed ones). */
+export function propertyStats(local: ScoreStats, p: GuestReviewPropertyOverview): ScoreStats {
+  if (p.score90 === undefined) return local;
+  return {
+    ...local,
+    score90: p.score90,
+    trend: p.score90 !== null && p.scorePrev90 != null ? p.score90 - p.scorePrev90 : null,
+    overall: p.averageRating ?? local.overall,
+    reviews30: p.reviews30 ?? local.reviews30,
+  };
+}
+
+/**
+ * The whole account's figures. Worked out from the reviews, unless there are
+ * more than the API lists: then added up from each property's own, weighted
+ * by how many reviews it has, and without the monthly columns (the list
+ * doesn't reach back far enough to draw them honestly).
+ */
+export function overallStats(local: ScoreStats, properties: GuestReviewPropertyOverview[], listed: number): ScoreStats {
+  const known = properties.filter((p) => p.score90 != null && (p.rated90 ?? 0) > 0);
+  if (listed < REVIEWS_LISTED || known.length === 0) return local;
+  const weigh = (list: GuestReviewPropertyOverview[], value: (p: GuestReviewPropertyOverview) => number) => {
+    const total = list.reduce((n, p) => n + (p.rated90 ?? 0), 0);
+    return total ? list.reduce((n, p) => n + value(p) * (p.rated90 ?? 0), 0) / total : null;
+  };
+  const rated = known.reduce((n, p) => n + (p.rated90 ?? 0), 0);
+  return {
+    ...local,
+    score90: weigh(known, (p) => p.score90!),
+    trend: weigh(known.filter((p) => p.scorePrev90 != null), (p) => p.score90! - p.scorePrev90!),
+    reviews30: properties.reduce((n, p) => n + (p.reviews30 ?? 0), 0),
+    fiveStarShare: rated ? known.reduce((n, p) => n + (p.topRated90 ?? 0), 0) / rated : null,
+    monthly: [],
+  };
 }

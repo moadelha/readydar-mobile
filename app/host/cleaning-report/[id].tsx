@@ -141,6 +141,8 @@ export default function CleaningReportDetailScreen() {
   const [otherOpen, setOtherOpen] = useState(false);
   /** Bedroom and bathroom counts, for the room tiles. One of each until the property loads (or if it can't be read). */
   const [roomCounts, setRoomCounts] = useState({ bedrooms: 1, bathrooms: 1 });
+  /** Until the counts are in, a tap would file "Bedroom" photos no tile matches once it's "Bedroom 1". */
+  const [roomsReady, setRoomsReady] = useState(false);
   /** Set while a burst is getting its location fix, so a second tap doesn't start another. */
   const [startingBurst, setStartingBurst] = useState(false);
   /** Shots still uploading in the background — the camera doesn't wait for them, but "Mark complete" does. */
@@ -215,7 +217,10 @@ export default function CleaningReportDetailScreen() {
       .then((p) => {
         if (!cancelled) setRoomCounts({ bedrooms: p.bedrooms ?? 1, bathrooms: p.bathrooms ?? 1 });
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setRoomsReady(true);
+      });
     Promise.all([
       propertyCall,
       api.properties.getCalendar(todayIso(), addDaysIso(todayIso(), 30), session.accessToken),
@@ -540,7 +545,7 @@ export default function CleaningReportDetailScreen() {
                   <Pressable
                     key={room?.section ?? '__other'}
                     onPress={() => (room ? startBurst(room.section) : setOtherOpen((o) => !o))}
-                    disabled={startingBurst}
+                    disabled={startingBurst || !roomsReady}
                     style={({ pressed }) => [
                       styles.roomTile,
                       { width: tileWidth },
@@ -630,7 +635,9 @@ export default function CleaningReportDetailScreen() {
                         onPress={() => handleRemovePhoto(p)}
                         disabled={removingId === p.id}
                         style={styles.removeBadge}
-                        hitSlop={8}
+                        hitSlop={11}
+                        accessibilityRole="button"
+                        accessibilityLabel={t.cleaningReports.remove}
                       >
                         <Ionicons name="close" size={13} color={colors.onPrimary} />
                       </Pressable>

@@ -61,7 +61,7 @@ export default function NewExpenseScreen() {
 
   useEffect(() => {
     if (!session) return;
-    api.properties.listMine(session.accessToken).then(setProperties);
+    api.properties.listMine(session.accessToken).then(setProperties).catch(() => {});
   }, [session]);
 
   const amountNumber = Number(amount);

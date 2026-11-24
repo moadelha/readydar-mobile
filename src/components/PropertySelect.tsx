@@ -52,7 +52,7 @@ export function PropertySelect({
   extraOptions = [],
   chipThreshold = 6,
 }: PropertySelectProps) {
-  const s = useSetupStrings().select;
+  const { select: s, a11y } = useSetupStrings();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -118,7 +118,7 @@ export function PropertySelect({
         <SafeAreaView style={styles.modalScreen}>
           <View style={styles.modalHeader}>
             <Text style={typography.h2}>{label || s.title}</Text>
-            <Pressable onPress={() => setIsOpen(false)} hitSlop={10}>
+            <Pressable onPress={() => setIsOpen(false)} hitSlop={10} accessibilityRole="button" accessibilityLabel={a11y.close}>
               <Ionicons name="close" size={24} color={colors.ink} />
             </Pressable>
           </View>
@@ -134,7 +134,7 @@ export function PropertySelect({
               autoCapitalize="none"
             />
             {query.length > 0 && (
-              <Pressable onPress={() => setQuery('')} hitSlop={8}>
+              <Pressable onPress={() => setQuery('')} hitSlop={14} accessibilityRole="button" accessibilityLabel={a11y.clear}>
                 <Ionicons name="close-circle" size={16} color={colors.inkFaint} />
               </Pressable>
             )}
