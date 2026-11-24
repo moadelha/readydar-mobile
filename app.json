@@ -33,7 +33,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.darclean.mobile",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "ReadyDar records where cleaning-report photos are taken, so the report shows they were taken at the property. Cleaners: it also confirms you are at the property when a job starts.",
+        "NSLocationWhenInUseUsageDescription": "ReadyDar records where cleaning-report photos are taken, so the report shows they were taken at the property.",
         "NSCameraUsageDescription": "ReadyDar uses your camera to take cleaning-report photos, photos of your property and its door, and photos you send to guests.",
         "NSPhotoLibraryUsageDescription": "ReadyDar lets you choose photos of your property, its door, and photos to send to guests.",
         "ITSAppUsesNonExemptEncryption": false
@@ -52,7 +52,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "ReadyDar records where cleaning-report photos are taken, so the report shows they were taken at the property. Cleaners: it also confirms you are at the property when a job starts.",
+          "locationWhenInUsePermission": "ReadyDar records where cleaning-report photos are taken, so the report shows they were taken at the property.",
           "locationAlwaysAndWhenInUsePermission": false,
           "locationAlwaysPermission": false
         }
