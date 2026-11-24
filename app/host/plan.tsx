@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, Linking } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Linking, Platform } from 'react-native';
 import { Text } from '@/components/text';
 import { Stack, useFocusEffect } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -96,11 +96,16 @@ export default function PlanScreen() {
           </>
         )}
 
-        <Pressable onPress={openBilling} style={styles.button} accessibilityRole="link">
-          <Ionicons name="open-outline" size={16} color={colors.onPrimary} />
-          <Text style={styles.buttonText}>{s.manageOnWeb}</Text>
-        </Pressable>
-        <Text style={[typography.bodyMuted, { marginTop: spacing.sm, textAlign: 'center' }]}>{s.webNote}</Text>
+        {/* App Store rule 3.1.1: an iPhone app can't send people to a payment page outside it. */}
+        {Platform.OS !== 'ios' && (
+          <>
+            <Pressable onPress={openBilling} style={styles.button} accessibilityRole="link">
+              <Ionicons name="open-outline" size={16} color={colors.onPrimary} />
+              <Text style={styles.buttonText}>{s.manageOnWeb}</Text>
+            </Pressable>
+            <Text style={[typography.bodyMuted, { marginTop: spacing.sm, textAlign: 'center' }]}>{s.webNote}</Text>
+          </>
+        )}
       </ScrollView>
     </Screen>
   );

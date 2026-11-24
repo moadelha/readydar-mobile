@@ -10,11 +10,15 @@ import { spacing, typography } from '@/theme';
 import { useHostAccess } from '@/lib/access';
 import { NoAccess } from '@/components/no-access';
 import { useLargeTitle } from '@/lib/large-title';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { useSetupStrings } from '@/lib/i18n/setup-strings';
 
 function NewCleaningContactInner() {
   const largeTitle = useLargeTitle();
   const { session } = useAuth();
   const router = useRouter();
+  const { t } = useLanguage();
+  const s = useSetupStrings().contacts;
 
   const [name, setName] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
@@ -25,8 +29,8 @@ function NewCleaningContactInner() {
     if (!session) return;
     setError(null);
 
-    if (!name.trim()) return setError('Enter a name.');
-    if (!whatsappNumber.trim()) return setError('Enter a WhatsApp number, with country code (e.g. +212600000000).');
+    if (!name.trim()) return setError(s.nameRequired);
+    if (!whatsappNumber.trim()) return setError(s.whatsappRequired);
     setIsSubmitting(true);
     try {
       await api.cleaningContacts.create(
@@ -39,7 +43,7 @@ function NewCleaningContactInner() {
       );
       router.back();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not add this contact.');
+      setError(err instanceof ApiError ? err.message : s.addError);
     } finally {
       setIsSubmitting(false);
     }
@@ -47,17 +51,17 @@ function NewCleaningContactInner() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: largeTitle.headerTitle('Add a cleaning contact'), headerBackTitle: 'Back' }} />
+      <Stack.Screen options={{ headerShown: true, title: largeTitle.headerTitle(s.addTitle), headerBackTitle: t.common.back }} />
       <ScrollView contentContainerStyle={styles.container} {...largeTitle.scrollProps}>
-        <Text style={typography.h1}>Add a cleaning contact</Text>
+        <Text style={typography.h1}>{s.addTitle}</Text>
         <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>
-          Set as a property's default contact to get notified automatically after every guest checkout.
+          {s.addIntro}
         </Text>
 
         <View style={{ marginTop: spacing.lg }}>
-          <TextField label="Name" value={name} onChangeText={setName} placeholder="e.g. Fatima's Cleaning" />
+          <TextField label={s.name} value={name} onChangeText={setName} placeholder={s.namePlaceholder} autoCapitalize="words" />
           <TextField
-            label="WhatsApp number"
+            label={s.whatsapp}
             value={whatsappNumber}
             onChangeText={setWhatsappNumber}
             keyboardType="phone-pad"
@@ -67,7 +71,7 @@ function NewCleaningContactInner() {
 
         {error && <ErrorBanner message={error} />}
 
-        <Button label={isSubmitting ? 'Adding…' : 'Add contact'} onPress={handleSubmit} loading={isSubmitting} style={{ marginTop: spacing.md }} />
+        <Button label={isSubmitting ? s.submitting : s.submit} onPress={handleSubmit} loading={isSubmitting} style={{ marginTop: spacing.md }} />
       </ScrollView>
     </Screen>
   );

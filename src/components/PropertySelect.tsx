@@ -6,6 +6,7 @@ import { colors, radius, spacing, typography } from '@/theme';
 import { Chip } from './ui';
 import { propertyCoverUrl, type Property } from '@/lib/api';
 import { PropertyThumb } from './host-ui';
+import { useSetupStrings } from '@/lib/i18n/setup-strings';
 
 /** A pinned option shown above the property list (e.g. "All properties", "General"). */
 export interface PropertySelectExtraOption {
@@ -26,15 +27,15 @@ interface PropertySelectProps {
   chipThreshold?: number;
 }
 
-function labelFor(value: string | null, properties: Property[], extraOptions: PropertySelectExtraOption[]) {
+function labelFor(value: string | null, properties: Property[], extraOptions: PropertySelectExtraOption[], fallback: string) {
   if (value === null) {
     const none = extraOptions.find((o) => o.value === '__NONE__');
-    return none?.label ?? 'Select a property';
+    return none?.label ?? fallback;
   }
   const extra = extraOptions.find((o) => o.value === value);
   if (extra) return extra.label;
   const property = properties.find((p) => p.id === value);
-  return property?.name ?? 'Select a property';
+  return property?.name ?? fallback;
 }
 
 /**
@@ -51,6 +52,7 @@ export function PropertySelect({
   extraOptions = [],
   chipThreshold = 6,
 }: PropertySelectProps) {
+  const s = useSetupStrings().select;
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -107,7 +109,7 @@ export function PropertySelect({
       {label && <Text style={styles.fieldLabel}>{label}</Text>}
       <Pressable style={styles.field} onPress={() => setIsOpen(true)}>
         <Text style={styles.fieldValue} numberOfLines={1}>
-          {labelFor(value, properties, extraOptions)}
+          {labelFor(value, properties, extraOptions, s.title)}
         </Text>
         <Ionicons name="chevron-down" size={18} color={colors.inkFaint} />
       </Pressable>
@@ -115,7 +117,7 @@ export function PropertySelect({
       <Modal visible={isOpen} animationType="slide" onRequestClose={() => setIsOpen(false)}>
         <SafeAreaView style={styles.modalScreen}>
           <View style={styles.modalHeader}>
-            <Text style={typography.h2}>{label || 'Select a property'}</Text>
+            <Text style={typography.h2}>{label || s.title}</Text>
             <Pressable onPress={() => setIsOpen(false)} hitSlop={10}>
               <Ionicons name="close" size={24} color={colors.ink} />
             </Pressable>
@@ -126,7 +128,7 @@ export function PropertySelect({
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="Search properties…"
+              placeholder={s.search}
               placeholderTextColor={colors.inkFaint}
               style={styles.searchInput}
               autoCapitalize="none"

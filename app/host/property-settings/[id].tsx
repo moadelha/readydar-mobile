@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { Text } from '@/components/text';
 import { Stack, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
-import { api, Property, CleaningContact, Service, AutomationMode } from '@/lib/api';
+import { api, Property, CleaningContact, AutomationMode } from '@/lib/api';
 import { Screen, TextField, Chip, SegmentedControl, ErrorBanner, LoadingScreen } from '@/components/ui';
 import { Button } from '@/components/Button';
 import { colors, spacing, typography } from '@/theme';
@@ -59,7 +59,6 @@ function PropertySettingsInner() {
 
   const [property, setProperty] = useState<Property | null>(null);
   const [contacts, setContacts] = useState<CleaningContact[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
 
   const [nightlyRate, setNightlyRate] = useState('');
   const [guestWelcomeMode, setGuestWelcomeMode] = useState<AutomationMode>('OFF');
@@ -91,14 +90,12 @@ function PropertySettingsInner() {
     if (!session || !id) return;
     setError(null);
     try {
-      const [p, contactList, serviceList] = await Promise.all([
+      const [p, contactList] = await Promise.all([
         api.properties.getOne(id, session.accessToken),
         api.cleaningContacts.list(session.accessToken),
-        api.services.list(),
       ]);
       setProperty(p);
       setContacts(contactList);
-      setServices(serviceList);
       setNightlyRate(p.nightlyRate != null ? String(p.nightlyRate) : '');
       setGuestWelcomeMode(p.guestWelcomeMode ?? 'OFF');
       setGuestWelcomeTemplate(p.guestWelcomeTemplate?.trim() ? p.guestWelcomeTemplate : DEFAULT_TEMPLATE);
@@ -178,7 +175,6 @@ function PropertySettingsInner() {
     }
   }
 
-  const cleaningServices = services.filter((s) => s.category === 'CLEANING');
 
   if (!property) {
     return error ? (
@@ -293,21 +289,6 @@ function PropertySettingsInner() {
               />
             ))}
           </View>
-        )}
-        {automationMode !== 'OFF' && cleaningServices.length > 0 && (
-          <>
-            <Text style={styles.fieldLabel}>{ps.defaultService}</Text>
-            <View style={styles.chipRow}>
-              {cleaningServices.map((s) => (
-                <Chip
-                  key={s.id}
-                  label={s.name}
-                  active={defaultServiceType === s.type}
-                  onPress={() => setDefaultServiceType(defaultServiceType === s.type ? null : s.type)}
-                />
-              ))}
-            </View>
-          </>
         )}
 
         <Text style={styles.sectionTitle}>{ps.pricingTitle}</Text>

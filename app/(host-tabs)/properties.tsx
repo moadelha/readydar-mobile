@@ -4,6 +4,7 @@ import { Text } from '@/components/text';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, Property, propertyCoverUrl } from '@/lib/api';
+import { FirstRun } from '@/components/first-run';
 import { Screen, Card, EmptyState, LoadingScreen, ErrorBanner } from '@/components/ui';
 import { PropertyThumb } from '@/components/host-ui';
 import { colors, spacing, typography, radius } from '@/theme';
@@ -77,11 +78,9 @@ export default function PropertiesScreen() {
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={colors.primary} />}
         ListEmptyComponent={
-          <EmptyState
-            message={t.propertiesList.emptyMessage}
-            actionLabel={t.propertiesList.addFirstProperty}
-            onAction={() => router.push('/host/property/new')}
-          />
+          <Card elevated>
+            <FirstRun />
+          </Card>
         }
         renderItem={({ item }) => (
           <Pressable onPress={() => router.push(`/host/property/${item.id}`)}>

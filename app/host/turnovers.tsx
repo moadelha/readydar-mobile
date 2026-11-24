@@ -10,6 +10,7 @@ import { colors, spacing, typography } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useHostAccess } from '@/lib/access';
 import { useLanguage } from '@/lib/i18n/language-context';
+import { useSetupStrings } from '@/lib/i18n/setup-strings';
 import { formatDay } from '@/lib/dates';
 
 type Kind = 'checkin' | 'reservation';
@@ -18,13 +19,14 @@ interface Row {
   item: PendingTurnoverItem;
 }
 
-function guestLabel(item: PendingTurnoverItem) {
+function guestLabel(item: PendingTurnoverItem, s: ReturnType<typeof useSetupStrings>['alerts']) {
   if (item.guestFirstName) return `${item.guestFirstName} ${item.guestLastName ?? ''}`.trim();
-  return item.source ? `${item.source === 'AIRBNB' ? 'Airbnb' : 'Booking.com'} guest` : 'Guest';
+  return item.source ? s.channelGuest(item.source === 'AIRBNB' ? 'Airbnb' : 'Booking.com') : s.guest;
 }
 
 export default function TurnoversScreen() {
-  const { lang } = useLanguage();
+  const { t, lang } = useLanguage();
+  const s = useSetupStrings().alerts;
   const { session } = useAuth();
   const router = useRouter();
   const { isManager } = useHostAccess();
@@ -49,7 +51,7 @@ export default function TurnoversScreen() {
         ...data.readyToSend.externalReservations.map((item) => ({ kind: 'reservation' as const, item })),
       ]);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load pending turnovers.');
+      setError(err instanceof ApiError ? err.message : s.loadError);
     } finally {
       setIsLoading(false);
       setRefreshing(false);
@@ -78,7 +80,7 @@ export default function TurnoversScreen() {
       }
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not notify the cleaning contact.');
+      setError(err instanceof ApiError ? err.message : s.notifyError);
     } finally {
       setBusyId(null);
     }
@@ -94,7 +96,7 @@ export default function TurnoversScreen() {
       else await api.turnovers.acknowledgeReservation(row.item.id, session.accessToken);
       await load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not open WhatsApp.');
+      setError(err instanceof ApiError ? err.message : s.openError);
     } finally {
       setBusyId(null);
     }
@@ -106,13 +108,13 @@ export default function TurnoversScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: 'Turnovers', headerBackTitle: 'Back' }} />
+      <Stack.Screen options={{ headerShown: true, title: s.title, headerBackTitle: t.common.back }} />
       <ScrollView
         contentContainerStyle={styles.container}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={colors.primary} />}
       >
         <Text style={typography.bodyMuted}>
-          Alerts to your cleaning contact after a guest checks out — needs a default contact set per property.
+          {s.intro}
         </Text>
 
         {error && <ErrorBanner message={error} onRetry={load} />}
@@ -120,8 +122,8 @@ export default function TurnoversScreen() {
         {isEmpty ? (
           <Card style={{ marginTop: spacing.lg }}>
             <EmptyState
-              message="No turnovers pending right now. They'll show up here as checkouts approach."
-              actionLabel={isManager ? 'Set up cleaning contacts' : undefined}
+              message={s.empty}
+              actionLabel={isManager ? s.manage : undefined}
               onAction={isManager ? () => router.push('/host/cleaning-contacts') : undefined}
             />
           </Card>
@@ -129,25 +131,25 @@ export default function TurnoversScreen() {
           <>
             {needsConfirmation.length > 0 && (
               <>
-                <Text style={styles.sectionTitle}>Needs your confirmation</Text>
+                <Text style={styles.sectionTitle}>{s.toConfirm}</Text>
                 {needsConfirmation.map((row) => (
                   <Card key={row.item.id} style={{ marginBottom: spacing.sm }}>
                     <View style={styles.row}>
                       <View style={{ flex: 1 }}>
-                        <Text style={typography.h3}>{guestLabel(row.item)}</Text>
+                        <Text style={typography.h3}>{guestLabel(row.item, s)}</Text>
                         <Text style={typography.bodyMuted}>{row.item.property.name}</Text>
                         <Text style={typography.caption}>
-                          Checkout {formatDay((row.item.expectedCheckOut ?? row.item.checkOut)!, lang, { utc: true })}
+                          {s.checkout(formatDay((row.item.expectedCheckOut ?? row.item.checkOut)!, lang, { utc: true }))}
                         </Text>
                         {!row.item.property.defaultCleaningContact && (
                           <Text style={[typography.caption, { color: colors.danger, marginTop: 2 }]}>
-                            No default cleaning contact set for this property
+                            {s.noContact}
                           </Text>
                         )}
                       </View>
                     </View>
                     <Button
-                      label={busyId === row.item.id ? 'Notifying…' : 'Confirm & notify cleaner'}
+                      label={busyId === row.item.id ? s.notifying : s.confirm}
                       onPress={() => handleConfirm(row)}
                       loading={busyId === row.item.id}
                       disabled={!row.item.property.defaultCleaningContact}
@@ -160,17 +162,17 @@ export default function TurnoversScreen() {
 
             {readyToSend.length > 0 && (
               <>
-                <Text style={styles.sectionTitle}>Ready to send</Text>
+                <Text style={styles.sectionTitle}>{s.ready}</Text>
                 {readyToSend.map((row) => (
                   <Card key={row.item.id} style={{ marginBottom: spacing.sm }}>
                     <View style={styles.row}>
                       <View style={{ flex: 1 }}>
-                        <Text style={typography.h3}>{guestLabel(row.item)}</Text>
+                        <Text style={typography.h3}>{guestLabel(row.item, s)}</Text>
                         <Text style={typography.bodyMuted}>{row.item.property.name}</Text>
                       </View>
                     </View>
                     <Button
-                      label={busyId === row.item.id ? 'Opening…' : 'Open WhatsApp'}
+                      label={busyId === row.item.id ? s.opening : s.open}
                       onPress={() => handleOpenReady(row)}
                       loading={busyId === row.item.id}
                       variant="secondary"
@@ -184,7 +186,7 @@ export default function TurnoversScreen() {
             {isManager && (
             <Pressable onPress={() => router.push('/host/cleaning-contacts')} style={styles.linkAction}>
               <Ionicons name="people-outline" size={14} color={colors.primary} />
-              <Text style={styles.linkText}>Manage cleaning contacts</Text>
+              <Text style={styles.linkText}>{s.manage}</Text>
             </Pressable>
             )}
           </>

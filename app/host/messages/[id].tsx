@@ -75,7 +75,8 @@ export default function ConversationScreen() {
     }, [load]),
   );
 
-  const groups = useMemo(() => groupByDay(messages), [messages]);
+  const dayLocale = dateLocale(useLanguage().lang);
+  const groups = useMemo(() => groupByDay(messages, dayLocale), [messages, dayLocale]);
 
   async function send() {
     const text = draft.trim();
@@ -229,7 +230,7 @@ export default function ConversationScreen() {
         <ChannelMark provider={thread.provider} size={28} />
         <Text style={[typography.caption, { flex: 1 }]} numberOfLines={2}>
           {providerName(thread.provider)} · {thread.property.name}
-          {thread.reservation ? ` · ${fmtDay(thread.reservation.checkIn)} – ${fmtDay(thread.reservation.checkOut)}` : ''}
+          {thread.reservation ? ` · ${fmtDay(thread.reservation.checkIn, dayLocale)} – ${fmtDay(thread.reservation.checkOut, dayLocale)}` : ''}
           {thread.reservation?.reservationCode ? ` · #${thread.reservation.reservationCode}` : ''}
         </Text>
         {thread.isInquiry && <Text style={styles.inquiryTag}>{m.inquiry}</Text>}
@@ -344,18 +345,18 @@ function Bubble({ msg, onOpenImage }: { msg: GuestMessage; onOpenImage: (url: st
 }
 
 /** Calendar date of a stay — stored as UTC midnight, so formatted in UTC. */
-function fmtDay(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
+function fmtDay(iso: string, locale: string) {
+  return new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
 
-function groupByDay(messages: GuestMessage[]) {
+function groupByDay(messages: GuestMessage[], locale: string) {
   const groups: { day: string; label: string; messages: GuestMessage[] }[] = [];
   for (const msg of messages) {
     const d = new Date(msg.sentAt);
     const day = d.toDateString();
     let group = groups[groups.length - 1];
     if (!group || group.day !== day) {
-      group = { day, label: d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' }), messages: [] };
+      group = { day, label: d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' }), messages: [] };
       groups.push(group);
     }
     group.messages.push(msg);

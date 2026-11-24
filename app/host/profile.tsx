@@ -84,8 +84,8 @@ export default function HostProfileScreen() {
         )}
 
         <Card style={{ marginTop: spacing.lg }}>
-          <TextField label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
-          <TextField label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+212 6XX XXX XXX" />
+          <TextField label={t.register.email} value={email} onChangeText={setEmail} keyboardType="email-address" />
+          <TextField label={t.register.phone} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="+212 6XX XXX XXX" />
 
           {error && <ErrorBanner message={error} onRetry={load} />}
           {success && !error && (

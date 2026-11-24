@@ -1,77 +1,108 @@
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { Text } from '@/components/text';
 import { Stack, useRouter } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, City, PropertyType } from '@/lib/api';
 import { Screen, TextField, Chip } from '@/components/ui';
 import { Button } from '@/components/Button';
-import { colors, spacing, typography } from '@/theme';
+import { colors, radius, spacing, typography } from '@/theme';
 import { useLargeTitle } from '@/lib/large-title';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { useSetupStrings } from '@/lib/i18n/setup-strings';
 
-const TYPE_OPTIONS: { value: PropertyType; label: string }[] = [
-  { value: 'APARTMENT', label: 'Apartment' },
-  { value: 'VILLA', label: 'Villa' },
-  { value: 'RIAD', label: 'Riad' },
-  { value: 'STUDIO', label: 'Studio' },
-  { value: 'HOUSE', label: 'House' },
-  { value: 'OTHER', label: 'Other' },
-];
+const TYPES: PropertyType[] = ['APARTMENT', 'VILLA', 'RIAD', 'STUDIO', 'HOUSE', 'OTHER'];
+const CURRENCIES = ['MAD', 'EUR', 'USD', 'GBP'];
 
+/** The phone's time zone, as the website's form sends it. */
+function phoneTimezone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** A first guess from where the phone is; the host can pick another. */
+function guessCurrency(tz: string | undefined) {
+  if (!tz || tz === 'Africa/Casablanca' || tz === 'Africa/El_Aaiun') return 'MAD';
+  if (tz === 'Europe/London') return 'GBP';
+  if (tz.startsWith('Europe/')) return 'EUR';
+  return tz.startsWith('America/') ? 'USD' : 'EUR';
+}
+
+/** A city's name in the app's language. */
+function cityLabel(c: City, lang: string) {
+  return (lang === 'AR' ? c.nameAr : lang === 'FR' ? c.nameFr : null) || c.name;
+}
+
+/**
+ * Name, city and address are all it takes to start; the rest is folded away
+ * and editable later. Any city works — the known ones are only suggestions
+ * (the API adds a new one by name).
+ */
 export default function AddPropertyScreen() {
   const largeTitle = useLargeTitle();
   const { session } = useAuth();
   const router = useRouter();
+  const { t, lang } = useLanguage();
+  const s = useSetupStrings().addProperty;
+  const [timezone] = useState(phoneTimezone);
   const [cities, setCities] = useState<City[]>([]);
   const [type, setType] = useState<PropertyType>('APARTMENT');
   const [name, setName] = useState('');
-  const [cityId, setCityId] = useState<string | null>(null);
+  const [city, setCity] = useState('');
   const [addressLine, setAddressLine] = useState('');
+  const [showMore, setShowMore] = useState(false);
   const [bedrooms, setBedrooms] = useState('1');
   const [bathrooms, setBathrooms] = useState('1');
   const [maxGuests, setMaxGuests] = useState('2');
+  const [currency, setCurrency] = useState(() => guessCurrency(timezone));
   const [nightlyRate, setNightlyRate] = useState('');
-  const [accessInstructions, setAccessInstructions] = useState('');
-  const [wifiInfo, setWifiInfo] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    api.cities.list().then((list) => {
-      setCities(list);
-      if (list[0]) setCityId(list[0].id);
-    });
+    // Suggestions only: the form works without them.
+    api.cities.list().then(setCities).catch(() => {});
   }, []);
+
+  const typed = city.trim().toLowerCase();
+  const known = cities.find((c) => [c.name, c.nameFr, c.nameAr].some((n) => n?.trim().toLowerCase() === typed));
+  const suggestions = known
+    ? []
+    : cities.filter((c) => !typed || [c.name, c.nameFr, c.nameAr].some((n) => n?.trim().toLowerCase().startsWith(typed))).slice(0, 6);
 
   async function handleSubmit() {
     if (!session) return;
     setError(null);
-
-    if (!name.trim() || !addressLine.trim() || !cityId) {
-      setError('Name, city, and address are required.');
+    if (!name.trim() || !addressLine.trim() || !city.trim()) {
+      setError(s.required);
       return;
     }
-
     setIsSubmitting(true);
     try {
-      await api.properties.create(
+      const rate = Number(nightlyRate.replace(',', '.'));
+      const created = await api.properties.create(
         {
           type,
           name: name.trim(),
-          cityId,
+          ...(known ? { cityId: known.id } : { cityName: city.trim() }),
           addressLine: addressLine.trim(),
-          bedrooms: Number(bedrooms) || 0,
-          bathrooms: Number(bathrooms) || 0,
-          maxGuests: Number(maxGuests) || 1,
-          nightlyRate: nightlyRate ? Number(nightlyRate) : undefined,
-          accessInstructions: accessInstructions || undefined,
-          wifiInfo: wifiInfo || undefined,
+          bedrooms: Math.max(0, Math.round(Number(bedrooms)) || 0),
+          bathrooms: Math.max(0, Math.round(Number(bathrooms)) || 0),
+          maxGuests: Math.max(1, Math.round(Number(maxGuests)) || 1),
+          nightlyRate: rate > 0 ? rate : undefined,
+          currency,
+          timezone,
         },
         session.accessToken,
       );
-      router.replace('/(host-tabs)/dashboard');
+      // Straight to the new property, where its check-in links are made.
+      router.replace(`/host/property/${created.id}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not add this property.');
+      setError(err instanceof ApiError ? err.message : s.error);
     } finally {
       setIsSubmitting(false);
     }
@@ -79,66 +110,60 @@ export default function AddPropertyScreen() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: largeTitle.headerTitle('Add a property'), headerBackTitle: 'Back' }} />
+      <Stack.Screen options={{ headerShown: true, title: largeTitle.headerTitle(s.title), headerBackTitle: t.common.back }} />
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" {...largeTitle.scrollProps}>
-        <Text style={typography.h1}>Add a property</Text>
-        <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>
-          You can fine-tune automation, guest welcome messages, and iCal sync later from the web dashboard.
-        </Text>
+        <Text style={typography.h1}>{s.title}</Text>
+        <Text style={[typography.bodyMuted, { marginTop: spacing.xs, marginBottom: spacing.lg }]}>{s.intro}</Text>
 
-        <Text style={styles.sectionLabel}>Property type</Text>
-        <View style={styles.chipRow}>
-          {TYPE_OPTIONS.map((opt) => (
-            <Chip key={opt.value} label={opt.label} active={type === opt.value} onPress={() => setType(opt.value)} />
-          ))}
-        </View>
-
-        <View style={{ marginTop: spacing.lg }}>
-          <TextField label="Property name" value={name} onChangeText={setName} placeholder="e.g. Riad Jasmine" />
-        </View>
-
-        <Text style={styles.sectionLabel}>City</Text>
-        <View style={styles.chipRow}>
-          {cities.map((c) => (
-            <Chip key={c.id} label={c.name} active={cityId === c.id} onPress={() => setCityId(c.id)} />
-          ))}
-        </View>
-
-        <View style={{ marginTop: spacing.lg }}>
-          <TextField label="Address" value={addressLine} onChangeText={setAddressLine} placeholder="Street, neighborhood" />
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <TextField label="Bedrooms" value={bedrooms} onChangeText={setBedrooms} keyboardType="number-pad" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <TextField label="Bathrooms" value={bathrooms} onChangeText={setBathrooms} keyboardType="number-pad" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <TextField label="Max guests" value={maxGuests} onChangeText={setMaxGuests} keyboardType="number-pad" />
-            </View>
+        <TextField label={s.name} value={name} onChangeText={setName} placeholder={s.namePlaceholder} autoCapitalize="words" />
+        <TextField label={s.city} value={city} onChangeText={setCity} placeholder={s.cityPlaceholder} autoCapitalize="words" maxLength={80} />
+        {suggestions.length > 0 && (
+          <View style={[styles.chipRow, styles.suggestions]}>
+            {suggestions.map((c) => (
+              <Chip key={c.id} label={cityLabel(c, lang)} active={false} onPress={() => setCity(cityLabel(c, lang))} />
+            ))}
           </View>
-          <TextField
-            label="Nightly rate in MAD (optional)"
-            value={nightlyRate}
-            onChangeText={setNightlyRate}
-            keyboardType="number-pad"
-            placeholder="e.g. 600"
-          />
-          <TextField
-            label="Access instructions (optional)"
-            value={accessInstructions}
-            onChangeText={setAccessInstructions}
-            multiline
-            numberOfLines={3}
-            placeholder="How the cleaner gets in — gate code, key location…"
-          />
-          <TextField
-            label="Wifi info (optional)"
-            value={wifiInfo}
-            onChangeText={setWifiInfo}
-            placeholder="Network name / password"
-          />
-        </View>
+        )}
+        <TextField label={s.address} value={addressLine} onChangeText={setAddressLine} placeholder={s.addressPlaceholder} autoCapitalize="sentences" />
+
+        <Pressable
+          onPress={() => setShowMore((v) => !v)}
+          style={styles.moreRow}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showMore }}
+        >
+          <Text style={styles.moreText}>{s.more}</Text>
+          <Ionicons name={showMore ? 'chevron-up' : 'chevron-down'} size={16} color={colors.inkMuted} />
+        </Pressable>
+
+        {showMore && (
+          <View style={{ marginTop: spacing.md }}>
+            <Text style={styles.label}>{s.type}</Text>
+            <View style={styles.chipRow}>
+              {TYPES.map((key) => (
+                <Chip key={key} label={s.types[key]} active={type === key} onPress={() => setType(key)} />
+              ))}
+            </View>
+            <View style={[styles.row, { marginTop: spacing.md }]}>
+              <View style={{ flex: 1 }}>
+                <TextField label={s.bedrooms} value={bedrooms} onChangeText={setBedrooms} keyboardType="number-pad" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <TextField label={s.bathrooms} value={bathrooms} onChangeText={setBathrooms} keyboardType="number-pad" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <TextField label={s.maxGuests} value={maxGuests} onChangeText={setMaxGuests} keyboardType="number-pad" />
+              </View>
+            </View>
+            <Text style={styles.label}>{s.currency}</Text>
+            <View style={[styles.chipRow, { marginBottom: spacing.md }]}>
+              {CURRENCIES.map((c) => (
+                <Chip key={c} label={c} active={currency === c} onPress={() => setCurrency(c)} />
+              ))}
+            </View>
+            <TextField label={s.rate(currency)} value={nightlyRate} onChangeText={setNightlyRate} keyboardType="decimal-pad" placeholder={s.ratePlaceholder} />
+          </View>
+        )}
 
         {error && (
           <View style={styles.errorBox}>
@@ -146,7 +171,7 @@ export default function AddPropertyScreen() {
           </View>
         )}
 
-        <Button label={isSubmitting ? 'Adding…' : 'Add property'} onPress={handleSubmit} loading={isSubmitting} style={{ marginTop: spacing.md }} />
+        <Button label={isSubmitting ? s.submitting : s.submit} onPress={handleSubmit} loading={isSubmitting} style={{ marginTop: spacing.lg }} />
       </ScrollView>
     </Screen>
   );
@@ -154,9 +179,20 @@ export default function AddPropertyScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
-  sectionLabel: { ...typography.h3, marginTop: spacing.lg, marginBottom: spacing.sm },
+  label: { fontSize: 13, lineHeight: 18, fontWeight: '500', color: colors.ink, marginBottom: spacing.sm },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  suggestions: { marginTop: -spacing.sm, marginBottom: spacing.md },
   row: { flexDirection: 'row', gap: spacing.sm },
-  errorBox: { backgroundColor: colors.dangerBg, borderRadius: 10, padding: spacing.sm, marginTop: spacing.md },
+  moreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 48,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  moreText: { fontSize: 15, fontWeight: '500', color: colors.ink },
+  errorBox: { backgroundColor: colors.dangerBg, borderRadius: radius.md, padding: spacing.sm, marginTop: spacing.md },
   errorText: { color: colors.danger, fontSize: 13 },
 });

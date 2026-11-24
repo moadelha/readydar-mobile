@@ -16,13 +16,14 @@ import { unregisterPush } from './push';
 interface AuthContextValue {
   session: StoredSession | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  /** 'CONFIRM_EMAIL' when the password is right but the address isn't confirmed yet. */
+  login: (email: string, password: string) => Promise<'OK' | 'CONFIRM_EMAIL'>;
+  /** Creates the host account. It can't sign in until its email is confirmed. */
   register: (payload: {
     email: string;
     password: string;
     firstName: string;
     lastName: string;
-    role: 'HOST' | 'CLEANER';
     phone?: string;
     acceptedTerms: boolean;
   }) => Promise<void>;
@@ -32,12 +33,8 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-/** This app supports hosts and cleaners only — admin/support use the web dashboard. */
-function dashboardPathForRole(role: AuthUser['role']) {
-  if (role === 'HOST') return '/(host-tabs)/dashboard';
-  if (role === 'CLEANER') return '/(tabs)/feed';
-  return null;
-}
+/** Sign-in refused because the account isn't a host's; the login screen words it in the app's language. */
+export const HOSTS_ONLY = 'HOSTS_ONLY';
 
 /**
  * router.replace() only swaps the CURRENT screen — it leaves everything
@@ -89,19 +86,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string): Promise<'OK' | 'CONFIRM_EMAIL'> => {
       const res = await api.auth.login(email, password);
-      const dashboard = dashboardPathForRole(res.user.role);
-      if (!dashboard) {
+      if ('requiresEmailVerification' in res) return 'CONFIRM_EMAIL';
+      // Any other answer without a session is an admin account's second factor.
+      if (!('accessToken' in res)) throw new ApiError(403, HOSTS_ONLY);
+      if (res.user.role !== 'HOST') {
         await api.auth.logout(res.refreshToken).catch(() => {});
-        throw new ApiError(
-          403,
-          'This app is for hosts and cleaners. Use the ReadyDar website for admin/support accounts.',
-        );
+        throw new ApiError(403, HOSTS_ONLY);
       }
       await persist(res);
       resetNavigationStack(router);
-      router.replace(dashboard as any);
+      router.replace('/(host-tabs)/dashboard');
+      return 'OK';
     },
     [persist, router],
   );
@@ -112,20 +109,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password: string;
       firstName: string;
       lastName: string;
-      role: 'HOST' | 'CLEANER';
       phone?: string;
       acceptedTerms: boolean;
     }) => {
-      const res = await api.auth.register(payload);
-      await persist(res);
-      resetNavigationStack(router);
-      if (payload.role === 'HOST') {
-        router.replace('/host/property/new');
-      } else {
-        router.replace('/onboarding');
-      }
+      await api.auth.register({ ...payload, role: 'HOST' });
     },
-    [persist, router],
+    [],
   );
 
   const logout = useCallback(async () => {

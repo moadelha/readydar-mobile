@@ -359,7 +359,7 @@ export default function PropertyDetailScreen() {
       const url = resolveCheckInUrl(checkIn.token);
       // timeZone UTC — calendar date stored as UTC midnight; goes into the
       // guest's WhatsApp. Same note as (host-tabs)/dashboard.tsx.
-      const arriving = new Date(checkIn.expectedCheckIn).toLocaleDateString(undefined, {
+      const arriving = new Date(checkIn.expectedCheckIn).toLocaleDateString(dateLocale, {
         weekday: 'long',
         day: 'numeric',
         month: 'long',

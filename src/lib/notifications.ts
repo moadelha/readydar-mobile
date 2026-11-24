@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { AllCheckIn, CalendarEvent, resolveThumbnailUrl } from './api';
 import { stayLabel } from './checkin-groups';
-import { Dict } from './i18n/dictionary';
+import { Dict, fr, ar } from './i18n/dictionary';
 
 /**
  * Host notifications — derived on the device, not fetched.
@@ -31,7 +31,7 @@ import { Dict } from './i18n/dictionary';
  */
 
 /** Notification ids are stable across loads — read state is keyed on them. */
-export type NotificationKind = 'CHECKIN_SUBMITTED' | 'JOB_UNACCEPTED' | 'SAME_DAY_TURNOVER';
+export type NotificationKind = 'CHECKIN_SUBMITTED' | 'SAME_DAY_TURNOVER';
 
 export interface HostNotification {
   /** Stable across reloads. Never derive this from an array index. */
@@ -127,27 +127,6 @@ export function buildNotifications(input: {
     });
   }
 
-  // 2. A cleaning today that nobody has accepted. The property's own status
-  //    can still read READY while the job silently goes unfilled, so this
-  //    is not implied by anything else on the screen.
-  for (const ev of todayEvents) {
-    if (ev.kind !== 'CLEANING') continue;
-    if (ev.status !== 'PENDING_MATCH' && ev.status !== 'DISPUTED') continue;
-    if (!ev.bookingId) continue;
-    const at = Date.parse(ev.date);
-    items.push({
-      id: `job:${ev.bookingId}`,
-      kind: 'JOB_UNACCEPTED',
-      at: Number.isFinite(at) ? at : now,
-      title: t.notifications.jobTitle,
-      body: t.notifications.jobBody(ev.propertyName),
-      href: `/host/booking/${ev.bookingId}`,
-      photoUrl: null,
-      icon: 'alert-circle-outline',
-      tone: 'danger',
-    });
-  }
-
   // 3. Same-day turnover — one guest out, another in, today. The tightest
   //    cleaning window there is.
   //
@@ -196,7 +175,7 @@ export function notificationTime(at: number, t: Dict, now = Date.now()): string 
   if (days <= 0) return t.notifications.hoursAgo(Math.floor(diff / (60 * 60 * 1000)));
   if (days === 1) return t.notifications.yesterday;
   if (days < 7) return t.notifications.daysAgo(days);
-  return new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return new Date(at).toLocaleDateString(t === fr ? 'fr-FR' : t === ar ? 'ar-MA' : 'en-GB', { day: 'numeric', month: 'short' });
 }
 
 /* ------------------------------------------------------------------ */

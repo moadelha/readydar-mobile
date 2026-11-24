@@ -390,8 +390,7 @@ export default function CalendarScreen() {
   function openBookingOrProperty(event: CalendarEvent) {
     setSelectedEvent(null);
     setSelectedDay(null);
-    if (event.bookingId) router.push(`/host/booking/${event.bookingId}`);
-    else router.push(`/host/property/${event.propertyId}`);
+    router.push(`/host/property/${event.propertyId}`);
   }
 
   async function handleShareCheckIn(event: CalendarEvent) {
@@ -908,7 +907,7 @@ export default function CalendarScreen() {
                       value={rateInput}
                       onChangeText={setRateInput}
                       keyboardType="numeric"
-                      placeholder="e.g. 650"
+                      placeholder="650"
                     />
                     <Text style={typography.caption}>
                       {t.calendarHost.ratePerNightHint}
@@ -934,7 +933,7 @@ export default function CalendarScreen() {
                         value={guestInput}
                         onChangeText={setGuestInput}
                         keyboardType="number-pad"
-                        placeholder="e.g. 4"
+                        placeholder="4"
                       />
                       <Text style={typography.caption}>
                         {t.calendarHost.guestsOptionalHint}
@@ -970,7 +969,7 @@ export default function CalendarScreen() {
                     </>
                   )}
                 <Button
-                  label={selectedEvent.bookingId ? t.calendarHost.viewBooking : t.calendarHost.viewProperty}
+                  label={t.calendarHost.viewProperty}
                   onPress={() => openBookingOrProperty(selectedEvent)}
                   variant="secondary"
                   style={{

@@ -13,6 +13,7 @@ import { bucketOf, groupByMonth, stayLabel, CheckInBucket, MonthGroup } from '@/
 import { colors, spacing, typography, radius } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
+import { dateLocale } from '@/lib/calendar-visuals';
 import { Dict } from '@/lib/i18n/dictionary';
 import { rtlFlip } from '@/lib/rtl';
 import { checkInCopyMessage } from '@/lib/checkin-message';
@@ -214,7 +215,7 @@ export default function GuestsScreen() {
       // timeZone UTC — calendar date stored as UTC midnight; without this
       // the guest's own WhatsApp message names the wrong day for anyone
       // west of Greenwich. Same note as (host-tabs)/dashboard.tsx.
-      const arriving = new Date(item.expectedCheckIn).toLocaleDateString(undefined, {
+      const arriving = new Date(item.expectedCheckIn).toLocaleDateString(dateLocale(lang), {
         weekday: 'long',
         day: 'numeric',
         month: 'long',

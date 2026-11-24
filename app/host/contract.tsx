@@ -11,6 +11,8 @@ import { colors, spacing, typography } from '@/theme';
 import { useHostAccess } from '@/lib/access';
 import { NoAccess } from '@/components/no-access';
 import { useLargeTitle } from '@/lib/large-title';
+import { useLanguage } from '@/lib/i18n/language-context';
+import { useSetupStrings } from '@/lib/i18n/setup-strings';
 
 const TEMPLATE_VARIABLES =
   '{{hostName}} {{guestName}} {{propertyName}} {{propertyAddress}} {{checkInDate}} {{checkOutDate}} {{guestCount}} {{totalPrice}}';
@@ -19,6 +21,8 @@ function ContractSettingsInner() {
   const largeTitle = useLargeTitle();
   const { session } = useAuth();
   const toast = useToast();
+  const { t } = useLanguage();
+  const s = useSetupStrings().contract;
   const [loaded, setLoaded] = useState(false);
   const [required, setRequired] = useState(false);
   const [template, setTemplate] = useState('');
@@ -39,7 +43,7 @@ function ContractSettingsInner() {
       // for the bare default text, so this is captured opportunistically.
       setDefaultTemplate((prev) => prev || contract.contractTemplate || prev);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load your contract settings.');
+      setError(err instanceof ApiError ? err.message : s.loadError);
     } finally {
       setLoaded(true);
     }
@@ -61,9 +65,9 @@ function ContractSettingsInner() {
         session.accessToken,
       );
       setTemplate(updated.contractTemplate ?? '');
-      toast.show('Contract settings saved', 'success');
+      toast.show(s.saved, 'success');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not save these settings.');
+      setError(err instanceof ApiError ? err.message : s.saveError);
     } finally {
       setIsSaving(false);
     }
@@ -73,12 +77,12 @@ function ContractSettingsInner() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ headerShown: true, title: largeTitle.headerTitle('Rental contract'), headerBackTitle: 'Back' }} />
+      <Stack.Screen options={{ headerShown: true, title: largeTitle.headerTitle(s.title), headerBackTitle: t.common.back }} />
       <ScrollView contentContainerStyle={styles.container} {...largeTitle.scrollProps}>
         <Reveal>
-          <Text style={typography.h1}>Rental contract</Text>
+          <Text style={typography.h1}>{s.title}</Text>
           <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>
-            One shared setting for your whole account — applies to every property, not just one.
+            {s.intro}
           </Text>
         </Reveal>
 
@@ -87,15 +91,16 @@ function ContractSettingsInner() {
         <Reveal delay={40}>
           <Card style={{ marginTop: spacing.lg }}>
             <View style={styles.toggleRow}>
-              <View style={{ flex: 1, marginRight: spacing.sm }}>
-                <Text style={typography.h3}>Require a signed contract</Text>
+              <View style={{ flex: 1, marginEnd: spacing.sm }}>
+                <Text style={typography.h3}>{s.requireTitle}</Text>
                 <Text style={[typography.bodyMuted, { marginTop: 2 }]}>
-                  Guests sign this rental agreement as the last step of online check-in, before they can submit.
+                  {s.requireBody}
                 </Text>
               </View>
               <Switch
                 value={required}
                 onValueChange={setRequired}
+                accessibilityLabel={s.requireTitle}
                 trackColor={{ false: colors.border, true: colors.primary }}
                 thumbColor={colors.onPrimary}
               />
@@ -106,22 +111,22 @@ function ContractSettingsInner() {
         {required && (
           <Reveal delay={80}>
             <Card style={{ marginTop: spacing.md }}>
-              <Text style={typography.h3}>Contract text</Text>
+              <Text style={typography.h3}>{s.textTitle}</Text>
               <Text style={[typography.bodyMuted, { marginTop: 2, marginBottom: spacing.sm }]}>
-                Shown to the guest exactly as written here, with the variables below filled in for their stay.
+                {s.textBody}
               </Text>
               <TextField
-                label="Contract template"
+                label={s.template}
                 value={template}
                 onChangeText={setTemplate}
                 multiline
                 numberOfLines={14}
-                placeholder="Leave blank to use the default rental agreement"
+                placeholder={s.placeholder}
               />
-              <Text style={typography.caption}>Available variables: {TEMPLATE_VARIABLES}</Text>
+              <Text style={typography.caption}>{s.variables(TEMPLATE_VARIABLES)}</Text>
               {defaultTemplate.length > 0 && template !== defaultTemplate && (
                 <Button
-                  label="Restore default template"
+                  label={s.restore}
                   onPress={() => setTemplate(defaultTemplate)}
                   variant="outline"
                   style={{ marginTop: spacing.sm }}
@@ -133,13 +138,12 @@ function ContractSettingsInner() {
 
         <View style={styles.disclaimerBox}>
           <Text style={styles.disclaimerText}>
-            This template is a starting draft, not verified legal advice. Review and adapt it for your own situation
-            and local requirements before relying on it.
+            {s.disclaimer}
           </Text>
         </View>
 
         <Button
-          label={isSaving ? 'Saving…' : 'Save settings'}
+          label={isSaving ? s.saving : s.save}
           onPress={handleSave}
           loading={isSaving}
           style={{ marginTop: spacing.xl }}

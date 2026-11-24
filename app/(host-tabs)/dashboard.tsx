@@ -48,6 +48,7 @@ import { colors, radius, spacing, typography } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { Dict } from '@/lib/i18n/dictionary';
+import { FirstRun } from '@/components/first-run';
 import { useHostAccess } from '@/lib/access';
 import { rtlFlip } from '@/lib/rtl';
 import { checkInCopyMessage } from '@/lib/checkin-message';
@@ -733,15 +734,7 @@ function HostDashboardScreen() {
         {overview.length === 0 ? (
           <Reveal delay={60}>
             <Card elevated style={{ marginTop: spacing.lg }}>
-              <Text style={typography.h3}>{t.dashboardHost.emptyTitle}</Text>
-              <Text style={[typography.bodyMuted, { marginTop: spacing.xs }]}>
-                {t.dashboardHost.emptySubtitle}
-              </Text>
-              <Button
-                label={t.dashboardHost.addProperty}
-                onPress={() => router.push('/host/property/new')}
-                style={{ marginTop: spacing.md, alignSelf: 'flex-start', paddingHorizontal: spacing.lg }}
-              />
+              <FirstRun />
             </Card>
           </Reveal>
         ) : (

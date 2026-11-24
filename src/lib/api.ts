@@ -91,10 +91,28 @@ export interface StoredSession {
 
 // --- Secure session storage -------------------------------------------------
 
+/** Signing in gives a session, or says what's missing first. */
+export type LoginAnswer =
+  | StoredSession
+  | { requiresEmailVerification: true }
+  /** Admin accounts: they use the website. */
+  | { requiresTwoFactor: true }
+  | { requiresTwoFactorSetup: true };
+
 export async function readStoredSession(): Promise<StoredSession | null> {
   try {
     const raw = await SecureStore.getItemAsync(SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const stored = JSON.parse(raw) as Partial<StoredSession> | null;
+    // Sign-up used to save the API's "confirm your email" answer here as if
+    // it were a session, and the app then crashed on every start (on iPhone
+    // even after reinstalling: the keychain outlives the app). Anything
+    // without a user and tokens isn't a session — drop it, start signed out.
+    if (!stored?.accessToken || !stored.refreshToken || !stored.user?.id) {
+      await SecureStore.deleteItemAsync(SESSION_KEY);
+      return null;
+    }
+    return stored as StoredSession;
   } catch {
     return null;
   }
@@ -419,11 +437,11 @@ export function resolveCheckInUrl(token: string) {
 export interface City {
   id: string;
   name: string;
+  nameFr?: string | null;
+  nameAr?: string | null;
   latitude: number;
   longitude: number;
   isActive?: boolean;
-  /** Whether the cleaner side of the app (job feed, dashboard, earnings) is live here. */
-  cleanersEnabled?: boolean;
 }
 
 export interface PropertyPhoto {
@@ -846,7 +864,9 @@ export type StayRef = { reservationId: string } | { checkInId: string };
 export interface CreatePropertyPayload {
   type: PropertyType;
   name: string;
-  cityId: string;
+  /** A known city, or any other by name (the API adds it). */
+  cityId?: string;
+  cityName?: string;
   addressLine: string;
   bedrooms: number;
   bathrooms: number;
@@ -857,6 +877,8 @@ export interface CreatePropertyPayload {
   cleaningNotes?: string;
   wifiInfo?: string;
   nightlyRate?: number;
+  currency?: string;
+  timezone?: string;
   googleMapsUrl?: string;
   gateCode?: string;
   apartmentNumber?: string;
@@ -925,23 +947,6 @@ export interface Booking {
   photos?: { id: string; type: string; url: string }[];
   review?: { id: string; rating: number; comment?: string | null } | null;
   createdAt: string;
-}
-
-export interface CreateBookingPayload {
-  propertyId: string;
-  serviceType: ServiceType | string;
-  scheduledDate: string;
-  scheduledTime: string;
-  urgency?: 'STANDARD' | 'URGENT';
-  specialRequests?: string;
-  budget?: number;
-  /** If true, the property's access details and the host's phone number are
-   * shared with the cleaner once matched. Off by default on the backend. */
-  shareAccessDetails?: boolean;
-}
-
-export interface JobFeedItem extends Booking {
-  distanceKm: number | null;
 }
 
 export type PlanFeature =
@@ -1035,6 +1040,19 @@ export interface GuestReview {
   /** Airbnb: guest not reviewed yet and still inside the 14-day window. */
   canReviewGuest?: boolean;
   guestReviewSubmittedAt?: string | null;
+  /** The stored AI translation into the language asked for (`?lang=`), when there is one. */
+  translation?: ReviewTranslation | null;
+}
+
+export interface ReviewTranslation {
+  reviewId: string;
+  language: string;
+  sourceLanguage: string | null;
+  /** Already written in the language asked for — show the original. */
+  sameLanguage: boolean;
+  publicText: string | null;
+  privateText: string | null;
+  responseText: string | null;
 }
 
 export interface GuestReviewPropertyOverview {
@@ -1043,6 +1061,52 @@ export interface GuestReviewPropertyOverview {
   photoUrl: string | null;
   reviewCount: number;
   averageRating: number | null;
+  /** Newer API only; the app works these out from the reviews when absent. */
+  city?: string;
+  insight?: {
+    language: string;
+    generatedAt: string;
+    newSince: number;
+    complaints: { title: string; category: string; mentions: number; severity: string }[];
+    fix: { title: string; action: string; category: string; priority: string } | null;
+    keep: { title: string; mentions: number } | null;
+  } | null;
+}
+
+/** Whether AI review tools can be used: `onDemand` (Pro, hostels) can update any time and translate; Light refreshes monthly. */
+export interface ReviewAiAvailability {
+  available: boolean;
+  configured: boolean;
+  onPlan: boolean;
+  onDemand: boolean;
+  refresh: 'NIGHTLY' | 'MONTHLY';
+}
+
+export type InsightLevel = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export interface ReviewInsight {
+  language: string;
+  summary: string;
+  sentiment: 'POSITIVE' | 'MIXED' | 'NEGATIVE';
+  praises: { category: string; title: string; detail: string; quote: string; reviews: string[]; mentions: number }[];
+  complaints: { category: string; title: string; detail: string; quote: string; reviews: string[]; mentions: number; severity: InsightLevel }[];
+  improvements: { category: string; title: string; action: string; reason: string; priority: InsightLevel; effort: InsightLevel; reviews: string[] }[];
+  categories: { category: string; sentiment: string; note: string }[];
+  reviewCount: number;
+  latestReviewAt: string | null;
+  generatedAt: string;
+}
+
+export interface ReviewInsightState extends ReviewAiAvailability {
+  reviewCount: number;
+  reviewsWithText: number;
+  insight: ReviewInsight | null;
+  /** The stored analysis is in another language; POST translates it (cheap, every paid plan). */
+  otherLanguage: boolean;
+  stale: boolean;
+  newReviews: number;
+  running: boolean;
+  error: string | null;
 }
 
 /** A quick reply filled in for one conversation; `missing` lists placeholders with no value (e.g. no Wi-Fi saved). */
@@ -1051,48 +1115,6 @@ export interface RenderedMessageTemplate {
   title: string;
   text: string;
   missing: string[];
-}
-
-export interface CleanerProfile {
-  id: string;
-  bio?: string | null;
-  yearsExperience: number;
-  isVerified: boolean;
-  averageRating: number;
-  totalJobsCompleted: number;
-  user: { firstName: string; lastName: string; email: string; phone?: string | null };
-  cities: { city: City }[];
-  availability: { id: string; dayOfWeek: number; startTime: string; endTime: string }[];
-  location?: { latitude: number; longitude: number } | null;
-}
-
-/**
- * Whether the cleaner side of the app (job feed, my jobs, earnings) is
- * live for this cleaner's location — mirrors CleanerLocationGuard on the
- * backend, which enforces the same rule server-side on the job feed and
- * job-accept endpoints, so this is UI-level convenience, not the only
- * thing standing between a cleaner and a disabled city.
- *
- * A cleaner with no cities picked yet (`cities.length === 0`, hasn't been
- * through onboarding) is deliberately NOT treated as "not enabled" here —
- * that's the existing empty-state/"edit profile" prompt, not coming-soon.
- * Only a cleaner who *has* picked at least one city, and none of them have
- * cleanersEnabled, gets the coming-soon screen.
- */
-export function isCleanerLocationEnabled(profile: { cities: { city: City }[] }): boolean {
-  if (profile.cities.length === 0) return true;
-  return profile.cities.some((c) => c.city.cleanersEnabled);
-}
-
-export interface EarningsSummary {
-  entries: {
-    id: string;
-    amount: string;
-    createdAt: string;
-    booking: { property: Property; service: Service };
-  }[];
-  totalAllTime: number;
-  totalThisMonth: number;
 }
 
 /** A single cash-on-delivery job's 10% platform commission charge. */
@@ -1122,7 +1144,7 @@ export interface CommissionStatus {
 export const api = {
   auth: {
     login: (email: string, password: string) =>
-      request<{ accessToken: string; refreshToken: string; user: AuthUser }>('/auth/login', {
+      request<LoginAnswer>('/auth/login', {
         method: 'POST',
         body: { email, password },
       }),
@@ -1131,14 +1153,18 @@ export const api = {
       password: string;
       firstName: string;
       lastName: string;
-      role: 'HOST' | 'CLEANER';
+      role: 'HOST';
       phone?: string;
       acceptedTerms: boolean;
     }) =>
-      request<{ accessToken: string; refreshToken: string; user: AuthUser }>('/auth/register', {
+      // No session: the account can't sign in until its email is confirmed.
+      request<{ requiresVerification: true; email: string }>('/auth/register', {
         method: 'POST',
         body: payload,
       }),
+    /** Sends the confirmation email again (3 a minute). Same answer whether or not the address has an account. */
+    resendVerification: (email: string) =>
+      request<{ message: string }>('/auth/resend-verification-public', { method: 'POST', body: { email } }),
     logout: (refreshToken: string) =>
       request<{ success: boolean }>('/auth/logout', { method: 'POST', body: { refreshToken } }),
   },
@@ -1178,69 +1204,6 @@ export const api = {
   },
   services: {
     list: () => request<Service[]>('/services'),
-  },
-  cleaners: {
-    getProfile: (token: string) => request<CleanerProfile>('/cleaners/me', { token }),
-    updateProfile: (payload: { bio?: string; yearsExperience?: number }, token: string) =>
-      request<CleanerProfile>('/cleaners/me', { method: 'PATCH', body: payload, token }),
-    setCities: (cityIds: string[], token: string) =>
-      request<any>('/cleaners/me/cities', { method: 'PUT', body: { cityIds }, token }),
-    setAvailability: (
-      slots: { dayOfWeek: number; startTime: string; endTime: string }[],
-      token: string,
-    ) => request<any>('/cleaners/me/availability', { method: 'PUT', body: { slots }, token }),
-    updateLocation: (latitude: number, longitude: number, token: string) =>
-      request<any>('/cleaners/me/location', { method: 'PATCH', body: { latitude, longitude }, token }),
-    uploadDocument: (file: PickedFile, type: 'id_card' | 'profile_picture', token: string) =>
-      requestForm<any>(`/cleaners/me/documents?type=${type}`, {}, { file }, { token }),
-    getJobFeed: (token: string) => request<JobFeedItem[]>('/cleaners/me/job-feed', { token }),
-    getMyJobs: (token: string) => request<Booking[]>('/cleaners/me/jobs', { token }),
-    getEarnings: (token: string) => request<EarningsSummary>('/cleaners/me/earnings', { token }),
-    getCommission: (token: string) => request<CommissionStatus>('/cleaners/me/commission', { token }),
-  },
-  jobActions: {
-    accept: (bookingId: string, token: string, proposedPrice?: number) =>
-      request<Booking>(`/bookings/${bookingId}/accept`, {
-        method: 'PATCH',
-        body: proposedPrice != null ? { proposedPrice } : undefined,
-        token,
-      }),
-    checkIn: (bookingId: string, latitude: number, longitude: number, token: string) =>
-      request<Booking>(`/bookings/${bookingId}/check-in`, {
-        method: 'PATCH',
-        body: { latitude, longitude },
-        token,
-      }),
-    start: (bookingId: string, token: string) =>
-      request<Booking>(`/bookings/${bookingId}/start`, { method: 'PATCH', token }),
-    toggleChecklistItem: (bookingId: string, itemId: string, isDone: boolean, token: string) =>
-      request<any>(`/bookings/${bookingId}/checklist/${itemId}`, {
-        method: 'PATCH',
-        body: { isDone },
-        token,
-      }),
-    complete: (bookingId: string, token: string) =>
-      request<Booking>(`/bookings/${bookingId}/complete`, { method: 'PATCH', token }),
-    uploadPhoto: (bookingId: string, type: 'before' | 'after', file: PickedFile, token: string) =>
-      requestForm<any>(`/bookings/${bookingId}/photos?type=${type}`, {}, { photo: file }, { token }),
-  },
-  bookings: {
-    get: (id: string, token: string) => request<Booking>(`/bookings/${id}`, { token }),
-    listMine: (token: string) => request<Booking[]>('/bookings/mine', { token }),
-    create: (payload: CreateBookingPayload, token: string) =>
-      request<Booking>('/bookings', { method: 'POST', body: payload, token }),
-    confirm: (id: string, token: string) =>
-      request<Booking>(`/bookings/${id}/confirm`, { method: 'PATCH', token }),
-    approve: (id: string, token: string) =>
-      request<Booking>(`/bookings/${id}/approve`, { method: 'PATCH', token }),
-    cancel: (id: string, reason: string, token: string) =>
-      request<Booking>(`/bookings/${id}/cancel`, { method: 'PATCH', body: { reason }, token }),
-    openDispute: (id: string, reason: string, token: string) =>
-      request<Booking>(`/bookings/${id}/dispute`, { method: 'POST', body: { reason }, token }),
-  },
-  reviews: {
-    create: (payload: { bookingId: string; rating: number; comment?: string }, token: string) =>
-      request<any>('/reviews', { method: 'POST', body: payload, token }),
   },
   properties: {
     listMine: (token: string) => request<Property[]>('/properties/mine', { token }),
@@ -1511,9 +1474,31 @@ export const api = {
    */
   guestReviews: {
     /** Per-property average rating + review count. */
-    overview: (token: string) => request<GuestReviewPropertyOverview[]>('/guest-reviews/overview', { token }),
-    /** Newest first, every property. */
-    listAll: (token: string) => request<GuestReview[]>('/guest-reviews', { token }),
+    overview: (token: string, lang?: string) =>
+      request<GuestReviewPropertyOverview[]>(`/guest-reviews/overview${lang ? `?lang=${lang}` : ''}`, { token }),
+    /** Newest first, every property (or one). With `lang`, each review carries its stored AI translation. */
+    listAll: (token: string, opts: { propertyId?: string; lang?: string } = {}) => {
+      const params = new URLSearchParams();
+      if (opts.propertyId) params.set('propertyId', opts.propertyId);
+      if (opts.lang) params.set('lang', opts.lang);
+      const qs = params.toString();
+      return request<GuestReview[]>(`/guest-reviews${qs ? `?${qs}` : ''}`, { token });
+    },
+    /** Whether AI insights and translations can be used on this plan. */
+    aiStatus: (token: string) => request<ReviewAiAvailability>('/guest-reviews/ai', { token }),
+    /** The stored analysis of one property (never runs the AI). */
+    insight: (propertyId: string, lang: string, token: string) =>
+      request<ReviewInsightState>(`/guest-reviews/insights/${propertyId}?lang=${lang}`, { token }),
+    /** Bring the analysis up to date now: READY straight away when nothing changed, else RUNNING (poll `insight`). */
+    analyse: (propertyId: string, lang: string, token: string) =>
+      request<{ status: 'READY'; insight: ReviewInsight } | { status: 'RUNNING' }>(`/guest-reviews/insights/${propertyId}`, {
+        method: 'POST',
+        body: { lang },
+        token,
+      }),
+    /** Translate up to 20 reviews into `lang` (Pro); stored translations are reused. */
+    translate: (reviewIds: string[], lang: string, token: string) =>
+      request<ReviewTranslation[]>('/guest-reviews/translations', { method: 'POST', body: { reviewIds, lang }, token }),
     /** Public reply on the channel — once, can't be edited afterwards. */
     reply: (id: string, reply: string, token: string) =>
       request<{ id: string; responseText: string | null; respondedAt: string | null }>(`/guest-reviews/${id}/reply`, {

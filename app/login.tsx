@@ -2,17 +2,22 @@ import { useState } from 'react';
 import { View, Linking } from 'react-native';
 import { Text } from '@/components/text';
 import { Link } from 'expo-router';
-import { useAuth, ApiError } from '@/lib/auth-context';
+import { useAuth } from '@/lib/auth-context';
 import { TextField } from '@/components/ui';
 import { AuthShell, authStyles } from '@/components/auth-shell';
+import { ConfirmEmail } from '@/components/confirm-email';
 import { Button } from '@/components/Button';
 import { spacing, typography } from '@/theme';
 import { useLanguage } from '@/lib/i18n/language-context';
+import { authErrorMessage, useSetupStrings } from '@/lib/i18n/setup-strings';
 import { WEB_URL } from '@/lib/api';
 
 export default function LoginScreen() {
   const { login } = useAuth();
   const { t } = useLanguage();
+  const s = useSetupStrings();
+  /** The password was right but the address isn't confirmed: the confirm step replaces the form. */
+  const [unconfirmed, setUnconfirmed] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -22,18 +27,26 @@ export default function LoginScreen() {
     setError(null);
     setIsSubmitting(true);
     try {
-      await login(email, password);
+      if ((await login(email.trim(), password)) === 'CONFIRM_EMAIL') setUnconfirmed(true);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t.login.genericError);
+      setError(authErrorMessage(err, s, t.login.genericError));
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  if (unconfirmed) {
+    return (
+      <AuthShell>
+        <ConfirmEmail email={email.trim()} password={password} justSignedUp={false} onBack={() => setUnconfirmed(false)} />
+      </AuthShell>
+    );
+  }
+
   return (
     <AuthShell>
       <Text style={authStyles.title}>{t.login.title}</Text>
-      <Text style={authStyles.subtitle}>{t.login.subtitle}</Text>
+      <Text style={authStyles.subtitle}>{s.auth.subtitle}</Text>
 
       <View style={{ marginTop: spacing.xl }}>
         <TextField

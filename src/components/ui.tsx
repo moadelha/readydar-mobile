@@ -22,6 +22,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { appearancePref, colors, elevation, radius, spacing, typography } from '@/theme';
 import { AppearancePref, setAppearancePref } from '@/lib/appearance';
 import { useLanguage, Lang } from '@/lib/i18n/language-context';
+import { useSetupStrings } from '@/lib/i18n/setup-strings';
 import { downloadAndShare } from '@/lib/files';
 import { DURATIONS, EASING, useEntrance, usePressScale } from '@/lib/motion';
 
@@ -489,12 +490,15 @@ export function Chip({
 }
 
 /** A simple square checkbox — used for the Terms & Conditions acceptance on sign-up. */
-export function Checkbox({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
+export function Checkbox({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; /** Read out by screen readers. */ label?: string }) {
   return (
     <AnimatedPressable
       onPress={() => onChange(!checked)}
       scaleTo={0.94}
-      hitSlop={8}
+      hitSlop={12}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked }}
+      accessibilityLabel={label}
       style={[styles.checkbox, checked && styles.checkboxChecked]}
     >
       {checked && <Ionicons name="checkmark" size={15} color={colors.onPrimary} />}
@@ -520,6 +524,7 @@ export function PhotoViewerModal({
   uri: string | null;
   onClose: () => void;
 }) {
+  const strings = useSetupStrings();
   const [isDownloading, setIsDownloading] = useState(false);
 
   async function handleDownload() {
@@ -528,7 +533,7 @@ export function PhotoViewerModal({
     try {
       await downloadAndShare(uri, `photo-${Date.now()}.jpg`, 'image/jpeg');
     } catch {
-      Alert.alert('Could not save photo', 'Please try again.');
+      Alert.alert(strings.photoSaveError);
     } finally {
       setIsDownloading(false);
     }

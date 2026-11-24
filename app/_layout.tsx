@@ -92,19 +92,13 @@ function RootLayout() {
               <Stack.Screen name="index" options={{ animation: 'fade' }} />
               <Stack.Screen name="login" options={{ animation: 'fade' }} />
               <Stack.Screen name="register" />
-              <Stack.Screen name="onboarding" />
-              <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
               <Stack.Screen name="(host-tabs)" options={{ animation: 'fade' }} />
-              <Stack.Screen name="job/[id]" options={{ presentation: 'card' }} />
               <Stack.Screen name="host/property/[id]" options={{ presentation: 'card' }} />
               <Stack.Screen name="host/property/new" options={{ presentation: 'modal' }} />
               <Stack.Screen name="host/property-settings/[id]" options={{ presentation: 'card' }} />
-              <Stack.Screen name="host/booking/[id]" options={{ presentation: 'card' }} />
-              <Stack.Screen name="host/booking/new" options={{ presentation: 'modal' }} />
               <Stack.Screen name="host/checkin/new" options={{ presentation: 'modal' }} />
               <Stack.Screen name="host/expense/new" options={{ presentation: 'modal' }} />
               <Stack.Screen name="host/guests" options={{ presentation: 'card' }} />
-              <Stack.Screen name="host/bookings" options={{ presentation: 'card' }} />
               <Stack.Screen name="host/profile" options={{ presentation: 'card' }} />
               <Stack.Screen name="host/turnovers" options={{ presentation: 'card' }} />
               <Stack.Screen name="host/cleaning-contacts" options={{ presentation: 'card' }} />
@@ -112,6 +106,7 @@ function RootLayout() {
               <Stack.Screen name="host/messages/[id]" options={{ presentation: 'card' }} />
               <Stack.Screen name="host/messages/templates" options={{ presentation: 'card' }} />
               <Stack.Screen name="host/reviews" options={{ presentation: 'card' }} />
+              <Stack.Screen name="host/review-property/[id]" options={{ presentation: 'card' }} />
             </Stack>
           </ToastProvider>
           </PlanConsoleProvider>

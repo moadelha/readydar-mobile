@@ -118,35 +118,7 @@ export interface Dict {
     termsRequired: string;
     genericError: string;
   };
-  onboarding: {
-    title: string;
-    subtitle: string;
-    aboutYou: string;
-    aboutYouPlaceholder: string;
-    yearsExperience: string;
-    citiesYouCover: string;
-    weeklyAvailability: string;
-    documents: string;
-    photoSelected: string;
-    profilePicture: string;
-    idCard: string;
-    saveProfile: string;
-    savingProfile: string;
-    genericError: string;
-  };
-  tabsCleaner: { jobFeed: string; myJobs: string; earnings: string; profile: string };
   tabsHost: { home: string; calendar: string; properties: string; expenses: string; more: string };
-  cleanerComingSoon: {
-    title: string;
-    body: string;
-    editProfile: string;
-    logOut: string;
-  };
-  marketplaceComingSoon: {
-    title: string;
-    body: string;
-    back: string;
-  };
   more: {
     sectionOperations: string;
     sectionGuests: string;
@@ -286,24 +258,6 @@ export interface Dict {
     exportPdf: string;
     pdfError: string;
   };
-  profileCleaner: {
-    jobsCompleted: string;
-    verified: string;
-    verificationPending: string;
-    citiesCovered: string;
-    noneSetYet: string;
-    availability: string;
-    currentLocation: string;
-    locationNotSet: string;
-    updateLocation: string;
-    updatingLocation: string;
-    editProfile: string;
-    logOut: string;
-    locationPermissionTitle: string;
-    locationPermissionMessage: string;
-    locationErrorTitle: string;
-    locationErrorMessage: string;
-  };
   profileHost: {
     manage: string;
     cleaningContacts: string;
@@ -414,62 +368,6 @@ export interface Dict {
     errorCreate: string;
     save: string;
     saving: string;
-  };
-  jobFeed: {
-    title: string;
-    subtitle: string;
-    accountOnHold: string;
-    overdueMessage: (amount: string) => string;
-    emptyMessage: string;
-    urgent: string;
-    budgetSuffix: string;
-    yourPrice: string;
-    offerPlaceholder: string;
-    sendOffer: string;
-    sending: string;
-    accept: string;
-    accepting: string;
-    offerDifferentPrice: string;
-    acceptError: string;
-  };
-  earnings: {
-    title: string;
-    thisMonth: string;
-    allTime: string;
-    commissionOwed: string;
-    commissionNoteBase: string;
-    commissionOverdue: (amount: string) => string;
-    commissionPaySoon: string;
-    commissionContact: string;
-    history: string;
-    emptyNoJobs: string;
-  };
-  jobDetail: {
-    navigate: string;
-    hostLabel: string;
-    call: string;
-    whatsapp: string;
-    noPhoneOnFile: string;
-    checkInButton: string;
-    startCleaning: string;
-    markComplete: string;
-    checklist: string;
-    beforePhotos: string;
-    afterPhotos: string;
-    takePhoto: string;
-    photoDisclaimer: string;
-    locationNeededTitle: string;
-    locationNeededMessage: string;
-    genericError: string;
-    checkedInSuccess: string;
-    startedSuccess: string;
-    completedSuccess: string;
-    /** Shown on the job feed card and the job detail header when the host marked this one urgency: URGENT — see Booking.urgency. */
-    urgentBadge: string;
-  };
-  myJobs: {
-    title: string;
-    emptyMessage: string;
   };
   /**
    * A translated equivalent of `STATUS_LABELS` (src/lib/status.ts), used
@@ -744,16 +642,6 @@ export interface Dict {
     icalNotice: string;
     checkInShareMessage: (propertyName: string | null, arriving: string, url: string) => string;
   };
-  bookingsList: {
-    headerBack: string;
-    pageTitle: string;
-    title: string;
-    subtitle: string;
-    errorLoad: string;
-    emptyMessage: string;
-    actionLabel: string;
-    urgent: string;
-  };
   guestsList: {
     headerBack: string;
     title: string;
@@ -909,34 +797,6 @@ export const en: Dict = {
     termsRequired: 'You must accept the Terms and Conditions to create an account.',
     genericError: 'Unable to create your account.',
   },
-  onboarding: {
-    title: 'Complete your profile',
-    subtitle: 'This helps hosts trust you and matches you with nearby jobs.',
-    aboutYou: 'About you',
-    aboutYouPlaceholder: 'A few words about your experience…',
-    yearsExperience: 'Years of experience',
-    citiesYouCover: 'Cities you cover',
-    weeklyAvailability: 'Weekly availability',
-    documents: 'Documents',
-    photoSelected: 'Photo selected ✓',
-    profilePicture: 'Profile picture',
-    idCard: 'ID card',
-    saveProfile: 'Save profile',
-    savingProfile: 'Saving…',
-    genericError: 'Could not save your profile',
-  },
-  tabsCleaner: { jobFeed: 'Job Feed', myJobs: 'My Jobs', earnings: 'Earnings', profile: 'Profile' },
-  cleanerComingSoon: {
-    title: "We're not in your area yet",
-    body: "ReadyDar's cleaner marketplace isn't live in your location yet — we're rolling it out city by city. We'll let you know as soon as it launches near you.",
-    editProfile: 'Edit profile',
-    logOut: 'Log out',
-  },
-  marketplaceComingSoon: {
-    title: 'Booking a cleaner is coming soon',
-    body: "We're still building out our network of vetted cleaners. Everything else in ReadyDar works as normal — we'll let you know the moment you can book one here.",
-    back: 'Go back',
-  },
   more: {
     sectionOperations: 'Operations',
     sectionGuests: 'Guests',
@@ -997,7 +857,7 @@ export const en: Dict = {
     turnoverTitle: 'Cleaning turnover alerts',
     turnoverBody: 'Notify a cleaning contact on WhatsApp after the guest checks out.',
     defaultContact: 'Default cleaning contact',
-    noContacts: 'No cleaning contacts yet — add one from More › Cleaning contacts.',
+    noContacts: 'No cleaning contacts yet — add one from More › Cleaner alerts.',
     defaultService: 'Default service (for company-account contacts)',
     modeOff: 'Off',
     modeReview: 'Review first',
@@ -1072,24 +932,6 @@ export const en: Dict = {
     pdfError: 'Could not generate the PDF. Please try again.',
   },
   tabsHost: { home: 'Home', calendar: 'Calendar', properties: 'Properties', expenses: 'Expenses', more: 'More' },
-  profileCleaner: {
-    jobsCompleted: 'jobs completed',
-    verified: 'Verified',
-    verificationPending: 'Verification pending',
-    citiesCovered: 'Cities covered',
-    noneSetYet: 'None set yet.',
-    availability: 'Availability',
-    currentLocation: 'Current location',
-    locationNotSet: 'Not set — job matching needs this.',
-    updateLocation: 'Update to my current location',
-    updatingLocation: 'Updating…',
-    editProfile: 'Edit profile',
-    logOut: 'Log out',
-    locationPermissionTitle: 'Location permission needed',
-    locationPermissionMessage: 'Enable location access in settings to update your position.',
-    locationErrorTitle: 'Error',
-    locationErrorMessage: 'Could not get your location.',
-  },
   profileHost: {
     manage: 'Manage',
     cleaningContacts: 'Cleaning contacts',
@@ -1201,64 +1043,6 @@ export const en: Dict = {
     errorCreate: 'Could not log this expense.',
     save: 'Save Expense',
     saving: 'Saving…',
-  },
-  jobFeed: {
-    title: 'Job feed',
-    subtitle: 'Nearby jobs, closest first.',
-    accountOnHold: 'Account on hold',
-    overdueMessage: (amount) =>
-      `You have ${amount} MAD in overdue platform commission from cash-on-delivery jobs. Settle it with the ReadyDar team to accept new jobs again.`,
-    emptyMessage: "No jobs available right now. Make sure you've set your covered cities in your profile.",
-    urgent: 'Urgent',
-    budgetSuffix: 'MAD budget',
-    yourPrice: 'Your price (MAD)',
-    offerPlaceholder: 'e.g. 250',
-    sendOffer: 'Send offer',
-    sending: 'Sending…',
-    accept: 'Accept',
-    accepting: 'Accepting…',
-    offerDifferentPrice: 'Offer a different price',
-    acceptError: 'Could not accept — it may already be taken.',
-  },
-  earnings: {
-    title: 'Earnings',
-    thisMonth: 'This month',
-    allTime: 'All time',
-    commissionOwed: 'Platform commission owed',
-    commissionNoteBase: '10% platform fee on your cash-on-delivery jobs — not yet settled.',
-    commissionOverdue: (amount) =>
-      ` ${amount} MAD of this is overdue, and your account can't accept new jobs until it's paid.`,
-    commissionPaySoon: ' Pay soon to avoid your account being put on hold.',
-    commissionContact: ' Contact the ReadyDar team to settle up.',
-    history: 'History',
-    emptyNoJobs: 'No completed jobs yet.',
-  },
-  jobDetail: {
-    navigate: 'Navigate',
-    hostLabel: 'Property host',
-    call: 'Call',
-    whatsapp: 'WhatsApp',
-    noPhoneOnFile: 'No phone number on file for this host.',
-    checkInButton: 'Check in (uses your location)',
-    startCleaning: 'Start cleaning',
-    markComplete: 'Mark job complete',
-    checklist: 'Checklist',
-    beforePhotos: 'Before photos',
-    afterPhotos: 'After photos',
-    takePhoto: 'Take photo',
-    photoDisclaimer:
-      "Also keep your own before/after photos on your phone for your records — the ones you upload here are what the host sees, but your own copies protect you if there's ever a dispute.",
-    locationNeededTitle: 'Location needed',
-    locationNeededMessage: 'Enable location access to check in.',
-    genericError: 'Something went wrong',
-    checkedInSuccess: 'Checked in',
-    startedSuccess: 'Cleaning started',
-    completedSuccess: 'Job marked complete',
-    urgentBadge: 'Urgent',
-  },
-  myJobs: {
-    title: 'My jobs',
-    emptyMessage: 'No jobs yet. Check the Job Feed tab for nearby work.',
   },
   bookingStatus: {
     PENDING_MATCH: 'Finding a cleaner',
@@ -1520,16 +1304,6 @@ export const en: Dict = {
     icalNotice: 'Calendar (iCal) links are managed from the ReadyDar website for now.',
     checkInShareMessage: (propertyName, arriving, url) => `Hi! Please complete your online check-in${propertyName ? ` for ${propertyName}` : ''}, arriving ${arriving}: ${url}`,
   },
-  bookingsList: {
-    headerBack: 'More',
-    pageTitle: 'All bookings',
-    title: 'Bookings',
-    subtitle: 'Across all your properties',
-    errorLoad: 'Could not load your bookings.',
-    emptyMessage: 'No bookings yet.',
-    actionLabel: 'Request a cleaning or service',
-    urgent: 'Urgent',
-  },
   guestsList: {
     headerBack: 'Back',
     title: 'Guests',
@@ -1692,34 +1466,6 @@ export const fr: Dict = {
     termsRequired: 'Vous devez accepter les conditions générales pour créer un compte.',
     genericError: 'Impossible de créer votre compte.',
   },
-  onboarding: {
-    title: 'Complétez votre profil',
-    subtitle: 'Cela aide les hôtes à vous faire confiance et vous associe aux missions proches de vous.',
-    aboutYou: 'À propos de vous',
-    aboutYouPlaceholder: 'Quelques mots sur votre expérience…',
-    yearsExperience: "Années d'expérience",
-    citiesYouCover: 'Villes que vous couvrez',
-    weeklyAvailability: 'Disponibilités hebdomadaires',
-    documents: 'Documents',
-    photoSelected: 'Photo sélectionnée ✓',
-    profilePicture: 'Photo de profil',
-    idCard: "Carte d'identité",
-    saveProfile: 'Enregistrer le profil',
-    savingProfile: 'Enregistrement…',
-    genericError: "Impossible d'enregistrer votre profil",
-  },
-  tabsCleaner: { jobFeed: 'Missions', myJobs: 'Mes missions', earnings: 'Revenus', profile: 'Profil' },
-  cleanerComingSoon: {
-    title: 'Nous ne sommes pas encore disponibles dans votre région',
-    body: "La marketplace de nettoyage de ReadyDar n'est pas encore active dans votre région — nous la déployons ville par ville. Nous vous préviendrons dès son lancement près de chez vous.",
-    editProfile: 'Modifier le profil',
-    logOut: 'Déconnexion',
-  },
-  marketplaceComingSoon: {
-    title: 'La réservation d’un agent de nettoyage arrive bientôt',
-    body: "Nous constituons encore notre réseau d'agents de nettoyage vérifiés. Tout le reste de ReadyDar fonctionne normalement — nous vous préviendrons dès que vous pourrez en réserver un ici.",
-    back: 'Retour',
-  },
   more: {
     sectionOperations: 'Opérations',
     sectionGuests: 'Voyageurs',
@@ -1780,7 +1526,7 @@ export const fr: Dict = {
     turnoverTitle: 'Alertes de rotation',
     turnoverBody: "Prévenir un contact ménage sur WhatsApp après le départ du voyageur.",
     defaultContact: 'Contact ménage par défaut',
-    noContacts: 'Aucun contact ménage pour le moment — ajoutez-en un depuis Plus › Contacts ménage.',
+    noContacts: 'Aucun contact ménage pour le moment — ajoutez-en un depuis Plus › Prévenir le ménage.',
     defaultService: 'Service par défaut (pour les comptes société)',
     modeOff: 'Désactivé',
     modeReview: 'Vérifier avant',
@@ -1854,25 +1600,7 @@ export const fr: Dict = {
     exportPdf: 'Exporter en PDF',
     pdfError: 'Impossible de générer le PDF. Veuillez réessayer.',
   },
-  tabsHost: { home: 'Accueil', calendar: 'Calendrier', properties: 'Propriétés', expenses: 'Dépenses', more: 'Plus' },
-  profileCleaner: {
-    jobsCompleted: 'missions terminées',
-    verified: 'Vérifié',
-    verificationPending: 'Vérification en attente',
-    citiesCovered: 'Villes couvertes',
-    noneSetYet: 'Aucune pour le moment.',
-    availability: 'Disponibilités',
-    currentLocation: 'Position actuelle',
-    locationNotSet: 'Non définie — nécessaire pour trouver des missions.',
-    updateLocation: 'Mettre à jour ma position actuelle',
-    updatingLocation: 'Mise à jour…',
-    editProfile: 'Modifier le profil',
-    logOut: 'Se déconnecter',
-    locationPermissionTitle: 'Autorisation de localisation requise',
-    locationPermissionMessage: "Activez l'accès à la position dans les réglages pour mettre à jour votre position.",
-    locationErrorTitle: 'Erreur',
-    locationErrorMessage: "Impossible d'obtenir votre position.",
-  },
+  tabsHost: { home: 'Accueil', calendar: 'Calendrier', properties: 'Logements', expenses: 'Dépenses', more: 'Plus' },
   profileHost: {
     manage: 'Gérer',
     cleaningContacts: 'Contacts ménage',
@@ -1984,65 +1712,6 @@ export const fr: Dict = {
     errorCreate: "Impossible d'enregistrer cette dépense.",
     save: 'Enregistrer la dépense',
     saving: 'Enregistrement…',
-  },
-  jobFeed: {
-    title: 'Missions disponibles',
-    subtitle: 'Missions à proximité, les plus proches en premier.',
-    accountOnHold: 'Compte suspendu',
-    overdueMessage: (amount) =>
-      `Vous avez ${amount} MAD de commission de plateforme en retard sur des missions payées en espèces. Réglez-la auprès de l'équipe ReadyDar pour accepter de nouvelles missions.`,
-    emptyMessage:
-      'Aucune mission disponible pour le moment. Vérifiez que vous avez bien défini vos villes couvertes dans votre profil.',
-    urgent: 'Urgent',
-    budgetSuffix: 'MAD de budget',
-    yourPrice: 'Votre prix (MAD)',
-    offerPlaceholder: 'ex. 250',
-    sendOffer: "Envoyer l'offre",
-    sending: 'Envoi…',
-    accept: 'Accepter',
-    accepting: 'Acceptation…',
-    offerDifferentPrice: 'Proposer un autre prix',
-    acceptError: "Impossible d'accepter — la mission est peut-être déjà prise.",
-  },
-  earnings: {
-    title: 'Revenus',
-    thisMonth: 'Ce mois-ci',
-    allTime: 'Toute la période',
-    commissionOwed: 'Commission de plateforme due',
-    commissionNoteBase: 'Frais de plateforme de 10% sur vos missions payées en espèces — non encore réglés.',
-    commissionOverdue: (amount) =>
-      ` ${amount} MAD sont en retard, et votre compte ne peut plus accepter de nouvelles missions tant que ce n'est pas payé.`,
-    commissionPaySoon: ' Réglez rapidement pour éviter la suspension de votre compte.',
-    commissionContact: " Contactez l'équipe ReadyDar pour régler cela.",
-    history: 'Historique',
-    emptyNoJobs: 'Aucune mission terminée pour le moment.',
-  },
-  jobDetail: {
-    navigate: 'Itinéraire',
-    hostLabel: 'Hôte de la propriété',
-    call: 'Appeler',
-    whatsapp: 'WhatsApp',
-    noPhoneOnFile: 'Aucun numéro de téléphone enregistré pour cet hôte.',
-    checkInButton: 'Arriver (utilise votre position)',
-    startCleaning: 'Démarrer le ménage',
-    markComplete: 'Marquer comme terminé',
-    checklist: 'Liste de vérification',
-    beforePhotos: 'Photos avant',
-    afterPhotos: 'Photos après',
-    takePhoto: 'Prendre une photo',
-    photoDisclaimer:
-      "Gardez aussi vos propres photos avant/après sur votre téléphone pour vos dossiers — celles que vous téléversez ici sont ce que voit l'hôte, mais vos propres copies vous protègent en cas de litige.",
-    locationNeededTitle: 'Localisation requise',
-    locationNeededMessage: "Activez l'accès à la localisation pour pointer votre arrivée.",
-    genericError: "Une erreur s'est produite",
-    checkedInSuccess: 'Arrivée enregistrée',
-    startedSuccess: 'Ménage démarré',
-    completedSuccess: 'Mission marquée comme terminée',
-    urgentBadge: 'Urgent',
-  },
-  myJobs: {
-    title: 'Mes missions',
-    emptyMessage: "Aucune mission pour l'instant. Consultez l'onglet Missions disponibles pour du travail à proximité.",
   },
   bookingStatus: {
     PENDING_MATCH: "Recherche d'un agent",
@@ -2304,16 +1973,6 @@ export const fr: Dict = {
     icalNotice: 'Les liens de calendrier (iCal) se gèrent depuis le site ReadyDar pour le moment.',
     checkInShareMessage: (propertyName, arriving, url) => `Bonjour ! Merci de compléter votre check-in en ligne${propertyName ? ` pour ${propertyName}` : ''}, arrivée ${arriving} : ${url}`,
   },
-  bookingsList: {
-    headerBack: 'Plus',
-    pageTitle: 'Toutes les réservations',
-    title: 'Réservations',
-    subtitle: 'Sur tous vos logements',
-    errorLoad: 'Impossible de charger vos réservations.',
-    emptyMessage: 'Aucune réservation pour le moment.',
-    actionLabel: 'Demander un ménage ou un service',
-    urgent: 'Urgent',
-  },
   guestsList: {
     headerBack: 'Retour',
     title: 'Voyageurs',
@@ -2497,34 +2156,6 @@ export const ar: Dict = {
     termsRequired: 'يجب أن توافق على الشروط والأحكام لإنشاء حساب.',
     genericError: 'تعذّر إنشاء حسابك.',
   },
-  onboarding: {
-    title: 'أكمل ملفك الشخصي',
-    subtitle: 'هذا يساعد المضيفين على الوثوق بك ويربطك بمهام قريبة منك.',
-    aboutYou: 'نبذة عنك',
-    aboutYouPlaceholder: 'بضع كلمات عن خبرتك…',
-    yearsExperience: 'سنوات الخبرة',
-    citiesYouCover: 'المدن التي تغطيها',
-    weeklyAvailability: 'التوفر الأسبوعي',
-    documents: 'المستندات',
-    photoSelected: 'تم اختيار الصورة ✓',
-    profilePicture: 'صورة الملف الشخصي',
-    idCard: 'بطاقة الهوية',
-    saveProfile: 'حفظ الملف الشخصي',
-    savingProfile: 'جارٍ الحفظ…',
-    genericError: 'تعذّر حفظ ملفك الشخصي',
-  },
-  tabsCleaner: { jobFeed: 'المهام', myJobs: 'مهامي', earnings: 'الأرباح', profile: 'الملف الشخصي' },
-  cleanerComingSoon: {
-    title: 'لسنا متاحين في منطقتك بعد',
-    body: 'سوق التنظيف الخاص بـ ReadyDar غير متاح بعد في منطقتك — نقوم بإطلاقه مدينة تلو الأخرى. سنعلمك فور انطلاقه بالقرب منك.',
-    editProfile: 'تعديل الملف الشخصي',
-    logOut: 'تسجيل الخروج',
-  },
-  marketplaceComingSoon: {
-    title: 'حجز عامل تنظيف قريبًا',
-    body: 'ما زلنا نبني شبكتنا من عمال التنظيف الموثّقين. تعمل بقية خدمات ReadyDar بشكل طبيعي — وسنعلمك فور إتاحة الحجز من هنا.',
-    back: 'رجوع',
-  },
   more: {
     sectionOperations: 'العمليات',
     sectionGuests: 'الضيوف',
@@ -2585,7 +2216,7 @@ export const ar: Dict = {
     turnoverTitle: 'تنبيهات التسليم',
     turnoverBody: 'إبلاغ جهة التنظيف عبر واتساب بعد مغادرة الضيف.',
     defaultContact: 'جهة التنظيف الافتراضية',
-    noContacts: 'لا توجد جهات تنظيف بعد — أضف واحدة من المزيد › جهات التنظيف.',
+    noContacts: 'لا توجد جهات تنظيف بعد — أضف واحدة من المزيد › إبلاغ التنظيف.',
     defaultService: 'الخدمة الافتراضية (لحسابات الشركات)',
     modeOff: 'متوقف',
     modeReview: 'مراجعة أولًا',
@@ -2659,24 +2290,6 @@ export const ar: Dict = {
     pdfError: 'تعذّر إنشاء ملف PDF. يرجى المحاولة مرة أخرى.',
   },
   tabsHost: { home: 'الرئيسية', calendar: 'التقويم', properties: 'العقارات', expenses: 'المصاريف', more: 'المزيد' },
-  profileCleaner: {
-    jobsCompleted: 'مهمة منجزة',
-    verified: 'موثّق',
-    verificationPending: 'التوثيق قيد الانتظار',
-    citiesCovered: 'المدن المغطاة',
-    noneSetYet: 'لا يوجد بعد.',
-    availability: 'التوفر',
-    currentLocation: 'الموقع الحالي',
-    locationNotSet: 'غير محدد — مطلوب لمطابقة المهام.',
-    updateLocation: 'تحديث موقعي الحالي',
-    updatingLocation: 'جارٍ التحديث…',
-    editProfile: 'تعديل الملف الشخصي',
-    logOut: 'تسجيل الخروج',
-    locationPermissionTitle: 'إذن الموقع مطلوب',
-    locationPermissionMessage: 'فعّل الوصول إلى الموقع من الإعدادات لتحديث موقعك.',
-    locationErrorTitle: 'خطأ',
-    locationErrorMessage: 'تعذّر الحصول على موقعك.',
-  },
   profileHost: {
     manage: 'الإدارة',
     cleaningContacts: 'جهات اتصال التنظيف',
@@ -2787,64 +2400,6 @@ export const ar: Dict = {
     errorCreate: 'تعذّر تسجيل هذا المصروف.',
     save: 'حفظ المصروف',
     saving: 'جارٍ الحفظ…',
-  },
-  jobFeed: {
-    title: 'المهام المتاحة',
-    subtitle: 'المهام القريبة، الأقرب أولاً.',
-    accountOnHold: 'الحساب موقوف مؤقتًا',
-    overdueMessage: (amount) =>
-      `لديك ${amount} درهم من عمولة المنصة المتأخرة من مهام الدفع عند الاستلام. سوّها مع فريق ReadyDar لتتمكن من قبول مهام جديدة.`,
-    emptyMessage: 'لا توجد مهام متاحة حاليًا. تأكد من تحديد المدن التي تغطيها في ملفك الشخصي.',
-    urgent: 'عاجل',
-    budgetSuffix: 'درهم ميزانية',
-    yourPrice: 'سعرك (درهم)',
-    offerPlaceholder: 'مثال: 250',
-    sendOffer: 'إرسال العرض',
-    sending: 'جارٍ الإرسال…',
-    accept: 'قبول',
-    accepting: 'جارٍ القبول…',
-    offerDifferentPrice: 'عرض سعر مختلف',
-    acceptError: 'تعذّر القبول — ربما تم أخذها بالفعل.',
-  },
-  earnings: {
-    title: 'الأرباح',
-    thisMonth: 'هذا الشهر',
-    allTime: 'كل الفترة',
-    commissionOwed: 'عمولة المنصة المستحقة',
-    commissionNoteBase: 'رسوم المنصة 10% على مهام الدفع عند الاستلام — لم تُسوَّ بعد.',
-    commissionOverdue: (amount) =>
-      ` ${amount} درهم من هذا المبلغ متأخر، ولا يمكن لحسابك قبول مهام جديدة حتى تتم تسويته.`,
-    commissionPaySoon: ' سوِّ المبلغ قريبًا لتجنّب إيقاف حسابك.',
-    commissionContact: ' تواصل مع فريق ReadyDar لتسوية الأمر.',
-    history: 'السجل',
-    emptyNoJobs: 'لا توجد مهام مكتملة بعد.',
-  },
-  jobDetail: {
-    navigate: 'الاتجاهات',
-    hostLabel: 'مضيف العقار',
-    call: 'اتصال',
-    whatsapp: 'واتساب',
-    noPhoneOnFile: 'لا يوجد رقم هاتف مسجل لهذا المضيف.',
-    checkInButton: 'تسجيل الوصول (يستخدم موقعك)',
-    startCleaning: 'بدء التنظيف',
-    markComplete: 'تحديد المهمة كمكتملة',
-    checklist: 'قائمة المهام',
-    beforePhotos: 'صور قبل',
-    afterPhotos: 'صور بعد',
-    takePhoto: 'التقاط صورة',
-    photoDisclaimer:
-      'احتفظ أيضًا بصورك الخاصة قبل/بعد على هاتفك كسجل خاص بك — الصور التي ترفعها هنا هي ما يراه المضيف، لكن نسخك الخاصة تحميك في حال حدوث أي نزاع.',
-    locationNeededTitle: 'الموقع مطلوب',
-    locationNeededMessage: 'فعّل الوصول إلى الموقع لتسجيل وصولك.',
-    genericError: 'حدث خطأ ما',
-    checkedInSuccess: 'تم تسجيل الوصول',
-    startedSuccess: 'بدأ التنظيف',
-    completedSuccess: 'تم تحديد المهمة كمكتملة',
-    urgentBadge: 'عاجل',
-  },
-  myJobs: {
-    title: 'مهامي',
-    emptyMessage: 'لا توجد مهام بعد. تحقق من تبويب المهام المتاحة للعثور على عمل قريب.',
   },
   bookingStatus: {
     PENDING_MATCH: 'جارٍ البحث عن عامل نظافة',
@@ -3126,16 +2681,6 @@ export const ar: Dict = {
     automationSettings: 'إعدادات الأتمتة',
     icalNotice: 'روابط التقويم (iCal) تُدار حاليًا من موقع ReadyDar على الويب.',
     checkInShareMessage: (propertyName, arriving, url) => `مرحبًا! يرجى إكمال تسجيل الوصول عبر الإنترنت${propertyName ? ` لـ ${propertyName}` : ''}، الوصول ${arriving}: ${url}`,
-  },
-  bookingsList: {
-    headerBack: 'المزيد',
-    pageTitle: 'كل الحجوزات',
-    title: 'الحجوزات',
-    subtitle: 'عبر جميع عقاراتك',
-    errorLoad: 'تعذّر تحميل حجوزاتك.',
-    emptyMessage: 'لا توجد حجوزات بعد.',
-    actionLabel: 'اطلب تنظيفًا أو خدمة',
-    urgent: 'عاجل',
   },
   guestsList: {
     headerBack: 'رجوع',

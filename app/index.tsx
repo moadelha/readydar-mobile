@@ -15,14 +15,17 @@ export default function Index() {
     if (!isLoading) AppMetrics.markInteractive();
   }, [isLoading]);
 
-  if (isLoading) return <LoadingScreen />;
+  // The app is for hosts. A cleaner or staff session left over from an older
+  // version is signed out rather than sent to a screen that no longer exists.
+  const notHost = !!session && session.user.role !== 'HOST';
+  useEffect(() => {
+    if (!isLoading && notHost) logout();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, notHost]);
 
-  if (session && session.user.role !== 'CLEANER' && session.user.role !== 'HOST') {
-    logout();
-    return <LoadingScreen />;
-  }
+  if (isLoading || notHost) return <LoadingScreen />;
 
   if (!session) return <Redirect href="/login" />;
 
-  return <Redirect href={session.user.role === 'HOST' ? '/(host-tabs)/dashboard' : '/(tabs)/feed'} />;
+  return <Redirect href="/(host-tabs)/dashboard" />;
 }

@@ -15,6 +15,7 @@ import {
 import { propertyColor } from '@/lib/property-colors';
 import { PropertyThumb } from '@/components/host-ui';
 import { useLanguage } from '@/lib/i18n/language-context';
+import { dateLocale } from '@/lib/calendar-visuals';
 import { colors, radius, spacing, typography } from '@/theme';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -33,7 +34,7 @@ function monthKey(offset: number) {
 export default function ExpensesScreen() {
   const { session } = useAuth();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   function rangeLabel(range: Range) {
     if (range === 'MONTH') return t.expenses.rangeMonth;
@@ -266,7 +267,7 @@ export default function ExpensesScreen() {
                 <View style={styles.metaRow}>
                   <View style={[styles.propertyDot, { backgroundColor: propertyColor(item.propertyId) }]} />
                   <Text style={typography.bodyMuted} numberOfLines={1}>
-                    {item.property?.name ?? t.expenses.sharedBusinessFallback} · {new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    {item.property?.name ?? t.expenses.sharedBusinessFallback} · {new Date(item.date).toLocaleDateString(dateLocale(lang), { month: 'short', day: 'numeric' })}
                   </Text>
                 </View>
                 {item.note && <Text style={[typography.caption, { marginTop: 2 }]} numberOfLines={1}>{item.note}</Text>}

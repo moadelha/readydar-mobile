@@ -39,6 +39,16 @@ async function applyDirection(lang: Lang) {
   }
 }
 
+/** The phone's language when it's one of ours, else English. */
+function phoneLang(): Lang {
+  try {
+    const code = Intl.DateTimeFormat().resolvedOptions().locale.slice(0, 2).toLowerCase();
+    return code === 'fr' ? 'FR' : code === 'ar' ? 'AR' : 'EN';
+  } catch {
+    return 'EN';
+  }
+}
+
 interface LanguageContextValue {
   lang: Lang;
   t: Dict;
@@ -54,23 +64,27 @@ const LanguageContext = createContext<LanguageContextValue | null>(null);
  * and have it stick.
  */
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const { session, updateSessionUser } = useAuth();
-  const [lang, setLangState] = useState<Lang>('EN');
+  const { session, isLoading, updateSessionUser } = useAuth();
+  // Until someone picks one: the phone's own language.
+  const [lang, setLangState] = useState<Lang>(phoneLang);
 
   // Resolution order: whatever the person picked on this device
   // (AsyncStorage) wins immediately; otherwise fall back to the language
-  // saved on their account once the session loads.
+  // saved on their account, then to the phone's language.
   useEffect(() => {
+    if (isLoading) return;
     AsyncStorage.getItem(STORAGE_KEY).then((stored) => {
       if (stored && DICTS[stored as Lang]) {
         setLangState(stored as Lang);
         applyDirection(stored as Lang);
-      } else if (session?.user.preferredLanguage && DICTS[session.user.preferredLanguage]) {
-        setLangState(session.user.preferredLanguage);
-        applyDirection(session.user.preferredLanguage);
+      } else {
+        const saved = session?.user?.preferredLanguage;
+        const next = saved && DICTS[saved] ? saved : phoneLang();
+        setLangState(next);
+        applyDirection(next);
       }
     });
-  }, [session?.user.preferredLanguage]);
+  }, [isLoading, session?.user?.preferredLanguage]);
 
   const setLang = useCallback(
     (next: Lang) => {

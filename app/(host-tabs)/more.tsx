@@ -10,6 +10,7 @@ import { usePlanStrings } from '@/lib/i18n/plan-strings';
 import { usePlanConsole } from '@/lib/plan-console';
 import { useMessagesStrings } from '@/lib/i18n/messages-strings';
 import { useReviewsStrings } from '@/lib/i18n/reviews-strings';
+import { useSetupStrings } from '@/lib/i18n/setup-strings';
 import { rtlFlip } from '@/lib/rtl';
 
 type Entry = { icon: string; label: string; description: string; path: string; visible: boolean };
@@ -27,6 +28,7 @@ export default function MoreScreen() {
   const { canMessages, businessType } = usePlanConsole();
   const ms = useMessagesStrings();
   const rs = useReviewsStrings();
+  const setup = useSetupStrings();
 
   // Every entry's visibility mirrors the backend guard on the API it opens,
   // so a co-host is never shown a screen that would just fail with a 403:
@@ -40,9 +42,8 @@ export default function MoreScreen() {
       items: [
         // On Pro (and for hostels) Expenses isn't a tab — see (host-tabs)/_layout.tsx.
         { icon: 'receipt-outline', label: t.tabsHost.expenses, description: ms.expensesDesc, path: '/expenses', visible: (canMessages || businessType === 'HOSTEL') && has('EXPENSES') },
-        { icon: 'swap-horizontal-outline', label: t.more.turnovers, description: t.more.turnoversDesc, path: '/host/turnovers', visible: has('CALENDAR') },
-        { icon: 'call-outline', label: t.more.cleaningContacts, description: t.more.cleaningContactsDesc, path: '/host/cleaning-contacts', visible: isManager },
-        { icon: 'clipboard-outline', label: t.more.bookings, description: t.more.bookingsDesc, path: '/host/bookings', visible: has('CALENDAR') },
+        // The cleaning contacts open from inside this one.
+        { icon: 'logo-whatsapp', label: setup.alerts.title, description: setup.alerts.intro, path: '/host/turnovers', visible: has('CALENDAR') },
       ],
     },
     {
@@ -88,7 +89,7 @@ export default function MoreScreen() {
                     <View style={[styles.rowBody, i > 0 && styles.divider]}>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.label}>{item.label}</Text>
-                        <Text style={styles.description} numberOfLines={1}>
+                        <Text style={styles.description} numberOfLines={2}>
                           {item.description}
                         </Text>
                       </View>
