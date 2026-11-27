@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Pressable } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useRouter, Redirect } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Text } from '@/components/text';
@@ -12,6 +12,7 @@ import { useLanguage } from '@/lib/i18n/language-context';
 import { useHostelStrings } from '@/lib/i18n/hostel-strings';
 import { useDeskStrings } from '@/lib/i18n/desk-strings';
 import { useHostAccess } from '@/lib/access';
+import { usePlanConsole } from '@/lib/plan-console';
 import { QuickAction } from '@/components/desk-ui';
 import { addDaysIso, dateLocale, todayIso } from '@/lib/calendar-visuals';
 import { collapseRoomGroups, guestNameOf, propertyDay, stayRef, unitLabel } from '@/lib/hostel';
@@ -32,6 +33,7 @@ type Action = 'CHECK_IN' | 'CHECK_OUT' | 'UNDO_CHECK_IN' | 'UNDO_CHECK_OUT';
  * meals and activities, and the bed plan.
  */
 export default function DeskScreen() {
+  const planConsole = usePlanConsole();
   const { session } = useAuth();
   const { t, lang } = useLanguage();
   const s = useHostelStrings();
@@ -269,6 +271,9 @@ export default function DeskScreen() {
       </View>
     );
   }
+
+  // A hostel-only tab: anyone else who lands here (a back gesture, an old link) goes Home.
+  if (planConsole.loaded && planConsole.businessType !== 'HOSTEL') return <Redirect href="/dashboard" />;
 
   return (
     <Screen edges={['top']}>

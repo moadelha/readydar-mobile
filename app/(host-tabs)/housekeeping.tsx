@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Modal } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, Redirect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Text, TextInput } from '@/components/text';
@@ -11,6 +11,7 @@ import { api, HousekeepingBoard, HousekeepingStatus, HousekeepingUnit } from '@/
 import { useLanguage } from '@/lib/i18n/language-context';
 import { useHostelStrings } from '@/lib/i18n/hostel-strings';
 import { useHostAccess } from '@/lib/access';
+import { usePlanConsole } from '@/lib/plan-console';
 import { dateLocale } from '@/lib/calendar-visuals';
 import { formatDay } from '@/lib/dates';
 import { unitLabel } from '@/lib/hostel';
@@ -34,6 +35,7 @@ const STATUS_COLOR: Record<HousekeepingStatus, { fg: string; bg: string }> = {
  * their beds "to clean".
  */
 export default function HousekeepingScreen() {
+  const planConsole = usePlanConsole();
   const { session } = useAuth();
   const { lang } = useLanguage();
   const s = useHostelStrings();
@@ -114,6 +116,9 @@ export default function HousekeepingScreen() {
 
   const anyRooms = (board?.properties ?? []).some((p) => p.units.length > 0);
   const nothingShown = !!board && board.properties.every((p) => !p.units.some(shows));
+
+  // A hostel-only tab: anyone else who lands here (a back gesture, an old link) goes Home.
+  if (planConsole.loaded && planConsole.businessType !== 'HOSTEL') return <Redirect href="/dashboard" />;
 
   return (
     <Screen edges={['top']}>
