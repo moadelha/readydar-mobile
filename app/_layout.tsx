@@ -107,6 +107,13 @@ function RootLayout() {
               <Stack.Screen name="host/messages/templates" options={{ presentation: 'card' }} />
               <Stack.Screen name="host/reviews" options={{ presentation: 'card' }} />
               <Stack.Screen name="host/review-property/[id]" options={{ presentation: 'card' }} />
+              <Stack.Screen name="host/desk/new-stay" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="host/desk/register" options={{ presentation: 'card' }} />
+              <Stack.Screen name="host/desk/pay" options={{ presentation: 'card' }} />
+              <Stack.Screen name="host/cash" options={{ presentation: 'card' }} />
+              <Stack.Screen name="host/activities" options={{ presentation: 'card' }} />
+              <Stack.Screen name="host/activity/[id]" options={{ presentation: 'card' }} />
+              <Stack.Screen name="host/beds" options={{ presentation: 'card' }} />
             </Stack>
           </ToastProvider>
           </PlanConsoleProvider>

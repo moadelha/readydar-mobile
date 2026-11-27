@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Pressable } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Text } from '@/components/text';
@@ -10,6 +10,9 @@ import { useAuth, ApiError } from '@/lib/auth-context';
 import { api, CalendarEvent, Property, resolveCheckInUrl } from '@/lib/api';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { useHostelStrings } from '@/lib/i18n/hostel-strings';
+import { useDeskStrings } from '@/lib/i18n/desk-strings';
+import { useHostAccess } from '@/lib/access';
+import { QuickAction } from '@/components/desk-ui';
 import { addDaysIso, dateLocale, todayIso } from '@/lib/calendar-visuals';
 import { collapseRoomGroups, guestNameOf, propertyDay, stayRef, unitLabel } from '@/lib/hostel';
 import { checkInCopyMessage } from '@/lib/checkin-message';
@@ -24,11 +27,17 @@ type Action = 'CHECK_IN' | 'CHECK_OUT' | 'UNDO_CHECK_IN' | 'UNDO_CHECK_OUT';
  * booking, with the rooms and beds they take. One tap marks a guest
  * arrived or checked out (checking out turns their beds "to clean" on the
  * Rooms tab). Same data and rules as the web dashboard's front desk.
+ * From here staff also add a walk-in or a later stay, register guests with
+ * their ID photos, take a payment, and open the cash drawer, the day's
+ * meals and activities, and the bed plan.
  */
 export default function DeskScreen() {
   const { session } = useAuth();
   const { t, lang } = useLanguage();
   const s = useHostelStrings();
+  const ds = useDeskStrings();
+  const router = useRouter();
+  const { has } = useHostAccess();
   const toast = useToast();
   const locale = dateLocale(lang);
 
@@ -143,8 +152,9 @@ export default function DeskScreen() {
     const detailsMissing = mode === 'arrival' && !!e.checkInId && e.checkInStatus !== 'SUBMITTED';
 
     return (
-      <View style={[styles.row, done && styles.rowDone]}>
-        <View style={{ flex: 1, minWidth: 0 }}>
+      <View style={[styles.rowWrap, done && styles.rowDone]}>
+        <View style={styles.row}>
+          <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.name} numberOfLines={1}>
             {guestNameOf(e)}
           </Text>
@@ -176,12 +186,6 @@ export default function DeskScreen() {
               </View>
             ) : null}
           </View>
-          {detailsMissing && e.checkInToken ? (
-            <Pressable onPress={() => copyMessage(e)} hitSlop={6} style={styles.copyLink} accessibilityRole="button">
-              <Ionicons name="copy-outline" size={14} color={colors.green700} />
-              <Text style={styles.copyText}>{s.copyMessage}</Text>
-            </Pressable>
-          ) : null}
         </View>
 
         {done ? (
@@ -199,6 +203,45 @@ export default function DeskScreen() {
             <Text style={styles.actionText}>{busy ? '…' : mode === 'arrival' ? s.markArrived : s.markLeft}</Text>
           </Pressable>
         )}
+        </View>
+        {/* What else to do for this stay, under the whole row. */}
+        <View style={styles.links}>
+          {detailsMissing && e.checkInId && has('CHECKINS') ? (
+            <Pressable
+              onPress={() =>
+                router.push({ pathname: '/host/desk/register', params: { checkInId: e.checkInId!, name: guestNameOf(e), count: String(e.guestCount || 1) } })
+              }
+              style={({ pressed }) => [styles.pill, pressed && { backgroundColor: colors.surface2 }]}
+              accessibilityRole="button"
+              accessibilityLabel={ds.registerAtDesk}
+            >
+              <Ionicons name="id-card-outline" size={15} color={colors.green700} />
+              <Text style={styles.pillText}>{ds.shortRegister}</Text>
+            </Pressable>
+          ) : null}
+          {detailsMissing && e.checkInToken ? (
+            <Pressable
+              onPress={() => copyMessage(e)}
+              style={({ pressed }) => [styles.pill, pressed && { backgroundColor: colors.surface2 }]}
+              accessibilityRole="button"
+              accessibilityLabel={s.copyMessage}
+            >
+              <Ionicons name="copy-outline" size={15} color={colors.green700} />
+              <Text style={styles.pillText}>{ds.shortCopy}</Text>
+            </Pressable>
+          ) : null}
+          {has('REPORTS') ? (
+            <Pressable
+              onPress={() => router.push({ pathname: '/host/desk/pay', params: { ...stayRef(e), name: guestNameOf(e) } })}
+              style={({ pressed }) => [styles.pill, pressed && { backgroundColor: colors.surface2 }]}
+              accessibilityRole="button"
+              accessibilityLabel={ds.takePayment}
+            >
+              <Ionicons name="cash-outline" size={15} color={colors.green700} />
+              <Text style={styles.pillText}>{ds.shortPay}</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
     );
   }
@@ -235,6 +278,13 @@ export default function DeskScreen() {
       >
         <Text style={[typography.label, { marginBottom: 6 }]}>{formatDay(new Date(), lang)}</Text>
         <Text style={typography.h1}>{s.deskTitle}</Text>
+
+        <View style={styles.quickRow}>
+          <QuickAction icon="person-add-outline" label={ds.newStay} onPress={() => router.push('/host/desk/new-stay')} />
+          {has('REPORTS') && <QuickAction icon="wallet-outline" label={ds.cash} onPress={() => router.push('/host/cash')} />}
+          <QuickAction icon="cafe-outline" label={ds.activities} onPress={() => router.push('/host/activities')} />
+          <QuickAction icon="grid-outline" label={ds.bedPlan} onPress={() => router.push('/host/beds')} />
+        </View>
 
         {properties.length > 1 && (
           <View style={{ marginTop: spacing.md }}>
@@ -284,7 +334,8 @@ const styles = StyleSheet.create({
   list: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, overflow: 'hidden' },
   divider: { borderTopWidth: 1, borderTopColor: colors.border },
   emptyLine: { paddingVertical: 12, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md },
+  rowWrap: { padding: spacing.md },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   rowDone: { backgroundColor: colors.surface2 },
   name: { fontSize: 16, lineHeight: 22, fontWeight: '600', color: colors.ink },
   rooms: { fontSize: 14, lineHeight: 20, color: colors.ink, marginTop: 2 },
@@ -295,8 +346,20 @@ const styles = StyleSheet.create({
   chipDone: { backgroundColor: colors.successBg },
   chipWarn: { backgroundColor: colors.warningBg },
   chipText: { fontSize: 12, fontWeight: '600', color: colors.inkMuted },
-  copyLink: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.sm, alignSelf: 'flex-start' },
-  copyText: { fontSize: 13, fontWeight: '500', color: colors.green700 },
+  links: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    minHeight: 36,
+    paddingHorizontal: 10,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+  },
+  pillText: { fontSize: 13, fontWeight: '600', color: colors.green700 },
+  quickRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',

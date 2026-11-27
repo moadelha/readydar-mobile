@@ -54,6 +54,8 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** The API's own error code when it sends one ("NO_SHIFT", "SIGNUPS_CLOSED"…). */
+    public code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -232,7 +234,7 @@ async function request<T>(path: string, options: RequestOptions = {}, isRetry = 
 
   if (!res.ok) {
     const message = data?.message ?? res.statusText ?? 'Something went wrong';
-    throw new ApiError(res.status, Array.isArray(message) ? message.join(', ') : message);
+    throw new ApiError(res.status, Array.isArray(message) ? message.join(', ') : message, typeof data?.code === 'string' ? data.code : undefined);
   }
 
   return data as T;
@@ -288,7 +290,7 @@ async function requestForm<T>(
 
   if (!res.ok) {
     const message = data?.message ?? res.statusText ?? 'Something went wrong';
-    throw new ApiError(res.status, Array.isArray(message) ? message.join(', ') : message);
+    throw new ApiError(res.status, Array.isArray(message) ? message.join(', ') : message, typeof data?.code === 'string' ? data.code : undefined);
   }
 
   return data as T;
@@ -871,6 +873,182 @@ export interface HousekeepingUnit {
 
 export type StayRef = { reservationId: string } | { checkInId: string };
 
+// ---------------------------------------------------------------- hostels: desk, cash, activities
+
+/** POST /front-desk/walk-in (arrives today) and /front-desk/group (a later day). */
+export interface NewStayPayload {
+  roomTypeId?: string;
+  roomCount?: number;
+  nights: number;
+  nightlyRate?: number;
+  guestName: string;
+  guestPhone?: string;
+  guestCount: number;
+}
+export interface NewStayResult {
+  reservationId: string;
+  checkInId: string;
+  token: string;
+}
+
+/** One guest registered at the desk (ID photo sent alongside as idPhoto_<i>). */
+export interface DeskGuest {
+  firstName: string;
+  lastName: string;
+  nationality: string;
+  idType: 'passport' | 'national_id';
+  idNumber: string;
+}
+
+export type CashMethod = 'CASH' | 'CARD' | 'TRANSFER' | 'OTHER';
+export type CashInCategory = 'ROOM' | 'TOURIST_TAX' | 'UPGRADE' | 'DEPOSIT' | 'EXTRA' | 'OTHER_IN';
+export type CashOutCategory = 'REFUND' | 'EXPENSE' | 'DROP' | 'OTHER_OUT';
+
+export interface CashShift {
+  id: string;
+  openedByName: string;
+  openedAt: string;
+  openingFloat: number;
+  cashIn: number;
+  cashOut: number;
+  expected: number;
+  closedAt: string | null;
+  closedByName: string | null;
+  counted: number | null;
+  difference: number | null;
+  note: string | null;
+}
+
+/** GET /cash-desk/status/:propertyId — amounts in MAD. */
+export interface CashStatus {
+  today: string;
+  dayClosed: boolean;
+  todayIn: number;
+  todayOut: number;
+  shift: CashShift | null;
+  lastCount: { counted: number; closedByName: string | null; closedAt: string } | null;
+}
+
+/** GET /front-desk/balance — what a stay owes at the desk, in MAD. */
+export interface StayBalance {
+  propertyId: string;
+  owed: number;
+  paid: number;
+  due: number;
+  currency: string;
+  fromChannel: boolean;
+  extras?: { id: string; name: string; date: string; people: number; unitPrice: number; amount: number; left?: number }[];
+  /** A channel booking: who collects its money ('ota' = paid online). */
+  payment: { status: 'ota' | 'property' | 'unknown'; deposit: number | null } | null;
+  entries: { id: string; direction: 'IN' | 'OUT'; method: CashMethod; amount: number; createdAt: string; createdByName: string }[];
+}
+
+export interface MealNote {
+  food: string | null;
+  leavesAt: string | null;
+  noMeals: boolean;
+}
+export interface OfferUnit {
+  name: string;
+  kind: 'PRIVATE' | 'DORM' | null;
+  roomTypeName: string | null;
+}
+/** A stay on a day. before: slept here the night before; tonight: sleeps here that night. */
+export interface OfferStay {
+  key: string;
+  reservationId: string | null;
+  checkInId: string | null;
+  name: string | null;
+  units: OfferUnit[];
+  state: 'staying' | 'leaving' | 'arriving' | null;
+  before: number;
+  tonight: number;
+  people: number;
+  arrived: boolean;
+  note: MealNote | null;
+}
+/** Breakfast and the like: how many to expect, counted from the bookings. */
+export interface OfferExpected {
+  morning: boolean;
+  total: number;
+  staying: number;
+  leaving: number;
+  arriving: number;
+  notCounted: number;
+  noMeals: number;
+  early: number;
+  notArrived: number;
+}
+export interface HostelOffer {
+  id: string;
+  name: string;
+  description: string | null;
+  place: string | null;
+  /** EVERYONE: everyone staying (breakfast). SIGNUP: guests are put on a list. */
+  audience: 'EVERYONE' | 'SIGNUP';
+  days: number[];
+  onDate: string | null;
+  startTime: string;
+  endTime: string | null;
+  capacity: number | null;
+  /** MAD per person (null = free). */
+  price: number | null;
+  closesTime: string | null;
+  closesDayBefore: boolean;
+  inGuide: boolean;
+  askFood: boolean;
+}
+export interface OfferDayItem extends HostelOffer {
+  archived: boolean;
+  off: { by: string } | null;
+  expected: OfferExpected | null;
+  going: number;
+  waiting: number;
+  /** "YYYY-MM-DD HH:mm", the property's time. */
+  closesAt: string;
+  closed: boolean;
+}
+/** GET /hostel-offers/day/:propertyId */
+export interface OfferDay {
+  date: string;
+  today: string;
+  propertyName: string;
+  hasOffers: boolean;
+  offers: OfferDayItem[];
+  stays: OfferStay[];
+}
+export interface OfferSignup {
+  id: string;
+  status: 'GOING' | 'WAITING';
+  guestName: string;
+  people: number;
+  amount: number;
+  /** Left to pay (null: free, waiting, or not readable). */
+  left: number | null;
+  reservationId: string | null;
+  checkInId: string | null;
+  units: OfferUnit[];
+  food: string | null;
+  note: string | null;
+  /** Their booking is gone, or no longer covers the day. */
+  notStaying: boolean;
+  by: string;
+}
+/** GET /hostel-offers/:id/roster */
+export interface OfferRoster {
+  offer: HostelOffer & { archived: boolean };
+  date: string;
+  today: string;
+  off: { by: string } | null;
+  closesAt: string;
+  closed: boolean;
+  taken: number;
+  going: OfferSignup[];
+  waiting: OfferSignup[];
+  /** Who can still be added. */
+  stays: OfferStay[];
+}
+
 export interface CreatePropertyPayload {
   type: PropertyType;
   name: string;
@@ -1199,6 +1377,55 @@ export const api = {
   frontDesk: {
     status: (body: StayRef & { action: 'CHECK_IN' | 'CHECK_OUT' | 'UNDO_CHECK_IN' | 'UNDO_CHECK_OUT' }, token: string) =>
       request<{ checkedInAt: string | null; checkedOutAt: string | null }>('/front-desk/status', { method: 'POST', body, token }),
+    /** A walk-in: a booking from today, with a check-in link. */
+    walkIn: (propertyId: string, body: NewStayPayload, token: string) =>
+      request<NewStayResult>(`/front-desk/walk-in/${propertyId}`, { method: 'POST', body, token }),
+    /** A group (or anyone) arriving on a later day. */
+    groupBooking: (propertyId: string, body: NewStayPayload & { checkIn: string }, token: string) =>
+      request<NewStayResult>(`/front-desk/group/${propertyId}`, { method: 'POST', body, token }),
+    /** Staff register guests at the desk: names, ID details, one ID photo each. Marks the stay arrived. */
+    registerGuests: (checkInId: string, guests: DeskGuest[], photos: PickedFile[], phone: string | undefined, token: string) =>
+      requestForm<unknown>(
+        `/checkins/${checkInId}/desk-register`,
+        { guests: JSON.stringify(guests), ...(phone ? { phone } : {}) },
+        Object.fromEntries(photos.map((f, i) => [`idPhoto_${i}`, f])),
+        { token },
+      ),
+    balance: (ref: StayRef, token: string) =>
+      request<StayBalance>(
+        `/front-desk/balance?${'reservationId' in ref ? `reservationId=${encodeURIComponent(ref.reservationId)}` : `checkInId=${encodeURIComponent(ref.checkInId)}`}`,
+        { token },
+      ),
+  },
+  /** Hostels' cash drawer: shifts, money in and out (MAD). */
+  cashDesk: {
+    status: (propertyId: string, token: string) => request<CashStatus>(`/cash-desk/status/${propertyId}`, { token }),
+    openShift: (propertyId: string, openingFloat: number, token: string) =>
+      request<{ shift: CashShift; handoverGap: number | null }>(`/cash-desk/shifts/${propertyId}/open`, { method: 'POST', body: { openingFloat }, token }),
+    closeShift: (shiftId: string, closingCount: number, note: string | undefined, token: string) =>
+      request<CashShift>(`/cash-desk/shifts/${shiftId}/close`, { method: 'POST', body: { closingCount, ...(note ? { note } : {}) }, token }),
+    record: (
+      propertyId: string,
+      body: { direction: 'IN' | 'OUT'; method: CashMethod; category: CashInCategory | CashOutCategory; amount: number; note?: string; reservationId?: string; checkInId?: string },
+      token: string,
+    ) => request<{ id: string }>(`/cash-desk/entries/${propertyId}`, { method: 'POST', body, token }),
+  },
+  /** Hostels: meals and activities (breakfast counts, sign-up lists, kitchen notes). */
+  hostelOffers: {
+    day: (propertyId: string, date: string | undefined, token: string) =>
+      request<OfferDay>(`/hostel-offers/day/${propertyId}${date ? `?date=${date}` : ''}`, { token }),
+    /** REPORTS: what the day's sign-ups still have to pay, per offer (MAD). */
+    collect: (propertyId: string, date: string, token: string) =>
+      request<{ date: string; total: number; byOffer: Record<string, number> }>(`/hostel-offers/collect/${propertyId}?date=${date}`, { token }),
+    roster: (offerId: string, date: string, token: string) => request<OfferRoster>(`/hostel-offers/${offerId}/roster?date=${date}`, { token }),
+    setOff: (offerId: string, date: string, off: boolean, token: string) =>
+      request<{ id: string }>(`/hostel-offers/${offerId}/off`, { method: 'POST', body: { date, off }, token }),
+    addSignup: (offerId: string, body: { date: string; reservationId?: string; checkInId?: string; people: number; late?: boolean }, token: string) =>
+      request<{ id: string; status: 'GOING' | 'WAITING' }>(`/hostel-offers/${offerId}/signups`, { method: 'POST', body, token }),
+    changeSignup: (signupId: string, body: { action: 'GIVE_PLACE' | 'REMOVE' | 'PEOPLE'; people?: number }, token: string) =>
+      request<{ id: string; promoted: string[] }>(`/hostel-offers/signups/${signupId}/change`, { method: 'POST', body, token }),
+    saveMealNote: (propertyId: string, body: { reservationId?: string; checkInId?: string; food?: string | null; leavesAt?: string | null; noMeals?: boolean }, token: string) =>
+      request<MealNote>(`/hostel-offers/kitchen-note/${propertyId}`, { method: 'PUT', body, token }),
   },
   /** Push notifications: this phone's Expo token, saved after sign-in and removed on sign-out (src/lib/push.ts). */
   notifications: {

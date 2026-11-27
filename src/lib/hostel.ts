@@ -1,4 +1,4 @@
-import type { CalendarEvent, StayRef } from './api';
+import type { CalendarEvent, OfferUnit, StayRef } from './api';
 import { todayIso } from './calendar-visuals';
 
 /**
@@ -69,4 +69,10 @@ export function stayRef(e: CalendarEvent): StayRef {
 /** The guest's name: the first part of the event title ("Ana Silva · Dorm 6"). */
 export function guestNameOf(e: CalendarEvent) {
   return e.title.split(' · ')[0];
+}
+
+/** "6-bed dorm · Bed 3, Bed 4" for the beds of a stay (meals and activities). */
+export function unitsLine(units: OfferUnit[], s: { roomN: (n: number) => string; bedN: (n: number) => string }) {
+  const named = units.filter((u) => u.name).map((u) => unitLabel(u.name, u.kind, s));
+  return [units[0]?.roomTypeName, named.join(', ')].filter(Boolean).join(' · ');
 }
