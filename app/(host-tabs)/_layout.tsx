@@ -26,13 +26,45 @@ export default function HostTabsLayout() {
   // Properties (one property, rooms inside it). Expenses sits in More, as on Pro.
   const isHostel = businessType === 'HOSTEL';
 
+  const deskFirst = isHostel && canCalendar;
+  const HOME = (
+    <Tabs.Screen
+      key="dashboard"
+      name="dashboard"
+      options={{
+        title: t.tabsHost.home,
+        // Hostels start on Desk; a co-host without Calendar access has no Desk and keeps Home.
+        href: isHostel && canCalendar ? null : undefined,
+        tabBarIcon: ({ focused, size }) => <TabIcon name="home-outline" focused={focused} size={size} />,
+      }}
+    />
+  );
+  const DESK = (
+    <Tabs.Screen
+      key="desk"
+      name="desk"
+      options={{
+        title: hs.tabDesk,
+        href: isHostel && canCalendar ? undefined : null,
+        tabBarIcon: ({ focused, size }) => <TabIcon name="today-outline" focused={focused} size={size} />,
+      }}
+    />
+  );
+  const ROOMS = (
+    <Tabs.Screen
+      key="housekeeping"
+      name="housekeeping"
+      options={{
+        title: hs.tabHousekeeping,
+        // Housekeepers often have only the cleaning permission: the API lets them in (CALENDAR or CLEANING_REPORTS).
+        href: isHostel && (canCalendar || has('CLEANING_REPORTS')) ? undefined : null,
+        tabBarIcon: ({ focused, size }) => <TabIcon name="bed-outline" focused={focused} size={size} />,
+      }}
+    />
+  );
+
   return (
     <Tabs
-      // Back goes to the tab the user came from. The default ("first tab")
-      // sent apartment hosts to the hidden hostel Desk. Home is also listed
-      // first, so a back with no history lands there (hostels are sent on
-      // to Desk by the dashboard itself).
-      backBehavior="history"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
@@ -41,31 +73,15 @@ export default function HostTabsLayout() {
         tabBarLabelStyle: { fontFamily: fonts[lang === 'AR' ? 'arabic' : 'latin'][500], fontSize: 11 },
       }}
     >
-      <Tabs.Screen
-        name="dashboard"
-        options={{
-          title: t.tabsHost.home,
-          // Hostels start on Desk; a co-host without Calendar access has no Desk and keeps Home.
-          href: isHostel && canCalendar ? null : undefined,
-          tabBarIcon: ({ focused, size }) => <TabIcon name="home-outline" focused={focused} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="desk"
-        options={{
-          title: hs.tabDesk,
-          href: isHostel && canCalendar ? undefined : null,
-          tabBarIcon: ({ focused, size }) => <TabIcon name="today-outline" focused={focused} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="housekeeping"
-        options={{
-          title: hs.tabHousekeeping,
-          href: isHostel && canCalendar ? undefined : null,
-          tabBarIcon: ({ focused, size }) => <TabIcon name="bed-outline" focused={focused} size={size} />,
-        }}
-      />
+      {/*
+        Back from a tab goes to the first tab in this list (Android's back
+        button, then out of the app). So the first one must be the start tab
+        this account can see: Desk for a hostel's front desk, Home for
+        everyone else. With Desk first for an apartment host, back opened
+        the hostel Desk; with Home first for a hostel, back bounced
+        between Home and Desk and never left the app.
+      */}
+      {deskFirst ? [DESK, ROOMS, HOME] : [HOME, DESK, ROOMS]}
       <Tabs.Screen
         name="calendar"
         options={{

@@ -86,6 +86,11 @@ export default function NewStayScreen() {
       return;
     }
     const price = Number(rate.replace(',', '.'));
+    // A typo in the price would otherwise book at the room type's price without a word.
+    if (rate.trim() && !(price >= 0)) {
+      setError(s.amountInvalid);
+      return;
+    }
     const body = {
       ...(roomTypeId ? { roomTypeId, roomCount } : {}),
       nights,
