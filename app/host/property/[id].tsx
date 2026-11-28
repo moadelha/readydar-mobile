@@ -7,6 +7,7 @@ import {
   Pressable,
   Linking,
   Alert,
+  Modal,
   PixelRatio,
   useWindowDimensions,
 } from 'react-native';
@@ -35,6 +36,7 @@ import { bucketOf, groupByMonth } from '@/lib/checkin-groups';
 import { rtlFlip } from '@/lib/rtl';
 import { PROPERTY_STATUS_TONE, PropertyStatus } from '@/lib/status';
 import { useLanguage } from '@/lib/i18n/language-context';
+import { useRedesignStrings } from '@/lib/i18n/redesign-strings';
 import { useHostAccess } from '@/lib/access';
 import { ChannelMark } from '@/components/channel-mark';
 import * as ImagePicker from 'expo-image-picker';
@@ -46,6 +48,13 @@ import * as ImagePicker from 'expo-image-picker';
  * "Back to automatic", which the card always offers.
  */
 const SETTABLE_STATUSES: PropertyStatus[] = ['OCCUPIED', 'NEEDS_CLEANING', 'IN_PROGRESS', 'READY'];
+/** The status's dot: a colour always paired with its name (DESIGN.md: never colour alone). */
+const STATUS_DOT: Record<PropertyStatus, string> = {
+  OCCUPIED: colors.info,
+  NEEDS_CLEANING: colors.warning,
+  IN_PROGRESS: colors.info,
+  READY: colors.success,
+};
 
 /**
  * Height of the cover photo, in logical points. A constant rather than a
@@ -165,6 +174,8 @@ export default function PropertyDetailScreen() {
   const [derivedStatus, setDerivedStatus] = useState<PropertyStatus | null>(null);
   /** Which status chip is mid-save, so only that one shows a spinner. */
   const [statusBusy, setStatusBusy] = useState<PropertyStatus | 'CLEAR' | null>(null);
+  const [statusSheet, setStatusSheet] = useState(false);
+  const rs = useRedesignStrings().status;
 
   /**
    * What the badge shows. The override wins, exactly as the backend applies
@@ -245,6 +256,12 @@ export default function PropertyDetailScreen() {
         .slice(0, 3),
     [checkIns],
   );
+
+  /** The next guest to arrive (today or later), for the status card. */
+  const nextArrival = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return upcomingStays.find((c) => c.expectedCheckIn.slice(0, 10) >= today) ?? null;
+  }, [upcomingStays]);
 
   /** Opens one stay on the Check-ins tab, with its month unfolded. */
   function openStay(c: GuestCheckIn) {
@@ -645,10 +662,6 @@ export default function PropertyDetailScreen() {
 
         <View style={styles.titleRow}>
           <Text style={[typography.h1, styles.title]}>{property.name}</Text>
-          <StatusBadge
-            label={t.propertyStatus[effectiveStatus] ?? effectiveStatus}
-            tone={PROPERTY_STATUS_TONE[effectiveStatus] ?? 'neutral'}
-          />
         </View>
         <View style={styles.metaRow}>
           <Ionicons name="location-outline" size={13} color={colors.inkFaint} />
@@ -697,51 +710,37 @@ export default function PropertyDetailScreen() {
             override is called out on screen rather than left silent, and
             why "Back to automatic" is always offered. */}
         <View style={styles.statusCard}>
-          <Text style={styles.statusLabel}>{t.propertyDetail.statusLabel}</Text>
-          <View style={styles.statusChips}>
-            {SETTABLE_STATUSES.map((s) => (
-              <Pressable
-                key={s}
-                disabled={statusBusy !== null}
-                onPress={() => handleSetStatus(s)}
-                style={[styles.statusChip, property.manualStatusOverride === s && styles.statusChipActive]}
-              >
-                <Text
-                  style={[
-                    styles.statusChipText,
-                    property.manualStatusOverride === s && styles.statusChipTextActive,
-                  ]}
-                >
-                  {statusBusy === s ? '…' : t.propertyStatus[s]}
-                </Text>
-              </Pressable>
-            ))}
+          <Text style={typography.label}>{rs.now}</Text>
+          <View style={styles.statusNow}>
+            <View style={[styles.bigStatusDot, { backgroundColor: STATUS_DOT[effectiveStatus] }]} />
+            <Text style={styles.statusNowText}>{t.propertyStatus[effectiveStatus] ?? effectiveStatus}</Text>
           </View>
+          <Text style={typography.bodyMuted}>
+            {nextArrival
+              ? rs.nextArrival(
+                  nextArrival.guestFirstName || nextArrival.guestNameHint || t.propertyDetail.guestFallback,
+                  new Date(nextArrival.expectedCheckIn).toLocaleDateString(dateLocale, { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' }),
+                )
+              : rs.noNextArrival}
+          </Text>
           {property.manualStatusOverride ? (
-            <Pressable onPress={() => handleSetStatus(null)} disabled={statusBusy !== null}>
-              <Text style={styles.statusAuto}>
-                {t.propertyDetail.statusAuto}
-              </Text>
+            <Pressable onPress={() => handleSetStatus(null)} disabled={statusBusy !== null} accessibilityRole="button">
+              <Text style={styles.statusAuto}>{t.propertyDetail.statusAuto}</Text>
             </Pressable>
-          ) : (
-            <Text style={typography.caption}>{t.propertyDetail.statusWorkingItOut}</Text>
-          )}
+          ) : null}
+          {/* One button for the usual next step; the rarer statuses sit behind "Change". */}
+          <View style={styles.statusActions}>
+            {effectiveStatus !== 'READY' && (
+              <Button
+                label={isMarkingReady ? '…' : t.propertyDetail.markReady}
+                onPress={handleMarkReady}
+                loading={isMarkingReady}
+                style={{ flex: 1 }}
+              />
+            )}
+            <Button label={rs.change} variant="outline" onPress={() => setStatusSheet(true)} style={effectiveStatus === 'READY' ? { flex: 1 } : undefined} />
+          </View>
         </View>
-
-        {/*
-          One button, for the one thing this place may be waiting on: once
-          it's cleaned, Mark ready. Everything else is a quiet list below —
-          four bordered buttons of equal weight read as a wall, and none of
-          them stood out as the thing to do.
-        */}
-        {effectiveStatus !== 'READY' && (
-          <Button
-            label={isMarkingReady ? '…' : t.propertyDetail.markReady}
-            onPress={handleMarkReady}
-            loading={isMarkingReady}
-            style={{ marginTop: spacing.lg }}
-          />
-        )}
 
         {canCheckins && (
           <>
@@ -1277,6 +1276,48 @@ export default function PropertyDetailScreen() {
       </ScrollView>
 
       <PhotoViewerModal uri={viewerUrl} onClose={() => setViewerUrl(null)} />
+
+      {/* Picking a status writes a manual override that sticks until "back to automatic" (see handleSetStatus). */}
+      <Modal visible={statusSheet} animationType="slide" transparent onRequestClose={() => setStatusSheet(false)}>
+        <Pressable style={styles.sheetBackdrop} onPress={() => setStatusSheet(false)} accessibilityLabel={rs.close}>
+          <View style={[styles.sheet, { paddingBottom: spacing.lg + insets.bottom }]} onStartShouldSetResponder={() => true}>
+            <Text style={typography.h3}>{rs.sheetTitle}</Text>
+            {SETTABLE_STATUSES.map((st) => {
+              const on = effectiveStatus === st;
+              return (
+                <Pressable
+                  key={st}
+                  disabled={statusBusy !== null}
+                  onPress={async () => {
+                    await handleSetStatus(st);
+                    setStatusSheet(false);
+                  }}
+                  style={[styles.statusOption, on && styles.statusOptionOn]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: on }}
+                >
+                  <View style={[styles.radio, on && styles.radioOn]} />
+                  <View style={[styles.bigStatusDot, { backgroundColor: STATUS_DOT[st] }]} />
+                  <Text style={styles.statusOptionText}>{statusBusy === st ? '…' : t.propertyStatus[st]}</Text>
+                </Pressable>
+              );
+            })}
+            {property.manualStatusOverride ? (
+              <Pressable
+                onPress={async () => {
+                  await handleSetStatus(null);
+                  setStatusSheet(false);
+                }}
+                disabled={statusBusy !== null}
+                accessibilityRole="button"
+              >
+                <Text style={styles.statusAuto}>{rs.setByHand} · {t.propertyDetail.statusAuto}</Text>
+              </Pressable>
+            ) : null}
+            <Text style={typography.caption}>{rs.sheetHint}</Text>
+          </View>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
@@ -1471,6 +1512,17 @@ const styles = StyleSheet.create({
   statusHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   statusLabel: { ...typography.bodyMuted, fontWeight: '700', fontSize: 12, letterSpacing: 0.4 },
   statusChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  statusNow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  bigStatusDot: { width: 10, height: 10, borderRadius: 5 },
+  statusNowText: { fontSize: 18, lineHeight: 24, fontWeight: '600', color: colors.ink },
+  statusActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
+  sheetBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay },
+  sheet: { backgroundColor: colors.white, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg, gap: spacing.sm },
+  statusOption: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 48, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm },
+  statusOptionOn: { borderColor: colors.primary, backgroundColor: colors.successBg },
+  statusOptionText: { fontSize: 15, fontWeight: '600', color: colors.ink, flex: 1 },
+  radio: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: colors.lineStrong },
+  radioOn: { borderWidth: 5, borderColor: colors.primary },
   statusChip: {
     paddingVertical: 7,
     paddingHorizontal: spacing.md,

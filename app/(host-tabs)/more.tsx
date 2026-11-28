@@ -45,10 +45,9 @@ export default function MoreScreen() {
       items: [
         // On Pro (and for hostels) Expenses isn't a tab — see (host-tabs)/_layout.tsx.
         { icon: 'receipt-outline', label: t.tabsHost.expenses, description: ms.expensesDesc, path: '/expenses', visible: (canMessages || businessType === 'HOSTEL') && has('EXPENSES') },
-        // Hostels: the same three open from the Desk's shortcuts.
+        // Hostels: the same two open from the Desk's shortcuts (the bed plan is their Calendar tab).
         { icon: 'wallet-outline', label: ds.cash, description: ds.cashIntro, path: '/host/cash', visible: isHostel && has('CALENDAR') && has('REPORTS') },
         { icon: 'cafe-outline', label: ds.activities, description: ds.actIntro, path: '/host/activities', visible: isHostel && has('CALENDAR') },
-        { icon: 'grid-outline', label: ds.bedPlan, description: ds.planIntro, path: '/host/beds', visible: isHostel && has('CALENDAR') },
         // The cleaning contacts open from inside this one.
         { icon: 'logo-whatsapp', label: setup.alerts.title, description: setup.alerts.intro, path: '/host/turnovers', visible: has('CALENDAR') },
       ],

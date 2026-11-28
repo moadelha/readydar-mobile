@@ -8,7 +8,8 @@ import type { HousekeepingStatus } from '../api';
  */
 const en = {
   tabDesk: 'Desk',
-  tabHousekeeping: 'Rooms',
+  tabHousekeeping: 'Housekeeping',
+  tabBeds: 'Beds',
   deskTitle: 'Front desk',
   arrivingToday: 'Arriving today',
   leavingToday: 'Leaving today',
@@ -63,8 +64,9 @@ const en = {
 export type HostelStrings = typeof en;
 
 const fr: HostelStrings = {
-  tabDesk: 'Accueil',
-  tabHousekeeping: 'Chambres',
+  tabDesk: 'Réception',
+  tabHousekeeping: 'Ménage',
+  tabBeds: 'Lits',
   deskTitle: 'Réception',
   arrivingToday: "Arrivées aujourd'hui",
   leavingToday: "Départs aujourd'hui",
@@ -117,7 +119,8 @@ const fr: HostelStrings = {
 
 const ar: HostelStrings = {
   tabDesk: 'الاستقبال',
-  tabHousekeeping: 'الغرف',
+  tabHousekeeping: 'التنظيف',
+  tabBeds: 'الأسرّة',
   deskTitle: 'مكتب الاستقبال',
   arrivingToday: 'الوصول اليوم',
   leavingToday: 'المغادرة اليوم',

@@ -288,7 +288,6 @@ export default function DeskScreen() {
           <QuickAction icon="person-add-outline" label={ds.newStay} onPress={() => router.push('/host/desk/new-stay')} />
           {has('REPORTS') && <QuickAction icon="wallet-outline" label={ds.cash} onPress={() => router.push('/host/cash')} />}
           <QuickAction icon="cafe-outline" label={ds.activities} onPress={() => router.push('/host/activities')} />
-          <QuickAction icon="grid-outline" label={ds.bedPlan} onPress={() => router.push('/host/beds')} />
         </View>
 
         {properties.length > 1 && (

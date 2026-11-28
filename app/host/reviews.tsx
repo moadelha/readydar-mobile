@@ -12,6 +12,7 @@ import { usePlanConsole } from '@/lib/plan-console';
 import { useHostAccess } from '@/lib/access';
 import { useReviewsStrings } from '@/lib/i18n/reviews-strings';
 import { useReviewInsightsStrings } from '@/lib/i18n/review-insights-strings';
+import { useRedesignStrings } from '@/lib/i18n/redesign-strings';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { formatDay } from '@/lib/dates';
 import { scoreStats, overallStats, propertyStats, formatScore, REVIEWS_LISTED, ScoreStats } from '@/lib/review-stats';
@@ -43,8 +44,6 @@ const CATEGORY_ICON: Record<string, IconName> = {
   SAFETY: 'shield-checkmark-outline',
 };
 
-type Sort = 'slipping' | 'best' | 'new';
-
 /**
  * Reviews, at a glance: the score over three months (from the guests' own
  * ratings, no AI), what guests complain about most across every property
@@ -57,6 +56,7 @@ export default function ReviewsScreen() {
   const router = useRouter();
   const r = useReviewsStrings();
   const s = useReviewInsightsStrings();
+  const rds = useRedesignStrings().reviews;
   const { lang } = useLanguage();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -72,7 +72,6 @@ export default function ReviewsScreen() {
   const [insights, setInsights] = useState<Record<string, PropertyInsight>>({});
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [sort, setSort] = useState<Sort>('slipping');
   const [filter, setFilter] = useState<'all' | 'toAnswer'>('all');
   const [shown, setShown] = useState(10);
   const scrollRef = useRef<ScrollView>(null);
@@ -200,13 +199,7 @@ export default function ReviewsScreen() {
   const unanswered = mayReply ? reviews.filter((x) => x.canReply && !x.responseText) : [];
   const unansweredCount = mayReply && reviews.length >= REVIEWS_LISTED ? Math.max(unanswered.length, reviewed.reduce((n, p) => n + (p.unanswered ?? 0), 0)) : unanswered.length;
 
-  const sorted = [...reviewed].sort((a, b) => {
-    const A = perProperty[a.id];
-    const B = perProperty[b.id];
-    if (sort === 'slipping') return (A?.trend ?? 9) - (B?.trend ?? 9);
-    if (sort === 'best') return (B?.score90 ?? B?.overall ?? 0) - (A?.score90 ?? A?.overall ?? 0);
-    return (B?.latestAt ?? 0) - (A?.latestAt ?? 0);
-  });
+  const sorted = [...reviewed].sort((a, b) => (perProperty[a.id]?.trend ?? 9) - (perProperty[b.id]?.trend ?? 9));
 
   // The analysis date line: the newest analysis, and on Light the next monthly run.
   const latestAnalysis = Object.values(insights).reduce<string | null>((acc, i) => (!acc || i.generatedAt > acc ? i.generatedAt : acc), null);
@@ -291,30 +284,14 @@ export default function ReviewsScreen() {
               <View style={styles.section}>
                 <Text style={styles.h2}>{s.topIssues}</Text>
                 <Text style={styles.sub}>{s.topIssuesSub}</Text>
-                <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
+                <View style={[styles.listCard, { marginTop: spacing.md }]}>
                   {topIssues.map((issue, i) => (
-                    <View key={issue.category} style={styles.issueCard}>
-                      <View style={styles.issueHead}>
-                        <View style={[styles.issueIcon, i === 0 ? styles.issueIconRed : i === 1 ? styles.issueIconAmber : null]}>
-                          <Ionicons
-                            name={CATEGORY_ICON[issue.category] ?? 'ellipsis-horizontal-circle-outline'}
-                            size={18}
-                            color={i === 0 ? colors.danger : i === 1 ? colors.warning : colors.inkMuted}
-                          />
-                        </View>
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                          <Text style={styles.issueTitle}>{issue.title}</Text>
-                          <Text style={typography.caption} numberOfLines={1}>
-                            {s.issueMeta(issue.mentions, [...new Set(issue.properties)].join(', '))}
-                          </Text>
-                        </View>
-                      </View>
-                      {!!issue.fix && (
-                        <View style={styles.issueFix}>
-                          <Ionicons name="construct-outline" size={14} color={colors.green700} />
-                          <Text style={styles.issueFixText}>{issue.fix}</Text>
-                        </View>
-                      )}
+                    <View key={issue.category} style={[styles.issueRow, i > 0 && styles.divider]}>
+                      <Text style={styles.issueTitle}>{issue.title}</Text>
+                      <Text style={typography.caption} numberOfLines={1}>
+                        {s.issueMeta(issue.mentions, [...new Set(issue.properties)].join(', '))}
+                      </Text>
+                      {!!issue.fix && <Text style={styles.issueFixText}>{`${lang === 'AR' ? '←' : '→'} ${issue.fix}`}</Text>}
                     </View>
                   ))}
                 </View>
@@ -323,94 +300,38 @@ export default function ReviewsScreen() {
 
             <View style={styles.section}>
               <Text style={styles.h2}>{s.byProperty}</Text>
-              <View style={styles.sortRow} accessibilityRole="tablist">
-                {(
-                  [
-                    ['slipping', s.sortSlipping],
-                    ['best', s.sortBest],
-                    ['new', s.sortNew],
-                  ] as [Sort, string][]
-                ).map(([key, label]) => (
-                  <Pressable
-                    key={key}
-                    onPress={() => setSort(key)}
-                    style={[styles.sortChip, sort === key && styles.sortChipActive]}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: sort === key }}
-                  >
-                    <Text style={[styles.sortText, sort === key && styles.sortTextActive]}>{label}</Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              {sorted.map((p, index) => {
-                const st = perProperty[p.id];
-                const i = insights[p.id];
-                const score = st?.score90 ?? st?.overall ?? p.averageRating;
-                const open = () => router.push(`/host/review-property/${p.id}`);
-                if (index === 0) {
-                  const photo = p.photoUrl
-                    ? resolveThumbnailUrl(p.photoUrl, PixelRatio.getPixelSizeForLayoutSize(heroWidth))
-                    : null;
+              <Text style={styles.sub}>{rds.byPropertySub}</Text>
+              <View style={[styles.listCard, { marginTop: spacing.md }]}>
+                {sorted.map((p, index) => {
+                  const st = perProperty[p.id];
+                  const i = insights[p.id];
+                  const score = st?.score90 ?? st?.overall ?? p.averageRating;
+                  const meta = [r.reviewsCount(p.reviewCount), i?.newSince ? s.newReviews(i.newSince) : null].filter(Boolean).join(' · ');
                   return (
-                    <Pressable key={p.id} onPress={open} style={({ pressed }) => [styles.bigCard, pressed && { opacity: 0.9 }]} accessibilityRole="button">
-                      <View>
-                        {photo ? <Image source={{ uri: photo }} style={styles.bigPhoto} /> : <View style={[styles.bigPhoto, { backgroundColor: colors.surface2 }]} />}
-                        {score !== null && score !== undefined && (
-                          <View style={styles.photoScore}>
-                            <Text style={styles.photoScoreText}>{formatScore(score, lang)}</Text>
-                            {st?.trend !== null && st?.trend !== undefined && Math.abs(st.trend) >= 0.01 && <TrendText delta={st.trend} />}
-                          </View>
-                        )}
-                        {!!i?.newSince && (
-                          <View style={styles.photoNew}>
-                            <Text style={styles.photoNewText}>{s.newReviews(i.newSince)}</Text>
-                          </View>
-                        )}
-                      </View>
-                      <View style={{ padding: spacing.md, gap: 12 }}>
-                        <View style={styles.bigTitleRow}>
-                          <Text style={styles.bigTitle} numberOfLines={1}>{p.name}</Text>
-                          <Text style={typography.caption}>{r.reviewsCount(p.reviewCount)}</Text>
-                        </View>
-                        {i ? (
-                          <>
-                            {i.fixes[0] ? <Advice tag={s.first} tone="fix" text={i.fixes[0].action || i.fixes[0].title} /> : <Advice tag={s.first} tone="fix" text={s.nothingUrgent} />}
-                            {i.keep && <Advice tag={s.keep} tone="keep" text={i.keep.title} />}
-                          </>
-                        ) : ai?.onPlan ? (
-                          <Text style={typography.caption}>{s.noAnalysis}</Text>
+                    <Pressable
+                      key={p.id}
+                      onPress={() => router.push(`/host/review-property/${p.id}`)}
+                      style={({ pressed }) => [styles.propRow, index > 0 && styles.divider, pressed && { backgroundColor: colors.surface2 }]}
+                      accessibilityRole="button"
+                    >
+                      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+                        <Text style={styles.rowTitle} numberOfLines={1}>{p.name}</Text>
+                        <Text style={typography.caption} numberOfLines={1}>{meta}</Text>
+                        {i?.fixes[0] ? (
+                          <Text style={styles.propFix} numberOfLines={2}>{`${s.first} · ${i.fixes[0].action || i.fixes[0].title}`}</Text>
                         ) : null}
                       </View>
+                      {score !== null && score !== undefined && (
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={styles.rowScore}>{formatScore(score, lang)}</Text>
+                          {st?.trend !== null && st?.trend !== undefined && Math.abs(st.trend) >= 0.01 ? <TrendText delta={st.trend} /> : null}
+                        </View>
+                      )}
+                      <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} style={rtlFlip} />
                     </Pressable>
                   );
-                }
-                return (
-                  <Pressable key={p.id} onPress={open} style={({ pressed }) => [styles.rowCard, pressed && { backgroundColor: colors.surface2 }]} accessibilityRole="button">
-                    {p.photoUrl ? (
-                      <Image source={{ uri: resolveThumbnailUrl(p.photoUrl, PixelRatio.getPixelSizeForLayoutSize(64)) }} style={styles.rowPhoto} />
-                    ) : (
-                      <View style={[styles.rowPhoto, { backgroundColor: colors.surface2 }]} />
-                    )}
-                    <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-                      <View style={styles.bigTitleRow}>
-                        <Text style={styles.rowTitle} numberOfLines={1}>{p.name}</Text>
-                        {score !== null && score !== undefined && (
-                          <Text style={styles.rowScore}>
-                            {formatScore(score, lang)}
-                            {st?.trend !== null && st?.trend !== undefined && Math.abs(st.trend) >= 0.01 ? '  ' : ''}
-                            {st?.trend !== null && st?.trend !== undefined && Math.abs(st.trend) >= 0.01 ? <TrendText delta={st.trend} /> : null}
-                          </Text>
-                        )}
-                      </View>
-                      <Text style={typography.bodyMuted} numberOfLines={1}>
-                        {i ? (i.fixes[0] ? `${s.first} · ${i.fixes[0].title}` : s.nothingUrgent) : r.reviewsCount(p.reviewCount)}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={colors.inkFaint} style={rtlFlip} />
-                  </Pressable>
-                );
-              })}
+                })}
+              </View>
             </View>
 
             <View
@@ -524,7 +445,8 @@ const styles = StyleSheet.create({
   },
   scoreTop: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md, padding: 20, paddingBottom: spacing.md },
   scoreRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  bigScore: { fontSize: 44, lineHeight: 50, fontWeight: '600', letterSpacing: -1.2, color: colors.ink, ...typography.number },
+  // The screen's one saffron (DESIGN.md: at most once).
+  bigScore: { fontSize: 44, lineHeight: 50, fontWeight: '600', letterSpacing: -1.2, color: colors.saffronText, ...typography.number },
   bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, height: 48 },
   bar: { width: 10, borderRadius: 3 },
   statRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border },
@@ -550,14 +472,18 @@ const styles = StyleSheet.create({
   section: { marginTop: 28 },
   h2: { fontSize: 18, lineHeight: 24, fontWeight: '600', color: colors.ink },
   sub: { ...typography.bodyMuted, fontSize: 13, marginTop: 2 },
-  issueCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: 14, gap: 10 },
+  listCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, overflow: 'hidden' },
+  divider: { borderTopWidth: 1, borderTopColor: colors.border },
+  issueRow: { padding: 14, gap: 3 },
+  propRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: 14 },
+  propFix: { fontSize: 13, lineHeight: 18, color: colors.green700, marginTop: 2 },
   issueHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   issueIcon: { width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center' },
   issueIconRed: { backgroundColor: colors.dangerBg },
   issueIconAmber: { backgroundColor: colors.warningBg },
   issueTitle: { fontSize: 15, lineHeight: 20, fontWeight: '600', color: colors.ink },
   issueFix: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border },
-  issueFixText: { flex: 1, fontSize: 13, lineHeight: 18, color: colors.green700 },
+  issueFixText: { fontSize: 13, lineHeight: 18, color: colors.green700, marginTop: 4 },
   sortRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: 12, marginBottom: 4 },
   sortChip: {
     height: 34,

@@ -58,7 +58,7 @@ export default function HostTabsLayout() {
         title: hs.tabHousekeeping,
         // Housekeepers often have only the cleaning permission: the API lets them in (CALENDAR or CLEANING_REPORTS).
         href: isHostel && (canCalendar || has('CLEANING_REPORTS')) ? undefined : null,
-        tabBarIcon: ({ focused, size }) => <TabIcon name="bed-outline" focused={focused} size={size} />,
+        tabBarIcon: ({ focused, size }) => <TabIcon name="sparkles-outline" focused={focused} size={size} />,
       }}
     />
   );
@@ -85,9 +85,10 @@ export default function HostTabsLayout() {
       <Tabs.Screen
         name="calendar"
         options={{
-          title: t.tabsHost.calendar,
+          // Hostels see the bed plan here (calendar.tsx).
+          title: isHostel ? hs.tabBeds : t.tabsHost.calendar,
           href: canCalendar ? undefined : null,
-          tabBarIcon: ({ focused, size }) => <TabIcon name="calendar-outline" focused={focused} size={size} />,
+          tabBarIcon: ({ focused, size }) => <TabIcon name={isHostel ? 'bed-outline' : 'calendar-outline'} focused={focused} size={size} />,
         }}
       />
       <Tabs.Screen

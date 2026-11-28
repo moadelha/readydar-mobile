@@ -1,3 +1,6 @@
+import { useRedesignStrings } from '@/lib/i18n/redesign-strings';
+import { BedPlan } from '@/components/bed-plan';
+import { usePlanConsole } from '@/lib/plan-console';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Modal, Linking } from 'react-native';
 import { Text } from '@/components/text';
@@ -58,6 +61,10 @@ type CalendarView = 'LIST' | 'MONTH';
 // calendars hosts use in Europe and Morocco.
 /** How many upcoming days the Listings view's per-property strip covers. */
 const LIST_WINDOW_DAYS = 14;
+/** The planning's sizes: property names column, day column, header row. */
+const PLAN_LABEL = 104;
+const PLAN_COL = 44;
+const PLAN_HEAD = 38;
 
 /**
  * Month-grid geometry.
@@ -102,7 +109,17 @@ type MonthWeek = {
   laneCount: number;
 };
 
-export default function CalendarScreen() {
+/**
+ * Hostels plan by bed, not by property: their Calendar tab is the bed plan.
+ * Everyone else gets the properties calendar.
+ */
+export default function CalendarTab() {
+  const { businessType } = usePlanConsole();
+  return businessType === 'HOSTEL' ? <BedPlan asTab /> : <CalendarScreen />;
+}
+
+function CalendarScreen() {
+  const rds = useRedesignStrings().planning;
   const { session } = useAuth();
   const router = useRouter();
   const toast = useToast();
@@ -208,6 +225,8 @@ export default function CalendarScreen() {
     [properties, propertyFilter],
   );
 
+  /** Days from today to an ISO day (negative = before today). */
+  const daysFromToday = (iso: string) => Math.round((parseDateOnly(iso).getTime() - parseDateOnly(today).getTime()) / 86_400_000);
   const listDays = useMemo(
     () => Array.from({ length: LIST_WINDOW_DAYS }, (_, i) => addDaysIso(today, i)),
     [today],
@@ -577,7 +596,19 @@ export default function CalendarScreen() {
   return (
     <Screen edges={['top']}>
       <View style={styles.header}>
-        <Text style={typography.h1}>{t.calendarHost.title}</Text>
+        <View style={styles.titleBar}>
+          <Text style={typography.h1}>{t.calendarHost.title}</Text>
+          {/* Straight to a new check-in link, the only thing to add here. In the header it never covers a row. */}
+          <Pressable
+            onPress={() => router.push({ pathname: '/host/checkin/new', params: propertyFilter ? { propertyId: propertyFilter } : {} })}
+            style={({ pressed }) => [styles.addLink, pressed && { opacity: 0.85 }]}
+            accessibilityRole="button"
+            accessibilityLabel={t.calendarHost.guestOnlineCheckIn}
+          >
+            <Ionicons name="add" size={18} color={colors.onPrimary} />
+            <Text style={styles.addLinkText}>{rds.addLink}</Text>
+          </Pressable>
+        </View>
         <View style={{ marginTop: spacing.sm }}>
           <PropertySelect
             properties={properties}
@@ -705,92 +736,95 @@ export default function CalendarScreen() {
 
         {view === 'LIST' && (
           <View>
-            {/* Legend first here: at the end of a long list it sat under the + button. */}
-            {visibleProperties.length > 0 && <View style={{ marginBottom: spacing.sm }}>{legend}</View>}
             {visibleProperties.length === 0 ? (
               <EmptyState message={t.calendarHost.noPropertiesToShow} />
             ) : (
-              visibleProperties.map((p) => {
-                const photoUrl = propertyCoverUrl(p, 130);
-                const status = statusByProperty[p.id];
-                return (
-                  <Card
-                    key={p.id}
-                    onPress={() => {
-                      setPropertyFilter(p.id);
-                      setView('MONTH');
-                    }}
-                    style={{ marginBottom: spacing.sm }}
-                  >
-                    <View style={styles.listRow}>
-                      <PropertyThumb photoUrl={photoUrl} size={52} />
-                      <View style={{ flex: 1 }}>
-                        <View style={styles.titleRow}>
-                          <Text style={[typography.h3, { flexShrink: 1 }]} numberOfLines={1}>{p.name}</Text>
-                          {p.hospitableListingId && <ChannelMark provider="AIRBNB" size={16} />}
-                        </View>
-                        {status && (
-                          <View style={{ marginTop: 4, alignSelf: 'flex-start' }}>
-                            <StatusBadge label={t.propertyStatus[status.status]} tone={PROPERTY_STATUS_TONE[status.status]} />
-                          </View>
-                        )}
-                      </View>
-                    </View>
-                    {/* The next two weeks as one strip of days, each filled
-                        in the colour of what's on it and labelled with its
-                        date — readable at a glance, unlike the old 8pt dots. */}
-                    {(() => {
-                      const days = listDays.map((day) => ({ day, ...dayStatusForProperty(p.id, day) }));
-                      // Nights, not days: a stay's checkout day isn't a night
-                      // booked, so count days some stay covers before its end.
-                      const stays = (listEventsByProperty[p.id] ?? []).filter((e) => e.kind === 'GUEST_STAY' && !e.isBlocked);
-                      const booked = listDays.filter((day) =>
-                        stays.some((e) => day >= e.date.slice(0, 10) && day < (e.endDate || e.date).slice(0, 10)),
-                      ).length;
+              <>
+                {/* The planning: properties down the side (outside the sideways
+                    scroll, so they stay put), two weeks across, each stay a bar
+                    with the guest's name in its channel's colour. A night is
+                    drawn from the middle of its day to the middle of the next. */}
+                <View style={styles.planGrid}>
+                  <View style={{ width: PLAN_LABEL }}>
+                    <View style={{ height: PLAN_HEAD }} />
+                    {visibleProperties.map((p) => {
+                      const st = statusByProperty[p.id]?.status;
                       return (
-                        <>
-                          <View style={styles.strip}>
-                            {days.map((d) => {
-                              const filled = d.status !== 'free';
-                              const bg = listDotColor(d);
+                        <Pressable
+                          key={p.id}
+                          onPress={() => {
+                            setPropertyFilter(p.id);
+                            setView('MONTH');
+                          }}
+                          style={styles.planLabel}
+                          accessibilityRole="button"
+                        >
+                          {st === 'NEEDS_CLEANING' && <View style={styles.planCleanDot} />}
+                          <Text style={styles.planLabelText} numberOfLines={2}>
+                            {p.name}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View style={{ width: PLAN_COL * listDays.length }}>
+                      <View style={[styles.planHeadRow, { height: PLAN_HEAD }]}>
+                        {listDays.map((d) => {
+                          const date = parseDateOnly(d);
+                          return (
+                            <View key={d} style={[styles.planHeadCell, d === today && styles.planToday]}>
+                              <Text style={styles.planWeekday}>{date.toLocaleDateString(locale, { weekday: 'narrow' })}</Text>
+                              <Text style={[styles.planDayNum, d === today && { color: colors.primary }]}>{date.getDate()}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                      {visibleProperties.map((p) => {
+                        const stays = (listEventsByProperty[p.id] ?? []).filter((e) => e.kind === 'GUEST_STAY');
+                        return (
+                          <View key={p.id} style={styles.planRow}>
+                            {listDays.map((d) => (
+                              <View key={d} style={[styles.planCell, d === today && styles.planToday]} />
+                            ))}
+                            {stays.map((e) => {
+                              const from = Math.max(-0.5, daysFromToday(e.date.slice(0, 10)));
+                              const to = Math.min(listDays.length - 0.5, daysFromToday((e.endDate || e.date).slice(0, 10)));
+                              if (to <= from) return null;
+                              const bg = eventAccentColor(e);
+                              const name = e.isBlocked ? t.calendarHost.legendBlocked : eventGuestName(e) ?? sourceShortLabel(e, t);
                               return (
-                                <View
-                                  key={d.day}
-                                  style={[
-                                    styles.stripDay,
-                                    { backgroundColor: filled ? bg : colors.surface2 },
-                                    d.day === today && styles.stripToday,
-                                  ]}
+                                <Pressable
+                                  key={e.id}
+                                  onPress={() => openEventSheet(e)}
+                                  style={[styles.planBar, { start: (from + 0.5) * PLAN_COL + 2, width: (to - from) * PLAN_COL - 4, backgroundColor: bg }]}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={`${name}, ${p.name}`}
                                 >
-                                  <Text style={[styles.stripDate, { color: filled ? barTextColor(bg) : colors.inkMuted }]}>
-                                    {parseDateOnly(d.day).getDate()}
+                                  <Text style={[styles.planBarText, { color: barTextColor(bg) }]} numberOfLines={1}>
+                                    {name}
                                   </Text>
-                                </View>
+                                </Pressable>
                               );
                             })}
                           </View>
-                          <Text style={styles.stripCaption}>{t.calendarHost.nextTwoWeeks(booked)}</Text>
-                        </>
-                      );
-                    })()}
-                  </Card>
-                );
-              })
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
+                </View>
+                <View style={{ marginTop: spacing.md }}>{legend}</View>
+                {(() => {
+                  const due = visibleProperties.filter((p) => statusByProperty[p.id]?.status === 'NEEDS_CLEANING').map((p) => p.name);
+                  return due.length ? <Text style={[typography.caption, { marginTop: spacing.sm }]}>{rds.cleaningDue(due.join(', '))}</Text> : null;
+                })()}
+              </>
             )}
           </View>
         )}
 
       </ScrollView>
 
-      <Pressable
-        style={styles.fab}
-        // Straight to a new check-in link: with cleaner booking gone it's the only thing to add here.
-        onPress={() => router.push({ pathname: '/host/checkin/new', params: propertyFilter ? { propertyId: propertyFilter } : {} })}
-        accessibilityRole="button"
-        accessibilityLabel={t.calendarHost.guestOnlineCheckIn}
-      >
-        <Ionicons name="add" size={24} color={colors.onPrimary} />
-      </Pressable>
 
       {/* Day overflow — Month view */}
       <Modal visible={!!selectedDay} animationType="fade" transparent onRequestClose={() => setSelectedDay(null)}>
@@ -1077,6 +1111,22 @@ const styles = StyleSheet.create({
   stripToday: { borderWidth: 1.5, borderColor: colors.ink },
   stripDate: { fontSize: 10, fontWeight: '600', fontVariant: ['tabular-nums'] },
   stripCaption: { ...typography.caption, marginTop: 6 },
+  titleBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  addLink: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 40, paddingHorizontal: 14, borderRadius: radius.sm, backgroundColor: colors.primary },
+  addLinkText: { color: colors.onPrimary, fontWeight: '600', fontSize: 14 },
+  planGrid: { flexDirection: 'row', backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, overflow: 'hidden' },
+  planLabel: { height: 48, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, borderTopWidth: 1, borderTopColor: colors.border },
+  planLabelText: { flex: 1, fontSize: 13, lineHeight: 17, fontWeight: '600', color: colors.ink },
+  planCleanDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.accent },
+  planHeadRow: { flexDirection: 'row' },
+  planHeadCell: { width: PLAN_COL, alignItems: 'center', justifyContent: 'center', borderLeftWidth: 1, borderLeftColor: colors.border },
+  planWeekday: { fontSize: 10, color: colors.inkFaint, fontWeight: '500' },
+  planDayNum: { fontSize: 13, fontWeight: '600', color: colors.ink, fontVariant: ['tabular-nums'] },
+  planToday: { backgroundColor: colors.successBg },
+  planRow: { height: 48, flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border },
+  planCell: { width: PLAN_COL, borderLeftWidth: 1, borderLeftColor: colors.border },
+  planBar: { position: 'absolute', top: 10, bottom: 10, borderRadius: radius.sm, justifyContent: 'center', paddingHorizontal: 6 },
+  planBarText: { fontSize: 11, fontWeight: '600' },
   fab: {
     position: 'absolute',
     right: spacing.lg,

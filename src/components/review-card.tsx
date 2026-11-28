@@ -27,7 +27,7 @@ export function Stars({ rating, size = 14 }: { rating: number; size?: number }) 
   return (
     <View style={{ flexDirection: 'row', gap: 1 }} accessible accessibilityLabel={s.starsAria(n)}>
       {[1, 2, 3, 4, 5].map((i) => (
-        <Ionicons key={i} name={i <= n ? 'star' : 'star-outline'} size={size} color={i <= n ? colors.accent : colors.border} />
+        <Ionicons key={i} name={i <= n ? 'star' : 'star-outline'} size={size} color={i <= n ? colors.ink : colors.border} />
       ))}
     </View>
   );
@@ -352,13 +352,9 @@ const styles = StyleSheet.create({
   channelDot: { width: 6, height: 6, borderRadius: 3 },
   body: { ...typography.body, marginTop: spacing.sm + 4 },
   score10: {
-    backgroundColor: colors.channel.booking,
-    color: colors.onPrimary,
+    color: colors.ink,
     fontWeight: '600',
-    fontSize: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.sm,
+    fontSize: 13,
     overflow: 'hidden',
   },
   hiddenTag: {
