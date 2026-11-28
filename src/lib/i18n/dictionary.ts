@@ -2049,7 +2049,7 @@ export const fr: Dict = {
  * this app actually displays. Callers that need a prefix ("قبل…", "خلال…")
  * spell the bands out inline instead, since the prefix has to agree too.
  */
-function arPlural(n: number, forms: { one: string; two: string; few: string; many: string }): string {
+export function arPlural(n: number, forms: { one: string; two: string; few: string; many: string }): string {
   if (n === 1) return forms.one;
   if (n === 2) return forms.two;
   if (n >= 3 && n <= 10) return `${n} ${forms.few}`;
@@ -2120,7 +2120,7 @@ export const ar: Dict = {
   },
   login: {
     title: 'مرحبًا بعودتك',
-    subtitle: 'سجّل الدخول لإدارة عقاراتك أو مهامك.',
+    subtitle: 'سجّل الدخول لإدارة عقاراتك.',
     email: 'البريد الإلكتروني',
     emailPlaceholder: 'you@example.com',
     password: 'كلمة المرور',
@@ -2138,8 +2138,8 @@ export const ar: Dict = {
     subtitleCleaner: 'احصل على مهام تنظيف قريبة منك.',
     imHost: 'أنا مضيف',
     imCleaner: 'أنا عامل نظافة',
-    firstName: 'الاسم الأول',
-    lastName: 'الاسم الأخير',
+    firstName: 'الاسم الشخصي',
+    lastName: 'الاسم العائلي',
     email: 'البريد الإلكتروني',
     phone: 'الهاتف',
     phonePlaceholder: '+212 6XX XXX XXX',
@@ -2243,7 +2243,7 @@ export const ar: Dict = {
     areaPlaceholder: 'مثل: المطبخ، الحمام 1، غرفة النوم 2',
     roomsTitle: 'الغرف',
     roomsHint: 'المس غرفة لتصويرها. تُفتح الكاميرا من جديد بعد كل صورة؛ اضغط رجوع عند الانتهاء من الغرفة.',
-    roomsDone: (done, total) => `${done} من ${total} غرف`,
+    roomsDone: (done, total) => `الغرف المنجزة: ${done} من ${total}`,
     roomNames: {
       bedroom: (n) => (n ? `غرفة النوم ${n}` : 'غرفة النوم'),
       bathroom: (n) => (n ? `الحمام ${n}` : 'الحمام'),
@@ -2256,7 +2256,7 @@ export const ar: Dict = {
     otherRoomGo: 'التقاط الصور',
     uploading: 'جارٍ الرفع…',
     uploadingCount: (n: number) => `جارٍ رفع ${arPlural(n, { one: 'صورة واحدة', two: 'صورتين', few: 'صور', many: 'صورة' })}…`,
-    notSentCount: (n) => `لم تُرسل ${n} صورة بعد`,
+    notSentCount: (n) => `لم تُرسل ${arPlural(n, { one: 'صورة واحدة', two: 'صورتان', few: 'صور', many: 'صورة' })} بعد`,
     retryUpload: 'إعادة المحاولة',
     locationFixTitle: 'تحديد موقعك',
     locationFixBody: 'تعذّر تحديد موقعك. اقترب من نافذة، وتأكد من تفعيل الموقع، ثم حاول مرة أخرى.',
@@ -2293,7 +2293,7 @@ export const ar: Dict = {
   profileHost: {
     manage: 'الإدارة',
     cleaningContacts: 'جهات اتصال التنظيف',
-    turnoverAlerts: 'تنبيهات التبديل',
+    turnoverAlerts: 'تنبيهات التسليم',
     notOnMobileYet:
       'أعضاء الفريق، الاشتراك، مزامنة iCal، والتقارير غير متوفرة بعد في التطبيق — أدرها من لوحة تحكم ReadyDar على الويب.',
     saveChanges: 'حفظ التغييرات',
@@ -2493,7 +2493,7 @@ export const ar: Dict = {
     sheetLengthOfStay: 'مدة الإقامة',
     sheetGuests: 'الضيوف',
     timingRequestsTitle: 'طلبات التوقيت',
-    timingRequestsSubtitle: 'حدّد وصولاً مبكرًا أو مغادرة متأخرة لجدولة التنظيف وفقًا لذلك.',
+    timingRequestsSubtitle: 'حدّد وصولًا مبكرًا أو مغادرة متأخرة لجدولة التنظيف وفقًا لذلك.',
     earlyCheckIn: 'وصول مبكر',
     arrivingBefore: (time) => `الوصول قبل ${time}`,
     arrivingBeforeUsual: 'الوصول قبل الوقت المعتاد',
@@ -2527,7 +2527,7 @@ export const ar: Dict = {
     AIRBNB: 'Airbnb',
     BOOKING_COM: 'Booking.com',
     DIRECT: 'مباشر',
-    MANUAL: 'غير متصل',
+    MANUAL: 'إدخال يدوي',
   },
   guestStayStatus: {
     PENDING: 'بانتظار تسجيل الوصول عبر الإنترنت',
@@ -2542,7 +2542,7 @@ export const ar: Dict = {
     viewCalendar: 'الشهر',
     legendCleaning: 'تنظيف',
     legendGuestStay: 'إقامة ضيف',
-    legendBlocked: 'محجوز',
+    legendBlocked: 'مُغلق',
     tapForDetails: 'اضغط على حجز لعرض التفاصيل',
     dayEmpty: 'لا حجوزات ولا مهام في هذا اليوم.',
     noPropertiesToShow: 'لا توجد عقارات لعرضها.',
@@ -2562,7 +2562,7 @@ export const ar: Dict = {
     copiedExclaim: 'تم النسخ!',
     copyCheckInLink: 'نسخ رابط تسجيل الوصول',
     shareViaWhatsApp: 'مشاركة عبر واتساب',
-    blockedOnPrefix: 'محجوز في',
+    blockedOnPrefix: 'مُغلق على',
     platformPrefix: 'المنصة:',
     confirmedStatus: 'مؤكد',
     ratePerNightLabel: 'السعر لليلة الواحدة (درهم) — اختياري',
@@ -2587,13 +2587,14 @@ export const ar: Dict = {
   },
   propertiesList: {
     title: 'العقارات',
-    listedCount: (n) => `${n} منشور`,
+    listedCount: (n) => arPlural(n, { one: 'عقار واحد منشور', two: 'عقاران منشوران', few: 'عقارات منشورة', many: 'عقارًا منشورًا' }),
     airbnbButton: 'Airbnb',
     errorLoad: 'تعذّر تحميل عقاراتك.',
     emptyMessage: 'لا توجد عقارات بعد.',
     addFirstProperty: 'أضف عقارك الأول',
     airbnbBadge: 'Airbnb',
-    bedBathGuests: (bed, bath, guests) => `${bed} غرف · ${bath} حمامات · حتى ${guests} ضيوف`,
+    bedBathGuests: (bed, bath, guests) =>
+      `${arPlural(bed, { one: 'غرفة واحدة', two: 'غرفتان', few: 'غرف', many: 'غرفة' })} · ${arPlural(bath, { one: 'حمام واحد', two: 'حمامان', few: 'حمامات', many: 'حمامًا' })} · حتى ${arPlural(guests, { one: 'ضيف واحد', two: 'ضيفين', few: 'ضيوف', many: 'ضيفًا' })}`,
     ratePerNight: (rate, currency) => `${rate} ${currency === 'MAD' ? 'درهم' : currency} / الليلة`,
   },
   propertyDetail: {
@@ -2630,7 +2631,7 @@ export const ar: Dict = {
     statusAuto: 'حدّدتها أنت — لن تتغيّر من تلقاء نفسها. اضغط للعودة إلى الوضع التلقائي.',
     statusWorkingItOut: 'تُحدَّد تلقائيًا بناءً على الحجوزات وعمليات التنظيف.',
     requestCleaning: 'طلب تنظيف',
-    markReady: 'وضع علامة جاهز',
+    markReady: 'تحديد كجاهز',
     logExpense: 'تسجيل مصروف لهذا العقار',
     cleaningReports: 'تقارير التنظيف',
     guestCheckIns: 'تسجيلات وصول الضيوف',
@@ -2639,8 +2640,8 @@ export const ar: Dict = {
     createdFromAirbnb: 'تم الإنشاء تلقائيًا من حجز Airbnb — شارك الرابط أدناه لجمع تفاصيل الضيف.',
     phoneLabel: (phone) => `الهاتف: ${phone}`,
     nationalityIdLine: (nationality, idType, idNumber) => `${nationality} · ${idType} ${idNumber}`,
-    passport: 'جواز سفر',
-    nationalId: 'بطاقة هوية وطنية',
+    passport: 'جواز السفر',
+    nationalId: 'بطاقة التعريف الوطنية',
     idPhoto: 'صورة الهوية',
     idPhotos: 'صور الهوية',
     viewId: 'عرض الهوية',
@@ -2734,7 +2735,7 @@ export const ar: Dict = {
     checkinBody: (property, stay) => `${property} · ${stay}`,
     jobTitle: 'لا يزال التنظيف بلا عامل نظافة',
     jobBody: (property) => `${property} · مجدول اليوم`,
-    turnoverTitle: 'تبديل في نفس اليوم اليوم',
+    turnoverTitle: 'تسليم في نفس اليوم',
     turnoverBody: (property) => `${property} · ضيف يغادر وآخر يصل`,
     aProperty: 'أحد العقارات',
     guestFallback: 'ضيفك',

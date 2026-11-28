@@ -1,3 +1,4 @@
+import { arPlural } from './dictionary';
 import { useLanguage } from './language-context';
 
 /**
@@ -96,7 +97,7 @@ const fr: RedesignStrings = {
 
 const ar: RedesignStrings = {
   props: {
-    count: (n: number) => (n === 1 ? 'عقار واحد' : `${n} عقارات`),
+    count: (n: number) => arPlural(n, { one: 'عقار واحد', two: 'عقاران', few: 'عقارات', many: 'عقارًا' }),
     add: 'إضافة',
     addWhat: 'إضافة عقار',
     newProperty: 'عقار جديد',

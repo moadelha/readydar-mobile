@@ -1,3 +1,4 @@
+import { arPlural } from './dictionary';
 import { useLanguage } from './language-context';
 
 /**
@@ -81,11 +82,11 @@ const ar: PlanStrings = {
   team: 'أعضاء الفريق',
   usedOf: (used, limit) => `${used} من ${limit}`,
   usedUnlimited: (used) => `${used} · غير محدود`,
-  extraProperties: (n) => `منها ${n} ${n === 1 ? 'عقار إضافي' : 'عقارات إضافية'}`,
+  extraProperties: (n) => `منها ${arPlural(n, { one: 'عقار إضافي واحد', two: 'عقاران إضافيان', few: 'عقارات إضافية', many: 'عقارًا إضافيًا' })}`,
   included: 'مضمّن في باقتك',
-  comingSoon: 'قريباً',
+  comingSoon: 'قريبًا',
   manageOnWeb: 'إدارة باقتك على الموقع',
-  webNote: 'تُدار الباقات والإضافات والعقارات الإضافية على readydar.com — ويتبع التطبيق باقتك تلقائياً.',
+  webNote: 'تُدار الباقات والإضافات والعقارات الإضافية على readydar.com — ويتبع التطبيق باقتك تلقائيًا.',
   loadError: 'تعذّر تحميل باقتك.',
   features: {
     cleaningReports: 'تقارير التنظيف',
