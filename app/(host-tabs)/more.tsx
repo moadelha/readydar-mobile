@@ -26,7 +26,7 @@ export default function MoreScreen() {
   const { t } = useLanguage();
   const { isOwner, isManager, has } = useHostAccess();
   const planStrings = usePlanStrings();
-  const { canMessages, businessType } = usePlanConsole();
+  const { canMessages, businessType, isPro } = usePlanConsole();
   const ms = useMessagesStrings();
   const rs = useReviewsStrings();
   const setup = useSetupStrings();
@@ -38,7 +38,10 @@ export default function MoreScreen() {
   //   Guests        → guest-welcome controller, @RequireHostPermission('CHECKINS')
   //   Cleaning contacts / Rental contract → @MinHostRole('MANAGER')
   //   Connect Airbnb → @MinHostRole('OWNER') — see HospitableConnectController
-  //     for why even a MANAGER can't use it.
+  //     for why even a MANAGER can't use it. Only apartment hosts on Light use
+  //     it: Pro and hostels connect their channels another way, on the website.
+  // Hostels don't get the apartment tools: WhatsApp cleaner alerts (their
+  // housekeeping is the Housekeeping tab) and the rental contract.
   const groups: { title: string; items: Entry[] }[] = [
     {
       title: t.more.sectionOperations,
@@ -49,7 +52,7 @@ export default function MoreScreen() {
         { icon: 'wallet-outline', label: ds.cash, description: ds.cashIntro, path: '/host/cash', visible: isHostel && has('CALENDAR') && has('REPORTS') },
         { icon: 'cafe-outline', label: ds.activities, description: ds.actIntro, path: '/host/activities', visible: isHostel && has('CALENDAR') },
         // The cleaning contacts open from inside this one.
-        { icon: 'logo-whatsapp', label: setup.alerts.title, description: setup.alerts.intro, path: '/host/turnovers', visible: has('CALENDAR') },
+        { icon: 'logo-whatsapp', label: setup.alerts.title, description: setup.alerts.intro, path: '/host/turnovers', visible: has('CALENDAR') && !isHostel },
       ],
     },
     {
@@ -59,13 +62,13 @@ export default function MoreScreen() {
         { icon: 'flash-outline', label: ms.templates.manage, description: ms.templates.manageDesc, path: '/host/messages/templates', visible: canMessages },
         // Reading reviews is open to every host (GuestReviewsController); replying is Pro, gated inside the screen.
         { icon: 'star-outline', label: rs.title, description: rs.menuDesc, path: '/host/reviews', visible: true },
-        { icon: 'document-text-outline', label: t.more.contract, description: t.more.contractDesc, path: '/host/contract', visible: isManager },
+        { icon: 'document-text-outline', label: t.more.contract, description: t.more.contractDesc, path: '/host/contract', visible: isManager && !isHostel },
       ],
     },
     {
       title: t.more.sectionAccount,
       items: [
-        { icon: 'link-outline', label: t.more.connectAirbnb, description: t.more.connectAirbnbDesc, path: '/host/hospitable', visible: isOwner },
+        { icon: 'link-outline', label: t.more.connectAirbnb, description: t.more.connectAirbnbDesc, path: '/host/hospitable', visible: isOwner && !isHostel && !isPro },
         { icon: 'card-outline', label: planStrings.title, description: planStrings.menuDesc, path: '/host/plan', visible: isManager },
         { icon: 'person-outline', label: t.more.profile, description: t.more.profileDesc, path: '/host/profile', visible: true },
       ],

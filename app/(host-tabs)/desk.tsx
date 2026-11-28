@@ -7,7 +7,8 @@ import { Text } from '@/components/text';
 import { Screen, ErrorBanner, SkeletonListItem } from '@/components/ui';
 import { PropertySelect } from '@/components/PropertySelect';
 import { useAuth, ApiError } from '@/lib/auth-context';
-import { api, CalendarEvent, Property, resolveCheckInUrl } from '@/lib/api';
+import { api, CalendarEvent, HousekeepingBoard, Property, resolveCheckInUrl } from '@/lib/api';
+import { useRedesignStrings } from '@/lib/i18n/redesign-strings';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { useHostelStrings } from '@/lib/i18n/hostel-strings';
 import { useDeskStrings } from '@/lib/i18n/desk-strings';
@@ -50,6 +51,8 @@ export default function DeskScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [board, setBoard] = useState<HousekeepingBoard | null>(null);
+  const rd = useRedesignStrings().desk;
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -58,12 +61,15 @@ export default function DeskScreen() {
       // A day either side: each property's "today" follows its own zone,
       // which can be a day off the phone's.
       const today = todayIso();
-      const [list, cal] = await Promise.all([
+      const [list, cal, hk] = await Promise.all([
         api.properties.listMine(session.accessToken),
         api.properties.getCalendar(addDaysIso(today, -1), addDaysIso(today, 1), session.accessToken),
+        // Only the summary uses it: the desk works without.
+        api.housekeeping.board(session.accessToken).catch(() => null),
       ]);
       setProperties(list);
       setEvents(cal);
+      setBoard(hk);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : s.loadError);
     } finally {
@@ -98,6 +104,19 @@ export default function DeskScreen() {
       departures: stays.filter((e) => e.endDate.slice(0, 10) === todayOf(e)).sort(byPending((e) => !!e.checkedOutAt)),
     };
   }, [events, properties, propertyFilter]);
+
+  /** Tonight across the shown properties: rooms and beds taken, and still to clean. */
+  const tonight = useMemo(() => {
+    if (!board) return null;
+    const list = board.properties.filter((p) => !propertyFilter || p.propertyId === propertyFilter);
+    const units = list.flatMap((p) => p.units);
+    if (!units.length) return null;
+    return {
+      total: units.length,
+      taken: units.filter((u) => u.today.stayover || !!u.today.arrival).length,
+      toClean: units.filter((u) => u.status === 'DIRTY').length,
+    };
+  }, [board, propertyFilter]);
 
   async function act(e: CalendarEvent, action: Action) {
     if (!session) return;
@@ -284,6 +303,20 @@ export default function DeskScreen() {
         <Text style={[typography.label, { marginBottom: 6 }]}>{formatDay(new Date(), lang)}</Text>
         <Text style={typography.h1}>{s.deskTitle}</Text>
 
+        {/* The day at a glance: what's done, what's taken tonight, what's left to clean. */}
+        {!isLoading && (
+          <View style={styles.summary}>
+            <SummaryTile value={`${arrivals.filter((e) => e.checkedInAt).length}/${arrivals.length}`} label={rd.arrivals} />
+            <SummaryTile value={`${departures.filter((e) => e.checkedOutAt).length}/${departures.length}`} label={rd.departures} divider />
+            {tonight && (
+              <SummaryTile value={`${tonight.taken}/${tonight.total}`} label={rd.bedsTonight} divider onPress={() => router.push('/calendar')} />
+            )}
+            {tonight && (
+              <SummaryTile value={String(tonight.toClean)} label={rd.toClean} divider warn={tonight.toClean > 0} onPress={() => router.push('/housekeeping')} />
+            )}
+          </View>
+        )}
+
         <View style={styles.quickRow}>
           <QuickAction icon="person-add-outline" label={ds.newStay} onPress={() => router.push('/host/desk/new-stay')} />
           {has('REPORTS') && <QuickAction icon="wallet-outline" label={ds.cash} onPress={() => router.push('/host/cash')} />}
@@ -364,6 +397,11 @@ const styles = StyleSheet.create({
   },
   pillText: { fontSize: 13, fontWeight: '600', color: colors.green700 },
   quickRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  summary: { flexDirection: 'row', marginTop: spacing.md, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md },
+  tile: { flex: 1, paddingVertical: 12, paddingHorizontal: 10, gap: 2 },
+  tileDivider: { borderStartWidth: 1, borderStartColor: colors.border },
+  tileValue: { fontSize: 20, lineHeight: 26, fontWeight: '600', color: colors.ink, fontVariant: ['tabular-nums'] },
+  tileLabel: { fontSize: 12, lineHeight: 16, color: colors.inkMuted },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -377,3 +415,20 @@ const styles = StyleSheet.create({
   undo: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
   undoText: { fontSize: 14, fontWeight: '500', color: colors.inkMuted },
 });
+
+function SummaryTile({ value, label, divider, warn, onPress }: { value: string; label: string; divider?: boolean; warn?: boolean; onPress?: () => void }) {
+  const body = (
+    <>
+      <Text style={[styles.tileValue, warn && { color: colors.warning }]}>{value}</Text>
+      <Text style={styles.tileLabel} numberOfLines={2}>
+        {label}
+      </Text>
+    </>
+  );
+  if (!onPress) return <View style={[styles.tile, divider && styles.tileDivider]}>{body}</View>;
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, divider && styles.tileDivider, pressed && { backgroundColor: colors.surface2 }]} accessibilityRole="button">
+      {body}
+    </Pressable>
+  );
+}

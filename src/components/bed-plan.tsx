@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Pressable, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, RefreshControl, Pressable } from 'react-native';
+import { StaySheet } from '@/components/stay-sheet';
 import { Stack, useFocusEffect } from 'expo-router';
 import { Text } from '@/components/text';
 import { Screen, ErrorBanner, SkeletonListItem } from '@/components/ui';
@@ -18,9 +19,9 @@ import { colors, radius, spacing, typography } from '@/theme';
 const DAYS = 14;
 const COL = 52;
 const ROW = 40;
-const HEAD = 40;
-const GROUP = 30;
-const LABEL = 96;
+const HEAD = 54;
+const GROUP = 40;
+const LABEL = 116;
 
 const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 
@@ -93,11 +94,13 @@ export function BedPlan({ asTab = false }: { asTab?: boolean }) {
       .filter((g) => g.units.length > 0);
   }, [property, events, start]);
 
-  function showStay(e: CalendarEvent) {
-    const from = formatDay(e.date.slice(0, 10), lang, { utc: true });
-    const to = formatDay(e.endDate.slice(0, 10), lang, { utc: true });
-    Alert.alert(guestNameOf(e), [s.nightsRange(from, to), e.guestCount ? t.common.guestsCount(e.guestCount) : null, e.channelName].filter(Boolean).join('\n'));
-  }
+  /** How many of the property's rooms and beds someone sleeps in on night d. */
+  const unitCount = groups.reduce((n, g) => n + g.units.length, 0);
+  const takenOn = (d: string) => groups.reduce((n, g) => n + g.units.filter((u) => u.stays.some((e) => e.date.slice(0, 10) <= d && e.endDate.slice(0, 10) > d)).length, 0);
+
+  // A tapped stay opens in a sheet with the desk's actions (StaySheet).
+  const [opened, setOpened] = useState<CalendarEvent | null>(null);
+  const showStay = (e: CalendarEvent) => setOpened(e);
 
   return (
     <Screen edges={asTab ? ['top'] : undefined}>
@@ -139,7 +142,8 @@ export function BedPlan({ asTab = false }: { asTab?: boolean }) {
               {groups.map((g) => (
                 <View key={g.roomType.id}>
                   <View style={[styles.groupLabel, { height: GROUP }]}>
-                    <Text style={styles.groupText} numberOfLines={1}>
+                    {/* Two lines, so long names ("6-bed mixed dorm") aren't cut. */}
+                    <Text style={styles.groupText} numberOfLines={2}>
                       {g.roomType.name}
                     </Text>
                   </View>
@@ -163,6 +167,9 @@ export function BedPlan({ asTab = false }: { asTab?: boolean }) {
                       <View key={d} style={[styles.headCell, i === 0 && styles.todayCol]}>
                         <Text style={styles.headDay}>{date.toLocaleDateString(locale, { weekday: 'narrow', timeZone: 'UTC' })}</Text>
                         <Text style={[styles.headNum, i === 0 && { color: colors.primary }]}>{date.getUTCDate()}</Text>
+                        <Text style={styles.headTaken} accessibilityLabel={s.bedsTakenA11y(takenOn(d), unitCount)}>
+                          {takenOn(d)}/{unitCount}
+                        </Text>
                       </View>
                     );
                   })}
@@ -206,6 +213,7 @@ export function BedPlan({ asTab = false }: { asTab?: boolean }) {
           </View>
         )}
       </ScrollView>
+      <StaySheet event={opened} onClose={() => setOpened(null)} onChanged={load} />
     </Screen>
   );
 }
@@ -214,7 +222,8 @@ const styles = StyleSheet.create({
   container: { paddingTop: spacing.lg, paddingBottom: spacing.xl * 2 },
   grid: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.white },
   groupLabel: { justifyContent: 'center', paddingHorizontal: spacing.sm, backgroundColor: colors.surface2 },
-  groupText: { fontSize: 12, fontWeight: '600', color: colors.inkMuted },
+  groupText: { fontSize: 12, lineHeight: 15, fontWeight: '600', color: colors.inkMuted },
+  headTaken: { fontSize: 10, color: colors.inkMuted, fontVariant: ['tabular-nums'], marginTop: 1 },
   unitLabel: { justifyContent: 'center', paddingHorizontal: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
   unitText: { fontSize: 13, fontWeight: '500', color: colors.ink },
   headRow: { flexDirection: 'row' },

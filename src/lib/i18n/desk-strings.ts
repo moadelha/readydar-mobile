@@ -197,6 +197,7 @@ const en = {
   planIntro: 'Who sleeps where, night by night. Move guests on the website.',
   planEmpty: 'No rooms or beds set up yet.',
   planError: 'Could not load the bed plan.',
+  bedsTakenA11y: (n: number, total: number) => `${n} of ${total} taken`,
   nightsRange: (from: string, to: string) => `${from} → ${to}`,
 };
 
@@ -385,6 +386,7 @@ const fr: DeskStrings = {
   planIntro: 'Qui dort où, nuit par nuit. Déplacez les voyageurs sur le site.',
   planEmpty: 'Aucune chambre ni lit configuré.',
   planError: 'Impossible de charger le plan des lits.',
+  bedsTakenA11y: (n: number, total: number) => `${n} sur ${total} occupés`,
   nightsRange: (from: string, to: string) => `${from} → ${to}`,
 };
 
@@ -571,6 +573,7 @@ const ar: DeskStrings = {
   planIntro: 'من ينام أين، ليلة بليلة. انقل الضيوف على الموقع.',
   planEmpty: 'لا غرف ولا أسرّة بعد.',
   planError: 'تعذّر تحميل مخطط الأسرّة.',
+  bedsTakenA11y: (n: number, total: number) => `${n} من ${total} مشغولة`,
   nightsRange: (from: string, to: string) => `${from} ← ${to}`,
 };
 

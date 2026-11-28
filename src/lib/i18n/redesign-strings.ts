@@ -34,6 +34,18 @@ const en = {
   reviews: {
     byPropertySub: 'Most slipping first',
   },
+  desk: {
+    arrivals: 'Arrivals',
+    departures: 'Departures',
+    bedsTonight: 'Taken tonight',
+    toClean: 'To clean',
+  },
+  stay: {
+    where: 'Room',
+    arrival: 'Arrival',
+    departure: 'Departure',
+    close: 'Close',
+  },
 };
 
 export type RedesignStrings = typeof en;
@@ -68,6 +80,18 @@ const fr: RedesignStrings = {
   reviews: {
     byPropertySub: 'Le plus en baisse d’abord',
   },
+  desk: {
+    arrivals: 'Arrivées',
+    departures: 'Départs',
+    bedsTonight: 'Occupés ce soir',
+    toClean: 'À nettoyer',
+  },
+  stay: {
+    where: 'Chambre',
+    arrival: 'Arrivée',
+    departure: 'Départ',
+    close: 'Fermer',
+  },
 };
 
 const ar: RedesignStrings = {
@@ -99,6 +123,18 @@ const ar: RedesignStrings = {
   },
   reviews: {
     byPropertySub: 'الأكثر تراجعًا أولًا',
+  },
+  desk: {
+    arrivals: 'الوصول',
+    departures: 'المغادرة',
+    bedsTonight: 'مشغولة الليلة',
+    toClean: 'للتنظيف',
+  },
+  stay: {
+    where: 'الغرفة',
+    arrival: 'الوصول',
+    departure: 'المغادرة',
+    close: 'إغلاق',
   },
 };
 

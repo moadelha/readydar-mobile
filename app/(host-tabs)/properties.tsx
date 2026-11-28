@@ -12,6 +12,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLanguage } from '@/lib/i18n/language-context';
 import { useRedesignStrings } from '@/lib/i18n/redesign-strings';
 import { useHostAccess } from '@/lib/access';
+import { usePlanConsole } from '@/lib/plan-console';
 import { addDaysIso, dateLocale, eventGuestName, todayIso } from '@/lib/calendar-visuals';
 import { PROPERTY_STATUS_TONE } from '@/lib/status';
 import { rtlFlip } from '@/lib/rtl';
@@ -27,6 +28,7 @@ export default function PropertiesScreen() {
   const { t, lang } = useLanguage();
   const s = useRedesignStrings().props;
   const { isOwner, isManager } = useHostAccess();
+  const { isPro } = usePlanConsole();
   const [properties, setProperties] = useState<Property[]>([]);
   const [statuses, setStatuses] = useState<PropertyStatusItem[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -84,7 +86,8 @@ export default function PropertiesScreen() {
 
   function add() {
     // Connecting Airbnb is owner-only; creating a property is @MinHostRole('MANAGER').
-    if (!isOwner) return router.push('/host/property/new');
+    // Importing from Airbnb is for owners on Light (Pro connects channels on the website).
+    if (!isOwner || isPro) return router.push('/host/property/new');
     Alert.alert(s.addWhat, undefined, [
       { text: s.newProperty, onPress: () => router.push('/host/property/new') },
       { text: s.importAirbnb, onPress: () => router.push('/host/hospitable') },
